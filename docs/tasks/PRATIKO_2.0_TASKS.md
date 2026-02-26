@@ -358,7 +358,7 @@ These services implement CRUD operations and business logic on top of the models
 
 **File:** `app/services/communication_service.py`
 
-**Unlocks:** DEV-331, DEV-332, DEV-335, DEV-336, DEV-337, DEV-338, DEV-339
+**Unlocks:** DEV-331, DEV-332, DEV-335, DEV-336, ~~DEV-337 (REMOVED, ADR-035)~~, DEV-338, DEV-339
 
 ---
 
@@ -481,7 +481,7 @@ These depend on Wave 3 services. Can run in parallel within the wave.
 
 **File:** `app/services/normative_matching_service.py`
 
-**Unlocks:** DEV-323 (LangGraph Node), DEV-325 (Background Job), DEV-328 (Performance Tests), DEV-383
+**Unlocks:** ~~DEV-323 (REMOVED, ADR-035)~~, DEV-325 (Background Job — PRIMARY delivery), DEV-328 (Performance Tests), DEV-383
 
 ---
 
@@ -494,7 +494,7 @@ These depend on Wave 3 services. Can run in parallel within the wave.
 
 **File:** `app/core/langgraph/tools/communication_tool.py`
 
-**Unlocks:** DEV-337 (Response Formatter)
+**Unlocks:** ~~DEV-337 (REMOVED, ADR-035)~~
 
 ---
 
@@ -755,27 +755,24 @@ These depend on Wave 4 APIs and Wave 3 services.
 
 ---
 
-### DEV-323: LangGraph Matching Node
-**Depends on:** DEV-320 (NormativeMatchingService), DEV-316 (Tenant Middleware for studio_id)
-**Priority:** HIGH | **Effort:** 4h | **Classification:** MODIFYING
-**Agent:** @Ezio (primary), @Severino (review), @Clelia (tests)
+### ~~DEV-323: LangGraph Matching Node~~ — REMOVED (ADR-035)
 
-**What to build:** LangGraph node inserted after domain classification (step 35). Queries client database for matches and adds to RAGState.
-
-**File:** `app/core/langgraph/nodes/client_matching_node.py`
-
-**Important:** Modifies the 134-step LangGraph pipeline. HIGH RISK.
-
-**Unlocks:** DEV-327 (Response Enrichment), DEV-337
+> **REMOVED per ADR-035 (2026-02-26):** Synchronous matching node in RAG pipeline eliminated.
+> Client matching now runs asynchronously via DEV-325 (Background Matching Job).
+> Former downstream tasks DEV-327 and DEV-337 no longer depend on this task.
 
 ---
 
 ### DEV-325: Background Matching Job
-**Depends on:** DEV-320 (NormativeMatchingService), DEV-324 (ProactiveSuggestion model)
-**Priority:** HIGH | **Effort:** 3h | **Classification:** ADDITIVE
+**Depends on:** DEV-320 (NormativeMatchingService), DEV-324 (ProactiveSuggestion model), DEV-423 (NotificationService)
+**Priority:** HIGH | **Effort:** 4h | **Classification:** ADDITIVE
 **Agent:** @Ezio (primary), @Clelia (tests)
 
-**What to build:** Background job using FastAPI BackgroundTasks. Runs after RSS ingestion to scan all clients for matches.
+> **Expanded scope (ADR-035):** Now the PRIMARY delivery path for all proactive matching.
+> Triggered by: (1) RSS/KB ingestion, (2) chat normative response (replaces removed DEV-323).
+> Creates MATCH notifications via NotificationService.
+
+**What to build:** Background job using FastAPI BackgroundTasks. Triggered by: (1) RSS ingestion to scan all clients for matches, (2) chat normative response delivery (async, fire-and-forget). Creates ClientMatch + ProactiveSuggestion records and MATCH notifications.
 
 **File:** `app/jobs/matching_job.py`
 
@@ -794,14 +791,10 @@ These depend on Wave 4 APIs and Wave 3 services.
 
 ---
 
-### DEV-337: Response Formatter with Suggestions
-**Depends on:** DEV-323 (LangGraph Node), DEV-330 (CommunicationService)
-**Priority:** HIGH | **Effort:** 3h | **Classification:** MODIFYING
-**Agent:** @Ezio (primary), @Clelia (tests)
+### ~~DEV-337: Response Formatter with Suggestions~~ — REMOVED (ADR-035)
 
-**What to build:** Modify `response_formatter_node.py` to append proactive suggestions when matched_clients exist in RAGState.
-
-**File:** `app/core/langgraph/nodes/response_formatter_node.py` (modify)
+> **REMOVED per ADR-035 (2026-02-26):** Response formatter no longer modified to include
+> inline suggestions. Proactive suggestions delivered via notification system (DEV-425).
 
 ---
 
@@ -1449,7 +1442,7 @@ Comprehensive test suites that validate entire feature chains.
 ---
 
 ### DEV-327: Multi-Tenant Isolation Tests
-**Depends on:** DEV-316 (Tenant Middleware), DEV-323 (LangGraph Matching)
+**Depends on:** DEV-316 (Tenant Middleware), DEV-325 (Background Matching Job — replaces DEV-323 per ADR-035)
 **Priority:** CRITICAL | **Effort:** 4h | **Classification:** ADDITIVE
 **Agent:** @Clelia (primary), @Severino (review)
 
@@ -1482,7 +1475,7 @@ Comprehensive test suites that validate entire feature chains.
 ---
 
 ### DEV-339: E2E Tests for Communication Flow
-**Depends on:** DEV-332 (Communication API), DEV-333 (Email), DEV-337 (Response Formatter)
+**Depends on:** DEV-332 (Communication API), DEV-333 (Email), ~~DEV-337 (REMOVED, ADR-035)~~
 **Priority:** HIGH | **Effort:** 3h | **Classification:** ADDITIVE
 **Agent:** @Clelia (primary)
 
@@ -2080,10 +2073,10 @@ Wave 5 (multi-tenancy + matching pipeline):
   DEV-315 → DEV-316 (Tenant Middleware)
   DEV-309+312 → DEV-313 (Import)
   DEV-309+314 → DEV-317 (GDPR Deletion)
-  DEV-320+316 → DEV-323 (LangGraph Matching Node)
-  DEV-320+324 → DEV-325 (Background Matching Job)
+  ~~DEV-320+316 → DEV-323 (LangGraph Matching Node)~~ REMOVED (ADR-035)
+  DEV-320+324+423 → DEV-325 (Background Matching Job — PRIMARY delivery, ADR-035)
   DEV-325 → DEV-326 (Matching API)
-  DEV-323+330 → DEV-337 (Response Formatter)
+  ~~DEV-323+330 → DEV-337 (Response Formatter)~~ REMOVED (ADR-035)
   DEV-381 → DEV-382, DEV-383, DEV-384, DEV-385
   DEV-385 → DEV-414 (Calendar Sync — .ics export)
   DEV-397+398 → DEV-399, DEV-400
@@ -2109,9 +2102,9 @@ Wave 7 (frontend + cross-cutting + /procedura + @client):
 Wave 8 (comprehensive testing):
   Services → DEV-318, DEV-329
   APIs → DEV-319
-  DEV-316+323 → DEV-327 (Tenant Isolation Tests)
+  DEV-316+325 → DEV-327 (Tenant Isolation Tests — updated per ADR-035)
   DEV-320 → DEV-328 (Performance Tests)
-  DEV-332+333+337 → DEV-339 (Communication E2E)
+  DEV-332+333 → DEV-339 (Communication E2E — DEV-337 removed per ADR-035)
   DEV-342+343+345 → DEV-347 (Procedura E2E)
   DEV-356+358 → DEV-359 (Dashboard E2E)
   DEV-360+361+411 → DEV-365 (Document Parser Tests)
@@ -2186,9 +2179,9 @@ Wave 11 (hybrid email sending — Phase 14, ADR-034):
 |---------|------------|-----------|------------|
 | DEV-307 | CRITICAL | DB Migration | Backup before deploy, reversible migration |
 | DEV-315 | HIGH | User Table Modification | Existing users affected, nullable FK |
-| DEV-323 | HIGH | LangGraph Pipeline | Modifies 134-step pipeline |
+| ~~DEV-323~~ | ~~HIGH~~ | ~~LangGraph Pipeline~~ | ~~Modifies 134-step pipeline~~ — **REMOVED (ADR-035)** |
 | DEV-327 | CRITICAL | Security | Multi-tenant isolation must be 95%+ |
-| DEV-337 | HIGH | LangGraph Modification | Response formatter changes |
+| ~~DEV-337~~ | ~~HIGH~~ | ~~LangGraph Modification~~ | ~~Response formatter changes~~ — **REMOVED (ADR-035)** |
 | DEV-372 | CRITICAL | Legal/Compliance | DPA required before client data |
 | DEV-374 | CRITICAL | Legal/Compliance | 72h breach notification requirement |
 | DEV-396 | CRITICAL | Legal/Compliance | DPIA mandatory before client data storage |

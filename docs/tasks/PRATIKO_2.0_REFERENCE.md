@@ -400,7 +400,7 @@ Cliente:
 
 #### 3.3.1 Descrizione
 
-Sistema invisibile all'utente che, in background durante ogni risposta normativa, analizza automaticamente il database clienti per identificare chi potrebbe essere interessato. Il risultato viene usato per attivare il suggerimento proattivo (vedi FR-004).
+Sistema invisibile all'utente che analizza automaticamente il database clienti per identificare chi potrebbe essere interessato da una normativa. Il matching viene eseguito in modo **asincrono** (dopo la consegna della risposta normativa o dopo l'ingestione RSS) e i risultati vengono consegnati tramite il **sistema di notifiche** (bell icon dropdown), mai inline nella risposta chat (vedi ADR-035).
 
 #### 3.3.2 User Stories
 
@@ -412,49 +412,58 @@ Sistema invisibile all'utente che, in background durante ogni risposta normativa
 
 #### 3.3.3 Architettura Matching (Backend)
 
+> **Decisione architetturale (ADR-035, 2026-02-26):** Il matching NON avviene in modo sincrono
+> all'interno della pipeline RAG. Avviene in modo **asincrono** dopo la consegna della risposta
+> normativa. I risultati vengono consegnati tramite **notifiche**, mai inline nella chat.
+> Questo evita: (1) inquinamento del contesto RAG con dati CRM, (2) responsabilità miste nel
+> singolo LLM call, (3) accoppiamento sincrono che aggiunge latenza e rischio di failure.
+
 **Panoramica:**
-Il Matching Engine opera in background durante ogni query dell'utente, eseguendo due processi in parallelo per arricchire la risposta con suggerimenti proattivi.
+Il Matching Engine opera in modo **asincrono** tramite background job, attivato da due trigger: (1) dopo la consegna di una risposta normativa nella chat, (2) dopo l'ingestione di nuove normative via RSS/KB. I risultati vengono consegnati tramite il sistema di notifiche.
 
 **Flusso del Processo:**
 
 1. **Input: Query Utente**
    L'utente inserisce una domanda (es: "Spiegami la rottamazione quinquies")
 
-2. **Elaborazione Parallela**
-   Il sistema avvia due processi simultaneamente:
+2. **Risposta Normativa (pipeline RAG invariata)**
+   Il LLM Response Generator elabora la query e genera la risposta normativa completa.
+   La pipeline RAG NON viene modificata — nessun nodo di matching inserito.
 
-   **Processo A - Generazione Risposta:**
-   * Il LLM Response Generator elabora la query e genera la risposta normativa completa
-
-   **Processo B - Matching Clienti (in parallelo):**
-   * Normativa Classifier: Analizza la query per identificare l'argomento normativo
+3. **Matching Asincrono (background job, dopo la risposta)**
+   Dopo la consegna della risposta, un background job asincrono:
+   * Normativa Classifier: Analizza il topic della query per identificare l'argomento normativo
    * Rule Matcher: Consulta il Rules Database per trovare regole di matching applicabili
    * Client Counter: Interroga il Database Clienti dello studio per contare quanti clienti soddisfano le condizioni
 
-3. **Generazione Suggerimento**
-   Se il Client Counter trova clienti matchati (count > 0):
-   * Il Proactive Suggester genera il messaggio di suggerimento
+4. **Notifica (se clienti matchati > 0)**
+   Se il Client Counter trova clienti matchati:
+   * Crea record `ClientMatch` e `ProactiveSuggestion` nel database
+   * Crea notifica di tipo MATCH: "La rottamazione quinquies potrebbe interessare 7 dei tuoi clienti"
+   * Il badge della bell icon si aggiorna (unread count +1)
 
-4. **Output: Risposta Completa**
-   La risposta finale combina:
-   * La risposta normativa generata dal LLM
-   * Il suggerimento proattivo (se ci sono clienti matchati)
+5. **Azione dell'utente**
+   L'utente clicca la notifica → viene indirizzato alla pagina Comunicazioni dove può:
+   * Vedere la lista clienti matchati
+   * Generare una comunicazione personalizzata
+   * Selezionare destinatari e canali (Email/WhatsApp)
+   * Inviare la comunicazione
 
 **Componenti e Database Coinvolti:**
 
 | Componente | Funzione | Database Utilizzato |
 |------------|----------|---------------------|
-| LLM Response Generator | Genera risposta alla query | Knowledge Base |
-| Normativa Classifier | Identifica l'argomento normativo | - |
-| Rule Matcher | Trova regole applicabili | Rules Database |
-| Client Counter | Conta clienti che matchano | Database Clienti |
-| Proactive Suggester | Crea messaggio suggerimento | - |
+| LLM Response Generator | Genera risposta alla query (pipeline invariata) | Knowledge Base |
+| Normativa Classifier | Identifica l'argomento normativo (async) | - |
+| Rule Matcher | Trova regole applicabili (async) | Rules Database |
+| Client Counter | Conta clienti che matchano (async) | Database Clienti |
+| NotificationService | Crea notifica MATCH (async) | Notifications DB |
 
 **Tempi di Esecuzione:**
-Poiché i processi A e B avvengono in parallelo, il tempo totale non aumenta significativamente:
-* LLM Response: ~2-3 secondi
-* Matching (in parallelo): ~0.5-1 secondo
-* Tempo totale percepito dall'utente: ~2-3 secondi (stesso tempo di una risposta normale)
+Il matching è completamente asincrono e NON impatta la latenza della risposta:
+* LLM Response: ~2-3 secondi (invariato, zero overhead aggiunto)
+* Matching (background, dopo risposta): ~0.5-1 secondo
+* Notifica creata: entro 5 secondi dalla consegna della risposta
 
 #### 3.3.4 Regole di Matching
 
@@ -523,45 +532,50 @@ Trigger:
 
 #### 3.3.6 Trigger Proattivo
 
-Il matching NON mostra risultati separati ma attiva il suggerimento proattivo nella risposta:
+> **Aggiornamento (ADR-035):** Il matching NON inserisce suggerimenti inline nella risposta chat.
+> I risultati vengono consegnati esclusivamente tramite notifiche. La risposta normativa resta
+> pulita e invariata.
+
+Il matching crea una **notifica** (non un suggerimento inline) quando trova clienti interessati:
 
 ```json
 {
-  "risposta_normativa": {
-    "contenuto": "[Spiegazione completa della rottamazione quinquies...]",
-    "fonti": ["DL 145/2024", "Circolare AdE 12/E"],
-    "scadenza": "2025-03-31"
-  },
   "matching_result": {
     "normativa_identificata": "rottamazione_quinquies",
     "regola_applicata": "RULE_ROTTAMAZIONE_QUINQUIES",
     "clienti_matchati": 7,
-    "trigger_proattivo": true
+    "trigger_notifica": true
   },
-  "suggerimento_proattivo": {
-    "mostra": true,
-    "messaggio": "La rottamazione quinquies potrebbe interessare 7 dei tuoi clienti. Vuoi che ti prepari un messaggio personalizzato da inviare loro?",
-    "azioni": [
-      {"id": "prepare", "label": "Sì, prepara il messaggio", "primary": true},
-      {"id": "decline", "label": "No, grazie"},
-      {"id": "show_list", "label": "Mostra lista clienti"}
-    ]
+  "notifica": {
+    "type": "MATCH",
+    "priority": "HIGH",
+    "title": "La rottamazione quinquies potrebbe interessare 7 dei tuoi clienti",
+    "description": "Clicca per vedere la lista e preparare una comunicazione",
+    "reference_type": "proactive_suggestion",
+    "reference_id": "UUID della ProactiveSuggestion",
+    "action_url": "/comunicazioni?suggestion_id=UUID"
   }
 }
 ```
 
-**Quando NON mostrare suggerimento:**
-* clienti_matchati = 0 → Nessun suggerimento
-* Database clienti vuoto → Suggerire di importare clienti
+**Quando NON creare notifica:**
+* clienti_matchati = 0 → Nessuna notifica
+* Database clienti vuoto → Suggerire di importare clienti (notifica separata di tipo NORMATIVA)
 * Normativa non rilevante per matching (es: domanda teorica)
+* Notifica duplicata già creata nell'ultima ora (deduplicazione)
 
-#### 3.3.7 Lista Clienti (Azione "Mostra lista clienti")
+#### 3.3.7 Lista Clienti (Pagina Comunicazioni)
 
-Se l'utente clicca "Mostra lista clienti":
+> **Aggiornamento (ADR-035):** La lista clienti matchati viene mostrata sulla pagina
+> Comunicazioni (GestioneComunicazioniPage), non inline nella chat.
+
+Quando l'utente clicca una notifica MATCH, viene indirizzato alla pagina Comunicazioni
+con il contesto della suggestion:
 
 ```yaml
 Lista_Clienti_Matchati:
   header: "7 clienti potrebbero essere interessati alla Rottamazione Quinquies"
+  pagina: "/comunicazioni?suggestion_id=UUID"
 
   clienti:
     - nome: "Mario Rossi SRL"
@@ -577,19 +591,23 @@ Lista_Clienti_Matchati:
       posizione: "contenzioso"
 
   azioni:
-    - "Prepara messaggio per tutti"
+    - "Prepara comunicazione per tutti"
     - "Seleziona clienti specifici"
     - "Esporta lista"
 ```
 
 #### 3.3.8 Criteri di Accettazione
 
-* **AC-003.1:** Matching eseguito in parallelo alla generazione risposta (no delay percepibile)
-* **AC-003.2:** Suggerimento proattivo appare SOLO se clienti_matchati > 0
+> **Aggiornamento (ADR-035):** Criteri aggiornati per riflettere il delivery via notifiche.
+
+* **AC-003.1:** Matching eseguito in modo **asincrono** dopo la consegna della risposta (zero latenza aggiunta alla pipeline RAG)
+* **AC-003.2:** Notifica MATCH creata SOLO se clienti_matchati > 0
 * **AC-003.3:** Conteggio clienti è sempre accurato (query real-time)
-* **AC-003.4:** "Mostra lista clienti" mostra nome + motivazione per ogni cliente
-* **AC-003.5:** Regole con scadenza temporale rispettate (non suggerire normative scadute)
-* **AC-003.6:** Se database clienti vuoto, suggerire importazione invece di matching
+* **AC-003.4:** Pagina Comunicazioni mostra nome + motivazione per ogni cliente matchato
+* **AC-003.5:** Regole con scadenza temporale rispettate (non notificare normative scadute)
+* **AC-003.6:** Se database clienti vuoto, suggerire importazione (notifica di tipo NORMATIVA)
+* **AC-003.7:** Notifica creata entro 5 secondi dalla consegna della risposta normativa
+* **AC-003.8:** Deduplicazione notifiche: stessa normativa + stesso studio = max 1 notifica per ora
 
 ---
 
@@ -597,66 +615,77 @@ Lista_Clienti_Matchati:
 
 #### 3.4.1 Descrizione
 
-Dopo ogni ricerca normativa, PratikoAI analizza automaticamente il database clienti e, se trova clienti potenzialmente interessati, suggerisce proattivamente al professionista di preparare una comunicazione personalizzata. Il sistema guida il professionista attraverso un workflow conversazionale.
+> **Decisione architetturale (ADR-035, 2026-02-26):** Il workflow di suggerimento proattivo
+> NON avviene inline nella chat. Il matching è asincrono e i risultati vengono consegnati
+> tramite notifiche. Il workflow di creazione comunicazione avviene sulla pagina dedicata
+> GestioneComunicazioniPage.
+
+Dopo ogni ricerca normativa, PratikoAI esegue in background un matching asincrono del database clienti. Se trova clienti potenzialmente interessati, crea una **notifica di tipo MATCH** che il professionista vede nel bell icon dropdown. Cliccando la notifica, il professionista viene indirizzato alla pagina Comunicazioni dove può generare, personalizzare e inviare comunicazioni tramite un workflow dedicato.
 
 #### 3.4.2 User Stories
 
-**US-004.1:** Come professionista, dopo aver cercato informazioni su una normativa, voglio che PratikoAI mi dica automaticamente quanti clienti potrebbero essere interessati e mi proponga di preparare un messaggio.
+> **Aggiornamento (ADR-035):** Le user stories sono state aggiornate per riflettere il delivery
+> via notifiche invece che inline nella chat.
 
-**US-004.2:** Come professionista, voglio poter accettare o modificare il messaggio generato da PratikoAI prima di procedere.
+**US-004.1:** Come professionista, dopo aver cercato informazioni su una normativa, voglio ricevere una **notifica** che mi dica automaticamente quanti clienti potrebbero essere interessati, così da poter decidere se preparare una comunicazione dalla pagina dedicata.
+
+**US-004.2:** Come professionista, voglio poter accettare o modificare il messaggio generato da PratikoAI nella pagina Comunicazioni prima di procedere.
 
 **US-004.3:** Come professionista, voglio poter scegliere cosa fare con il messaggio: salvarlo, stamparlo, o inviarlo direttamente.
 
 **US-004.4:** Come professionista, se scelgo di inviare, voglio vedere la lista dei clienti interessati e poter scegliere per ciascuno il canale di contatto preferito (email o WhatsApp).
 
-#### 3.4.3 Workflow Conversazionale Dettagliato
+#### 3.4.3 Workflow Proattivo Dettagliato
+
+> **Decisione architetturale (ADR-035, 2026-02-26):** Il workflow originale era "conversazionale"
+> (inline nella chat). È stato sostituito con un workflow basato su **notifiche + pagina dedicata**.
+> Il matching avviene in modo asincrono e non impatta la pipeline RAG.
 
 **STEP 1: Ricerca del Professionista**
 Il professionista inserisce una domanda nella chat.
 Esempio: "Spiegami la rottamazione quinquies"
 
-**STEP 2: Risposta + Suggerimento Proattivo**
+**STEP 2: Risposta Normativa (pipeline RAG invariata)**
 PratikoAI risponde con la spiegazione completa della normativa, includendo fonti e riferimenti normativi.
-Al termine della risposta, se ci sono clienti potenzialmente interessati, appare il suggerimento proattivo:
+La risposta è pulita — nessun suggerimento o dato CRM inline.
 
-> PratikoAI: "La rottamazione quinquies potrebbe interessare 7 dei tuoi clienti. Vuoi che ti prepari un messaggio personalizzato da inviare loro?"
->
-> Opzioni disponibili:
-> * Sì, prepara il messaggio
-> * No, grazie
-> * Mostra lista clienti
+**STEP 3: Matching Asincrono + Notifica**
+Dopo la consegna della risposta, un background job esegue il matching clienti:
+- Se clienti matchati > 0 → Crea notifica MATCH
+- Il badge della bell icon si aggiorna (es: "7")
+- Opzionale: toast/snackbar temporaneo "Trovati 7 clienti interessati alla rottamazione quinquies"
 
-**STEP 3: Generazione Messaggio**
-Se il professionista sceglie "Sì", PratikoAI genera automaticamente un messaggio.
+**STEP 4: Navigazione alla Pagina Comunicazioni**
+Il professionista clicca la notifica MATCH → viene indirizzato a `/comunicazioni?suggestion_id=UUID`
+La pagina mostra:
+- Titolo della normativa e regola di matching applicata
+- Lista clienti matchati con motivazione per ciascuno
 
-> PratikoAI: "Ecco il messaggio che ho preparato:"
->
-> **Messaggio generato:**
+**STEP 5: Generazione Messaggio (Pagina Comunicazioni)**
+Il professionista clicca "Prepara comunicazione":
+
+> **Messaggio generato (editor full-page):**
 > Oggetto: Opportunità di risparmio fiscale - Rottamazione
 >
 > Gentile {{nome_cliente}},
 > La contatto per informarLa di una importante opportunità... [testo completo del messaggio]
 >
 > Cordiali saluti, Studio [Nome Studio]
->
-> PratikoAI: "Vuoi modificare il messaggio o va bene così?"
->
-> Opzioni disponibili:
-> * Modifica
-> * Va bene così
 
-**STEP 4: Scelta Azione**
-Dopo l'approvazione del messaggio, il professionista sceglie cosa fare.
+L'editor offre:
+- Rich text toolbar (bold, italic, elenchi puntati)
+- Inserimento variabili ({{nome_cliente}}, {{importo_debito}}, etc.)
+- Anteprima con variabili risolte
+- Opzioni: Modifica / Va bene così
 
-> PratikoAI: "Perfetto! Cosa vuoi fare con questo messaggio?"
->
-> Opzioni disponibili:
-> * Salva in PratikoAI
-> * Stampa
-> * Invia ai clienti
+**STEP 6: Scelta Azione**
+Dopo l'approvazione del messaggio, il professionista sceglie cosa fare:
+* Salva in PratikoAI (bozza)
+* Stampa (genera PDF)
+* Invia ai clienti (procede a selezione destinatari)
 
-**STEP 5: Selezione Destinatari e Canali**
-Se il professionista sceglie "Invia ai clienti", appare la schermata di selezione.
+**STEP 7: Selezione Destinatari e Canali (Pagina Comunicazioni)**
+Se il professionista sceglie "Invia ai clienti", la pagina mostra la tabella destinatari:
 
 | Seleziona | Cliente | Contatti | Canale |
 |-----------|---------|----------|--------|
@@ -672,39 +701,38 @@ Opzioni disponibili:
 * Anteprima
 * Invia ora
 
-**STEP 6: Conferma e Invio**
-Dopo l'invio, PratikoAI mostra la conferma.
+**STEP 8: Conferma e Invio**
+Dopo l'invio, la pagina Comunicazioni mostra la conferma:
 
-> PratikoAI: "Messaggi inviati con successo!
+> Messaggi inviati con successo!
 > * 4 email inviate
-> * 2 messaggi WhatsApp inviati
+> * 2 messaggi WhatsApp inviati (modale conferma wa.me)
 >
-> Puoi monitorare le aperture nella sezione Dashboard."
+> Puoi monitorare le aperture nella sezione Dashboard.
 
 #### 3.4.4 Dettaglio Step per Step
 
-**STEP 1-2: Trigger Proattivo**
+**STEP 3: Matching Asincrono + Notifica**
+
+> **Aggiornamento (ADR-035):** Il trigger non produce più un suggerimento inline ma una notifica.
 
 ```yaml
-Suggerimento_Proattivo:
+Notifica_Match:
   trigger: "risposta_normativa_completata"
+  esecuzione: "asincrona (background job)"
   condizione: "clienti_matchati > 0"
+  deduplicazione: "max 1 notifica per normativa+studio per ora"
 
-  messaggio_template: |
-    {{normativa}} potrebbe interessare {{count}} dei tuoi clienti.
-    Vuoi che ti prepari un messaggio personalizzato da inviare loro?
-
-  azioni_disponibili:
-    - id: "prepare_message"
-      label: "Sì, prepara il messaggio"
-      primary: true
-    - id: "decline"
-      label: "No, grazie"
-    - id: "show_clients"
-      label: "Mostra lista clienti"
+  notifica:
+    type: "MATCH"
+    priority: "HIGH"
+    title_template: |
+      {{normativa}} potrebbe interessare {{count}} dei tuoi clienti
+    description: "Clicca per vedere la lista e preparare una comunicazione"
+    action_url: "/comunicazioni?suggestion_id={{suggestion_id}}"
 ```
 
-**STEP 3: Generazione Messaggio**
+**STEP 5: Generazione Messaggio (Pagina Comunicazioni)**
 
 ```yaml
 Template_Messaggio:
@@ -854,18 +882,22 @@ Messaggio_Salvato:
 
 #### 3.4.7 Criteri di Accettazione
 
-**Suggerimenti Proattivi:**
-* **AC-004.1:** Suggerimento proattivo appare entro 2s dal completamento risposta normativa
-* **AC-004.2:** Conteggio clienti matchati è accurato (±0 errori)
-* **AC-004.3:** Suggerimento NON appare se clienti matchati = 0
+> **Aggiornamento (ADR-035):** Criteri aggiornati per riflettere il delivery via notifiche
+> e il workflow sulla pagina Comunicazioni.
 
-**Generazione Messaggio:**
+**Notifiche Proattive (sostituisce suggerimenti inline):**
+* **AC-004.1:** Notifica MATCH creata entro 5s dalla consegna della risposta normativa
+* **AC-004.2:** Conteggio clienti matchati è accurato (±0 errori)
+* **AC-004.3:** Notifica NON creata se clienti matchati = 0
+* **AC-004.3b:** Notifiche deduplicate: max 1 per normativa+studio per ora
+
+**Generazione Messaggio (Pagina Comunicazioni):**
 * **AC-004.4:** Generazione messaggio completo in <5 secondi
-* **AC-004.5:** Editor permette modifica libera del testo
+* **AC-004.5:** Editor full-page permette modifica libera del testo con rich text toolbar
 * **AC-004.6:** Variabile {{nome_cliente}} presente nel messaggio generato
 
-**Selezione Destinatari:**
-* **AC-004.7:** Schermata destinatari mostra tutti i clienti matchati con checkbox
+**Selezione Destinatari (Pagina Comunicazioni):**
+* **AC-004.7:** Pagina destinatari mostra tutti i clienti matchati con checkbox
 * **AC-004.8:** Selezione canale (Email/WhatsApp) disponibile per ogni cliente
 * **AC-004.9:** Anteprima mostra messaggio con nome cliente reale
 
@@ -1358,7 +1390,7 @@ External Integrations (RSS, LLM, Email, Payments, ATECO)
 ### 6.1 In Scope MVP
 
 * ✅ Import clienti da Excel
-* ✅ Matching automatico su query con suggerimento proattivo
+* ✅ Matching automatico su query con notifica proattiva (ADR-035: via notifiche, non inline chat)
 * ✅ Calcoli fiscali base (IRPEF, IVA, contributi)
 * ✅ Upload e analisi documenti (fatture XML, F24, bilanci)
 * ✅ 9 procedure interattive principali
@@ -1830,8 +1862,8 @@ Maintain consistency with existing PratikoAI design system. Use Radix UI compone
 ### A.4 Prompt 1B: Communication Workflow Screens (HIGH Priority)
 
 ```
-CONTEXT (from FR-004):
-PratikoAI automatically matches clients with relevant regulations and suggests personalized communications. The workflow is conversational: after answering a normative query, if clients match, PratikoAI asks "Vuoi che ti prepari un messaggio personalizzato?" → generates draft with variables ({{nome_cliente}}, {{importo_debito}}) → user reviews/edits → selects recipients with channel preference (Email or WhatsApp) → sends. For MVP, WhatsApp uses wa.me links (manual send), email is automatic via SMTP.
+CONTEXT (from FR-004, updated per ADR-035):
+PratikoAI automatically matches clients with relevant regulations via async background matching. When matches are found, a MATCH notification appears in the bell icon dropdown. The professional clicks the notification and is navigated to the Comunicazioni page where the full workflow happens: see matched clients → generate draft with variables ({{nome_cliente}}, {{importo_debito}}) → review/edit → select recipients with channel preference (Email or WhatsApp) → send. For MVP, WhatsApp uses wa.me links (manual send), email is automatic via SMTP. The workflow does NOT happen inline in the chat (see ADR-035).
 
 DESIGN TASK:
 Add to the existing PratikoAI Figma design: communication generation wizard. Use Blu Petrolio (#2A5D67) for primary buttons, Oro Antico (#D4A574) for accent/CTA, Verde Salvia (#A9C1B7) for success states.
@@ -1877,58 +1909,35 @@ Maintain step indicator at top, consistent with existing PratikoAI form styling.
 
 ---
 
-### A.5 Prompt 2: Proactive Suggestions & Match List (HIGH Priority)
+### A.5 Prompt 2: Notification-Based Match Alerts & Calculator Cards (HIGH Priority)
+
+> **Aggiornamento (ADR-035):** I componenti PROACTIVE SUGGESTION CARD e MATCHED CLIENTS INLINE LIST
+> sono stati rimossi dal chat. Il matching è ora consegnato tramite il sistema di notifiche
+> (NotificationsDropdown, DEV-426) e il workflow avviene sulla pagina Comunicazioni.
+> L'unico componente inline rimasto in questa sezione è il CALCULATOR RESULT CARD.
 
 ```
-CONTEXT (from FR-003 + FR-004):
-The Matching Engine operates in background during each user query. It runs two parallel processes: (A) LLM generates normative response, (B) Normativa Classifier → Rule Matcher → Client Counter identifies matching clients. If count > 0, Proactive Suggester appends a suggestion to the response. Example flow:
-- User asks: "Spiegami la rottamazione quinquies"
-- AI responds with normative explanation
-- Suggestion appears: "La rottamazione quinquies potrebbe interessare 7 dei tuoi clienti. Vuoi che ti prepari un messaggio personalizzato?"
-- Options: "Sì, prepara il messaggio" / "No, grazie" / "Mostra lista clienti"
+CONTEXT (from FR-003 + FR-004, updated per ADR-035):
+The Matching Engine operates ASYNCHRONOUSLY after each normative response delivery (not inline in chat). When matches are found, a MATCH notification is created and displayed in the bell icon dropdown (NotificationsDropdown). Clicking the notification navigates to the Comunicazioni page where the full workflow happens.
 
 DESIGN TASK:
-Add to the existing PratikoAI Figma design: chat interface enhancements for proactive AI suggestions. Use Claude Code style keyboard-navigable option selectors.
+Add to the existing PratikoAI Figma design: (1) MATCH notification toast, (2) calculator result card for chat.
 
-COMPONENT 1: PROACTIVE SUGGESTION CARD (appears after AI response)
-- Card with Blu Petrolio (#2A5D67) left border accent (3px)
-- Background: Avorio (#F8F5F1)
-- Icon: Lightbulb icon in Oro Antico (#D4A574)
-- Text: "La rottamazione quinquies potrebbe interessare 7 dei tuoi clienti."
-- Subtext: "Vuoi che ti prepari un messaggio personalizzato?"
+COMPONENT 1: MATCH NOTIFICATION TOAST (temporary, auto-dismissing)
+- Appears bottom-right after normative response when matches found (async)
+- Auto-dismisses after 8 seconds, or click to navigate
+- Card with Oro Antico (#D4A574) left border accent (3px)
+- Background: white with subtle shadow
+- Icon: Target icon in Oro Antico (#D4A574)
+- Text: "Trovati 7 clienti interessati alla rottamazione quinquies"
+- Subtext: "Clicca per vedere la lista" (link to /comunicazioni)
+- Close X button in Grigio Tortora (#C4BDB4)
+- Animates in from bottom-right, fades out on dismiss
 
-KEYBOARD-NAVIGABLE OPTIONS (Claude Code style):
-- Vertical list of options with visual focus indicator
-- Each option is a row with:
-  - Radio-style indicator (○ unfocused in Grigio Tortora, ● focused in Blu Petrolio)
-  - Option text in Dark Slate (#1E293B)
-  - Description text in Grigio Tortora (#C4BDB4)
-- Keyboard: ↑↓ arrows to navigate, Enter to select
-- Options:
-  ● Sì, prepara il messaggio (Recommended)
-    Genera bozza comunicazione per tutti i clienti
-  ○ Mostra lista clienti
-    Vedi quali clienti sono interessati prima di decidere
-  ○ No, grazie
-    Ignora questo suggerimento
-- Currently focused option: Verde Salvia light background (#A9C1B780)
-- Dismissible with Esc or X icon (Grigio Tortora)
+NOTE: The full MATCH notification item in NotificationsDropdown is already designed in DEV-426.
+This toast is a supplementary visual cue that appears alongside the badge update.
 
-COMPONENT 2: MATCHED CLIENTS INLINE LIST (expandable)
-- Collapsed state: "7 clienti interessati ▼" (clickable to expand)
-- Expanded state:
-  - Header: "Clienti potenzialmente interessati alla Rottamazione Quinquies"
-  - List items with checkbox on each row:
-    - ☐ Avatar placeholder + Client name
-    - Badge: regime fiscale (e.g., "Ordinario")
-    - Motivation text in muted gray: "Ha cartelle esattoriali per €12.500"
-  - Select all/none toggle at top
-  - Footer with action options (keyboard navigable):
-    ● Prepara messaggio per selezionati (3)
-    ○ Esporta lista (CSV)
-    ○ Chiudi
-
-COMPONENT 3: CALCULATOR RESULT CARD (inline in chat)
+COMPONENT 2: CALCULATOR RESULT CARD (inline in chat — unchanged)
 - Card header: "Calcolo IRPEF 2024" with result badge
 - Summary table:
   | Voce | Importo |

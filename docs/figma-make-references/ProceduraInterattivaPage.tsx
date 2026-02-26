@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { DocumentVerificationSection } from "./DocumentVerificationSection";
 
 interface ProceduraInterattivaPageProps {
   onBackToChat: () => void;
@@ -50,8 +51,8 @@ interface Document {
   name: string;
   required: boolean;
   verified: boolean;
-  verifiedAt?: string;
-  note?: string; // e.g., "Ricevuto via email il 20/02"
+  verifiedDate?: string;
+  verificationNote?: string;
 }
 
 interface Note {
@@ -112,18 +113,18 @@ const mockProcedure: Procedura[] = [
         documents: [
           {
             id: "doc_001",
-            name: "Carta d'identità valida",
+            name: "Carta d'identità",
             required: true,
             verified: true,
-            verifiedAt: "2024-02-20",
-            note: "Ricevuto via email dal cliente",
+            verifiedDate: "2024-02-20",
+            verificationNote: "Ricevuto via email dal cliente",
           },
           {
             id: "doc_002",
             name: "Codice fiscale",
             required: true,
             verified: true,
-            verifiedAt: "2024-02-20",
+            verifiedDate: "2024-02-20",
           },
         ],
         notes: [
@@ -187,16 +188,33 @@ const mockProcedure: Procedura[] = [
         documents: [
           {
             id: "doc_003",
-            name: "Modulo AA9/12 compilato",
+            name: "Modulo AA9/12 bozza",
             required: true,
             verified: true,
-            verifiedAt: "2024-02-23",
-            note: "Bozza pronta, in attesa di firma",
+            verifiedDate: "2024-02-23",
           },
           {
             id: "doc_004",
             name: "Modulo AA9/12 firmato",
             required: true,
+            verified: false,
+          },
+          {
+            id: "doc_005",
+            name: "Visura camerale",
+            required: false,
+            verified: false,
+          },
+          {
+            id: "doc_006",
+            name: "Autocertificazione requisiti",
+            required: true,
+            verified: false,
+          },
+          {
+            id: "doc_007",
+            name: "Certificato CCIAA",
+            required: false,
             verified: false,
           },
         ],
@@ -224,7 +242,7 @@ const mockProcedure: Procedura[] = [
         ],
         documents: [
           {
-            id: "doc_005",
+            id: "doc_008",
             name: "Domanda iscrizione INPS",
             required: true,
             verified: false,
@@ -378,6 +396,12 @@ export function ProceduraInterattivaPage({
   const [showClientSelector, setShowClientSelector] = useState(false);
   const [selectedClient, setSelectedClient] = useState(clientId || "");
   const [isClientMode, setIsClientMode] = useState(!!clientId);
+  const [documentNotes, setDocumentNotes] = useState<{ [key: string]: string }>(
+    {},
+  );
+  const [showNoteForDoc, setShowNoteForDoc] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   const selectedProcedura =
     mockProcedure.find((p) => p.id === selectedProceduraId) || mockProcedure[0];
@@ -410,6 +434,25 @@ export function ProceduraInterattivaPage({
       setIsClientMode(true);
       setShowClientSelector(false);
     }
+  };
+
+  const handleToggleDocumentVerification = (docId: string) => {
+    console.log("Toggle document verification:", docId);
+    // Toggle note visibility when checking
+    setShowNoteForDoc((prev) => ({
+      ...prev,
+      [docId]:
+        !prev[docId] &&
+        !currentStep?.documents.find((d) => d.id === docId)?.verified,
+    }));
+    // In real app, update backend
+  };
+
+  const handleDocumentNoteChange = (docId: string, note: string) => {
+    setDocumentNotes((prev) => ({
+      ...prev,
+      [docId]: note,
+    }));
   };
 
   const getProgressColor = (progress: number) => {
@@ -706,61 +749,12 @@ export function ProceduraInterattivaPage({
 
                   {/* Documents — ADR-036: Checkbox-based verification, no file upload */}
                   {currentStep.documents.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-[#2A5D67] mb-3 flex items-center">
-                        <FileText className="w-5 h-5 mr-2" />
-                        Documenti da verificare
-                      </h3>
-                      <div className="space-y-2">
-                        {currentStep.documents.map((doc) => (
-                          <div
-                            key={doc.id}
-                            className={`flex items-center justify-between p-3 rounded-lg border ${
-                              doc.verified
-                                ? "bg-green-50 border-green-200"
-                                : "bg-white border-[#C4BDB4]/20"
-                            }`}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <input
-                                type="checkbox"
-                                checked={doc.verified}
-                                disabled={!isClientMode}
-                                className="w-5 h-5 text-[#2A5D67] border-[#C4BDB4] rounded focus:ring-[#2A5D67] disabled:opacity-50"
-                              />
-                              <div>
-                                <p
-                                  className={`font-medium ${doc.verified ? "text-green-700" : "text-[#2A5D67]"}`}
-                                >
-                                  {doc.name}
-                                </p>
-                                {doc.verified && doc.verifiedAt && (
-                                  <p className="text-xs text-green-600">
-                                    Verificato il{" "}
-                                    {new Date(
-                                      doc.verifiedAt,
-                                    ).toLocaleDateString("it-IT")}
-                                  </p>
-                                )}
-                                {doc.note && (
-                                  <p className="text-xs text-[#1E293B]/60 italic">
-                                    {doc.note}
-                                  </p>
-                                )}
-                                {!doc.verified && doc.required && (
-                                  <p className="text-xs text-red-600">
-                                    Obbligatorio
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            {doc.verified && (
-                              <Check className="w-5 h-5 text-green-600" />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <DocumentVerificationSection
+                      documents={currentStep.documents}
+                      isClientMode={isClientMode}
+                      onToggleVerification={handleToggleDocumentVerification}
+                      onNoteChange={handleDocumentNoteChange}
+                    />
                   )}
 
                   {/* Notes */}

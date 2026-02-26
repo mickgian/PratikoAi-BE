@@ -42,6 +42,7 @@ from app.api.v1.privacy import router as privacy_router
 # from app.api.v1.faq import router as faq_router
 from app.api.v1.regional_taxes import router as regional_taxes_router
 from app.api.v1.regulatory import router as regulatory_router
+from app.api.v1.release_notes import router as release_notes_router
 from app.api.v1.scrapers import router as scrapers_router
 from app.api.v1.success_criteria import router as success_criteria_router
 from app.core.logging import logger
@@ -82,6 +83,7 @@ api_router.include_router(success_criteria_router, tags=["success-criteria"])
 api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(model_comparison_router)  # Includes /model-comparison prefix from router
 api_router.include_router(features_router, tags=["features"])
+api_router.include_router(release_notes_router)  # Includes /release-notes prefix from router
 
 
 @api_router.get("/health")

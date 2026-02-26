@@ -11,7 +11,10 @@ import {
   Trash2,
   Check,
   X as XIcon,
+  Sparkles,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useUnseenReleaseNote } from '@/lib/hooks/useReleaseNotes';
 import { useSharedChatSessions } from '../hooks/useChatSessions';
 import { useSharedChatState } from '../hooks/useChatState';
 import { LogPrefix } from '../utils/LogPrefix';
@@ -480,6 +483,16 @@ export function ChatSidebar() {
             </div>
           )}
         </div>
+      </div>
+      {/* Novità link */}
+      <div className="p-3 border-t border-gray-100">
+        <Link
+          href="/novita"
+          className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-[#2A5D67] hover:bg-[#F8F5F1] transition-colors"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Novità</span>
+        </Link>
       </div>
     </aside>
   );

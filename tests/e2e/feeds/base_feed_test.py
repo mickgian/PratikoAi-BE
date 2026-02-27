@@ -446,9 +446,7 @@ class BaseFeedE2ETest(ABC):
         # This test may fail on first run - that's expected
         # Use test_full_e2e_flow_* to ingest first
         if count == 0:
-            pytest.skip(
-                f"No documents for {source_pattern} yet. " f"Run test_full_e2e_flow_variation_1 first to ingest."
-            )
+            pytest.skip(f"No documents for {source_pattern} yet. Run test_full_e2e_flow_variation_1 first to ingest.")
 
         assert count > 0, f"Expected documents for {source_pattern}, found {count}"
 
@@ -804,7 +802,7 @@ class BaseFeedE2ETestCommitted(ABC):
         result = await self.run_full_e2e_flow(self.QUERY_VARIATIONS[1])
 
         assert result.passed, (
-            f"E2E test failed for {result.feed_name}:\n" f"  Query: {result.query}\n" f"  Errors: {result.errors}"
+            f"E2E test failed for {result.feed_name}:\n  Query: {result.query}\n  Errors: {result.errors}"
         )
 
     @pytest.mark.asyncio
@@ -819,5 +817,5 @@ class BaseFeedE2ETestCommitted(ABC):
         result = await self.run_full_e2e_flow(self.QUERY_VARIATIONS[2])
 
         assert result.passed, (
-            f"E2E test failed for {result.feed_name}:\n" f"  Query: {result.query}\n" f"  Errors: {result.errors}"
+            f"E2E test failed for {result.feed_name}:\n  Query: {result.query}\n  Errors: {result.errors}"
         )

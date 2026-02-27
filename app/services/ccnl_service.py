@@ -1660,7 +1660,11 @@ class CCNLService:
         self, geographic_area: GeographicArea, agreements: list[CCNLAgreement]
     ) -> dict[str, Any]:
         """Analyze regional variations in CCNL provisions."""
-        analysis: dict[str, Any] = {"salary_variations": {}, "allowance_variations": {}, "cost_of_living_adjustments": []}
+        analysis: dict[str, Any] = {
+            "salary_variations": {},
+            "allowance_variations": {},
+            "cost_of_living_adjustments": [],
+        }
 
         for agreement in agreements:
             sector_name = agreement.sector.italian_name()

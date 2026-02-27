@@ -113,7 +113,10 @@ class TestGetAsyncDatabaseUrl:
         url = "postgresql://user:pass@localhost:5432/db?sslmode=require&connect_timeout=10&application_name=myapp"
         result = get_async_database_url(url)
 
-        assert result == "postgresql+asyncpg://user:pass@localhost:5432/db?sslmode=require&connect_timeout=10&application_name=myapp"
+        assert (
+            result
+            == "postgresql+asyncpg://user:pass@localhost:5432/db?sslmode=require&connect_timeout=10&application_name=myapp"
+        )
         assert "sslmode=require" in result
         assert "connect_timeout=10" in result
 

@@ -144,8 +144,7 @@ class AttachmentResolver:
         # Check attachment limit
         if len(attachment_ids) > self.max_attachments:
             raise AttachmentResolverError(
-                f"Numero massimo di allegati superato: limite {self.max_attachments}, "
-                f"richiesti {len(attachment_ids)}"
+                f"Numero massimo di allegati superato: limite {self.max_attachments}, richiesti {len(attachment_ids)}"
             )
 
         resolved_attachments = []

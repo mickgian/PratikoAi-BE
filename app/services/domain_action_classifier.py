@@ -1147,7 +1147,7 @@ Classifica l'intento dell'utente in una delle seguenti categorie:
   (caso raro, es. "che tempo fa?")
 
 Query dell'utente: "{query}"
-Nome documento allegato: "{filename or 'documento'}"
+Nome documento allegato: "{filename or "documento"}"
 
 Rispondi con UNA SOLA parola: DOCUMENT_ONLY, HYBRID, o KB_ONLY"""
 

@@ -78,9 +78,9 @@ class TestSSEKeepaliveDuringProcessing:
 
         # Verify keepalive format is correct
         for ka_chunk in keepalive_chunks:
-            assert (
-                ka_chunk["chunk"] == ": keepalive\n\n"
-            ), f"Keepalive must be exactly ': keepalive\\n\\n', got: {repr(ka_chunk['chunk'])}"
+            assert ka_chunk["chunk"] == ": keepalive\n\n", (
+                f"Keepalive must be exactly ': keepalive\\n\\n', got: {repr(ka_chunk['chunk'])}"
+            )
 
         # Verify keepalives sent before content
         if content_chunks:
@@ -137,9 +137,9 @@ class TestSSEKeepaliveDuringProcessing:
 
         # Should not send keepalive after content starts
         # (Total chunks should be keepalives + content, not excessive)
-        assert (
-            len(chunks) < len(keepalive_chunks) + len(content_chunks) + 3
-        ), "Keepalive should stop after content starts streaming"
+        assert len(chunks) < len(keepalive_chunks) + len(content_chunks) + 3, (
+            "Keepalive should stop after content starts streaming"
+        )
 
         # Verify content chunks are present and correct
         assert len(content_chunks) > 0, "Should yield content chunks"
@@ -177,9 +177,9 @@ class TestSSEKeepaliveDuringProcessing:
         keepalive_chunks = [c for c in chunks if c.startswith(": keepalive")]
 
         # Fast responses should not trigger keepalive (or only 0-1)
-        assert (
-            len(keepalive_chunks) <= 1
-        ), f"Fast responses (<5s) should not send keepalives. Got {len(keepalive_chunks)} keepalives"
+        assert len(keepalive_chunks) <= 1, (
+            f"Fast responses (<5s) should not send keepalives. Got {len(keepalive_chunks)} keepalives"
+        )
 
     @pytest.mark.asyncio
     async def test_keepalive_interval_approximately_5_seconds(self):

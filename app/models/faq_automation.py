@@ -159,9 +159,7 @@ class QueryCluster(SQLModel, table=True):
         self.potential_savings_cents = int(self.calculate_monthly_savings() * 100)
 
         # Update timestamps
-        timestamps: list[datetime] = [
-            ts for q in new_queries if isinstance((ts := q.get("timestamp")), datetime)
-        ]
+        timestamps: list[datetime] = [ts for q in new_queries if isinstance((ts := q.get("timestamp")), datetime)]
         if timestamps:
             self.last_seen = max(timestamps)
 

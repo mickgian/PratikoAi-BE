@@ -46,9 +46,7 @@ class TestFeedSourceConfiguration:
         ]
 
         for source in expected_sources:
-            assert source in content, (
-                f"Source '{source}' not found in migration file"
-            )
+            assert source in content, f"Source '{source}' not found in migration file"
 
     def test_inail_feeds_configured_in_migration(self):
         """Verify INAIL feeds are properly configured in migration."""
@@ -71,12 +69,8 @@ class TestFeedSourceConfiguration:
             content = f.read()
 
         # INAIL should have feeds configured
-        assert "inail.it" in content, (
-            "INAIL feeds (inail.it) not found in migration"
-        )
-        assert "inail" in content.lower(), (
-            "INAIL source not found in migration"
-        )
+        assert "inail.it" in content, "INAIL feeds (inail.it) not found in migration"
+        assert "inail" in content.lower(), "INAIL source not found in migration"
 
     @pytest.mark.parametrize(
         "source,expected_domain",
@@ -108,9 +102,7 @@ class TestFeedSourceConfiguration:
         with open(migration_path) as f:
             content = f.read()
 
-        assert expected_domain in content, (
-            f"Domain '{expected_domain}' for source '{source}' not found in migration"
-        )
+        assert expected_domain in content, f"Domain '{expected_domain}' for source '{source}' not found in migration"
 
 
 class TestContextBuilderIncludesSourceUrl:
@@ -146,9 +138,7 @@ class TestContextBuilderIncludesSourceUrl:
         from app.models.knowledge_chunk import KnowledgeChunk
 
         # Check if source_url is a field on the model
-        assert hasattr(KnowledgeChunk, "source_url"), (
-            "KnowledgeChunk model should have source_url field for citations"
-        )
+        assert hasattr(KnowledgeChunk, "source_url"), "KnowledgeChunk model should have source_url field for citations"
 
 
 class TestRSSFeedMonitorSourceDetection:
@@ -166,9 +156,7 @@ class TestRSSFeedMonitorSourceDetection:
         """Verify INAIL URLs are correctly identified."""
         from app.ingest.rss_normativa import _determine_feed_source
 
-        source, source_type = _determine_feed_source(
-            "https://www.inail.it/portale/it.rss.news.xml"
-        )
+        source, source_type = _determine_feed_source("https://www.inail.it/portale/it.rss.news.xml")
 
         assert source == "inail", f"Expected 'inail', got '{source}'"
 

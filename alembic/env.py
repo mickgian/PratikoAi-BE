@@ -1,7 +1,6 @@
 import os
 from logging.config import fileConfig
 
-from alembic.script import ScriptDirectory
 from dotenv import load_dotenv
 from sqlalchemy import (
     engine_from_config,
@@ -11,6 +10,7 @@ from sqlalchemy import (
 from sqlmodel import SQLModel
 
 from alembic import context  # type: ignore[attr-defined]
+from alembic.script import ScriptDirectory
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env.development"))
 from app.models.billing import BillingPlan, CreditTransaction, UsageWindow, UserCredit

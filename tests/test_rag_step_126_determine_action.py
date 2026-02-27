@@ -423,9 +423,9 @@ class TestStep126DetermineActionParity:
                 result = await step_126__determine_action(ctx=ctx)
 
                 # Verify consistent action determination
-                assert (
-                    result["action_determined"] == test_case["expected_action"]
-                ), f"Test case {i}: expected {test_case['expected_action']}, got {result['action_determined']}"
+                assert result["action_determined"] == test_case["expected_action"], (
+                    f"Test case {i}: expected {test_case['expected_action']}, got {result['action_determined']}"
+                )
 
     @pytest.mark.asyncio
     async def test_routing_decision_consistency(self):

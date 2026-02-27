@@ -276,10 +276,7 @@ async def step_31__classify_domain(
         current_message_index = (ctx or {}).get("current_message_index")
         if has_attachments and current_message_index is not None:
             # Filter to get only CURRENT attachments (from this message)
-            current_attachments = [
-                att for att in attachments
-                if att.get("message_index") == current_message_index
-            ]
+            current_attachments = [att for att in attachments if att.get("message_index") == current_message_index]
             if current_attachments:
                 # Pass ALL current attachment filenames (joined for LLM context)
                 attachment_filename = ", ".join(
@@ -287,14 +284,14 @@ async def step_31__classify_domain(
                 )
             else:
                 # No current attachments - follow-up question about prior docs
-                attachment_filename = ", ".join(
-                    att.get("filename", "") for att in attachments if att.get("filename")
-                )
+                attachment_filename = ", ".join(att.get("filename", "") for att in attachments if att.get("filename"))
         else:
             # Fallback: use all attachment filenames
-            attachment_filename = ", ".join(
-                att.get("filename", "") for att in attachments if att.get("filename")
-            ) if has_attachments else None
+            attachment_filename = (
+                ", ".join(att.get("filename", "") for att in attachments if att.get("filename"))
+                if has_attachments
+                else None
+            )
 
         # Initialize classification data
         classification = None

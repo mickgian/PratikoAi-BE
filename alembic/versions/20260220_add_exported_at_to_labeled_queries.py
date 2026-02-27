@@ -25,7 +25,7 @@ def _column_exists(table: str, column: str) -> bool:
     """Check if a column already exists in a table."""
     conn = op.get_bind()
     result = conn.execute(
-        sa.text("SELECT 1 FROM information_schema.columns " "WHERE table_name = :table AND column_name = :column"),
+        sa.text("SELECT 1 FROM information_schema.columns WHERE table_name = :table AND column_name = :column"),
         {"table": table, "column": column},
     )
     return result.scalar() is not None

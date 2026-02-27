@@ -172,9 +172,9 @@ class TestRAGStep18QuerySig:
             signatures.append(result["query_signature"])
 
         # All should have different signatures
-        assert len(set(signatures)) == len(
-            signatures
-        ), f"Expected {len(queries)} unique signatures, got {len(set(signatures))}"
+        assert len(set(signatures)) == len(signatures), (
+            f"Expected {len(queries)} unique signatures, got {len(set(signatures))}"
+        )
 
     @pytest.mark.asyncio
     @patch("app.orchestrators.facts.rag_step_log")

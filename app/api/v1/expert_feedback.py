@@ -240,9 +240,7 @@ async def submit_expert_feedback(
                 detail="Expert profile is not active or verified",
             )
 
-        logger.info(
-            f"Expert {expert.id} (user {current_user.id}) submitting feedback " f"for query {submission.query_id}"
-        )
+        logger.info(f"Expert {expert.id} (user {current_user.id}) submitting feedback for query {submission.query_id}")
 
         # Create feedback record (convert string values to enum instances)
         feedback = ExpertFeedback(

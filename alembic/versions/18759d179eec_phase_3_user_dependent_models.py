@@ -31,7 +31,9 @@ def _table_exists(table_name: str) -> bool:
     """Check if a table exists."""
     conn = op.get_bind()
     result = conn.execute(
-        sa.text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = :name)"),
+        sa.text(
+            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = :name)"
+        ),
         {"name": table_name},
     )
     return result.scalar()
@@ -133,7 +135,9 @@ def _fk_exists_between(source_table: str, local_col: str, referent_table: str) -
     return result.scalar()
 
 
-def safe_create_foreign_key(constraint_name, source_table, referent_table, local_cols, remote_cols, **kwargs) -> None:
+def safe_create_foreign_key(
+    constraint_name, source_table, referent_table, local_cols, remote_cols, **kwargs
+) -> None:
     """Create foreign key only if it doesn't exist."""
     # Handle op.f() wrapped names
     actual_name = constraint_name.name if hasattr(constraint_name, "name") else constraint_name
@@ -146,7 +150,9 @@ def safe_create_foreign_key(constraint_name, source_table, referent_table, local
     if local_cols and _fk_exists_between(source_table, local_cols[0], referent_table):
         return
 
-    op.create_foreign_key(constraint_name, source_table, referent_table, local_cols, remote_cols, **kwargs)
+    op.create_foreign_key(
+        constraint_name, source_table, referent_table, local_cols, remote_cols, **kwargs
+    )
 
 
 def upgrade() -> None:
@@ -693,9 +699,7 @@ def upgrade() -> None:
     safe_create_index(
         "idx_generated_faqs_performance", "generated_faqs", ["usage_count", "satisfaction_score"], unique=False
     )
-    safe_create_index(
-        "idx_generated_faqs_quality", "generated_faqs", ["quality_score", "approval_status"], unique=False
-    )
+    safe_create_index("idx_generated_faqs_quality", "generated_faqs", ["quality_score", "approval_status"], unique=False)
     safe_create_table(
         "rss_faq_impacts",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -1733,9 +1737,7 @@ def downgrade() -> None:
     op.drop_constraint(None, "regulatory_documents", type_="unique")
     safe_create_index(op.f("idx_regulatory_documents_url_unique"), "regulatory_documents", ["url"], unique=True)
     safe_create_index(op.f("idx_regulatory_documents_url"), "regulatory_documents", ["url"], unique=False)
-    safe_create_index(
-        op.f("idx_regulatory_documents_updated_at"), "regulatory_documents", ["updated_at"], unique=False
-    )
+    safe_create_index(op.f("idx_regulatory_documents_updated_at"), "regulatory_documents", ["updated_at"], unique=False)
     safe_create_index(
         op.f("idx_regulatory_documents_status_published"),
         "regulatory_documents",
@@ -1753,9 +1755,7 @@ def downgrade() -> None:
     safe_create_index(
         op.f("idx_regulatory_documents_published_date"), "regulatory_documents", ["published_date"], unique=False
     )
-    safe_create_index(
-        op.f("idx_regulatory_documents_created_at"), "regulatory_documents", ["created_at"], unique=False
-    )
+    safe_create_index(op.f("idx_regulatory_documents_created_at"), "regulatory_documents", ["created_at"], unique=False)
     safe_create_index(
         op.f("idx_regulatory_documents_content_hash"), "regulatory_documents", ["content_hash"], unique=False
     )
@@ -2014,9 +2014,7 @@ def downgrade() -> None:
         ondelete="CASCADE",
     )
     safe_drop_index("idx_chunk_kb_epoch", "knowledge_chunks")
-    safe_create_index(
-        op.f("idx_chunk_kb_epoch"), "knowledge_chunks", [sa.literal_column("kb_epoch DESC")], unique=False
-    )
+    safe_create_index(op.f("idx_chunk_kb_epoch"), "knowledge_chunks", [sa.literal_column("kb_epoch DESC")], unique=False)
     safe_create_index(
         op.f("idx_kc_vec"),
         "knowledge_chunks",
@@ -2556,9 +2554,7 @@ def downgrade() -> None:
     safe_create_index(
         op.f("idx_document_collections_document_type"), "document_collections", ["document_type"], unique=False
     )
-    safe_create_index(
-        op.f("idx_document_collections_created_at"), "document_collections", ["created_at"], unique=False
-    )
+    safe_create_index(op.f("idx_document_collections_created_at"), "document_collections", ["created_at"], unique=False)
     op.alter_column(
         "document_collections",
         "updated_at",

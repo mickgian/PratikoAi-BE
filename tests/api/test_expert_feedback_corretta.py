@@ -120,7 +120,7 @@ async def test_expert_feedback_submit_no_mapper_error(
 
     # CRITICAL: Should NOT be 500 (Internal Server Error from mapper failure)
     assert response.status_code != 500, (
-        f"Mapper error still occurring! Status: {response.status_code}, Response: {response.text}"
+        f"Mapper error still occurring! Status: {response.status_code}, " f"Response: {response.text}"
     )
 
     # Should be successful (201 Created or 200 OK)

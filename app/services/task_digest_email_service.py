@@ -101,7 +101,7 @@ class TaskDigestEmailService:
                     <small style="color: #6c757d;">
                         Expert Trust Score: {task.expert.trust_score:.2f} |
                         Feedback ID: {str(task.feedback_id)[:8]}... |
-                        Created: {task.created_at.strftime("%H:%M")}
+                        Created: {task.created_at.strftime('%H:%M')}
                     </small>
                     <br>
                     <span style="color: #495057; font-size: 14px; margin-top: 5px; display: block;">
@@ -135,7 +135,7 @@ class TaskDigestEmailService:
                 Tasks Generati dal Feedback Esperti
             </h1>
             <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">
-                {date.strftime("%d/%m/%Y")}
+                {date.strftime('%d/%m/%Y')}
             </p>
         </div>
 

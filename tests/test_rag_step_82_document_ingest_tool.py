@@ -73,9 +73,7 @@ class TestDocumentIngestTool:
         with pytest.raises(ValueError):
             DocumentIngestInput(attachments=[], user_id="user_123", session_id="session_456")
 
-    @pytest.mark.skip(
-        reason="Tool passes UUID for user_id but Document.user_id expects int - needs type standardization"
-    )
+    @pytest.mark.skip(reason="Tool passes UUID for user_id but Document.user_id expects int - needs type standardization")
     @pytest.mark.asyncio
     async def test_document_ingest_process_single_pdf(self, document_ingest_tool, sample_pdf_attachment):
         """Test processing a single PDF attachment."""
@@ -144,9 +142,7 @@ class TestDocumentIngestTool:
             assert "extracted_text" in result["processed_documents"][0]
             assert "document_classification" in result["processed_documents"][0]
 
-    @pytest.mark.skip(
-        reason="Tool passes UUID for user_id but Document.user_id expects int - needs type standardization"
-    )
+    @pytest.mark.skip(reason="Tool passes UUID for user_id but Document.user_id expects int - needs type standardization")
     @pytest.mark.asyncio
     async def test_document_ingest_process_multiple_attachments(
         self, document_ingest_tool, sample_pdf_attachment, sample_excel_attachment
@@ -201,9 +197,7 @@ class TestDocumentIngestTool:
             assert processor_instance.extract_text.call_count == 2
             assert processor_instance.classify_document.call_count == 2
 
-    @pytest.mark.skip(
-        reason="Tool passes UUID for user_id but Document.user_id expects int - needs type standardization"
-    )
+    @pytest.mark.skip(reason="Tool passes UUID for user_id but Document.user_id expects int - needs type standardization")
     @pytest.mark.asyncio
     async def test_document_ingest_process_with_error(self, document_ingest_tool, sample_pdf_attachment):
         """Test document processing with error handling."""

@@ -123,7 +123,9 @@ class TestStreamingProactivityEventSequence:
             StreamResponse(content="", done=True),
         ]
 
-        question_events = [e for e in events if getattr(e, "event_type", None) == "interactive_question"]
+        question_events = [
+            e for e in events if getattr(e, "event_type", None) == "interactive_question"
+        ]
         assert len(question_events) == 0
 
 

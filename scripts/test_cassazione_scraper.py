@@ -16,48 +16,49 @@ async def test_cassazione_scraper():
     print("CASSAZIONE SCRAPER TEST - DETAILED REPORT")
     print("=" * 80)
 
-    async with AsyncSessionLocal() as session, CassazioneScraper(
-        db_session=session,
-        rate_limit_delay=2.0,
-    ) as scraper:
-        print("\n[1] SCRAPING LIST PAGES...")
-        print("-" * 40)
+    async with AsyncSessionLocal() as session:
+        async with CassazioneScraper(
+            db_session=session,
+            rate_limit_delay=2.0,
+        ) as scraper:
+            print("\n[1] SCRAPING LIST PAGES...")
+            print("-" * 40)
 
-        # First, let's see what's on the list page
-        list_decisions = await scraper._scrape_list_page(scraper.CIVIL_LIST_URL, page=1)
+            # First, let's see what's on the list page
+            list_decisions = await scraper._scrape_list_page(scraper.CIVIL_LIST_URL, page=1)
 
-        print(f"Found {len(list_decisions)} decisions on first page")
-        print(f"Source URL: {scraper.CIVIL_LIST_URL}")
-        print()
-
-        # Show first 10 decisions from list
-        print("[2] DECISIONS FOUND ON LIST PAGE (first 10):")
-        print("-" * 40)
-        for i, dec in enumerate(list_decisions[:10], 1):
-            print(f"{i}. Number: {dec.get('decision_number')}")
-            print(f"   Date: {dec.get('decision_date')}")
-            print(f"   Type: {dec.get('decision_type')}")
-            print(f"   Section: {dec.get('section')}")
-            print(f"   Content ID: {dec.get('content_id')}")
-            print(f"   URL: {dec.get('url')}")
+            print(f"Found {len(list_decisions)} decisions on first page")
+            print(f"Source URL: {scraper.CIVIL_LIST_URL}")
             print()
 
-        # Now scrape with limit
-        print("\n[3] SCRAPING DETAILS (limit=3, Tax+Labor sections)...")
-        print("-" * 40)
+            # Show first 10 decisions from list
+            print("[2] DECISIONS FOUND ON LIST PAGE (first 10):")
+            print("-" * 40)
+            for i, dec in enumerate(list_decisions[:10], 1):
+                print(f"{i}. Number: {dec.get('decision_number')}")
+                print(f"   Date: {dec.get('decision_date')}")
+                print(f"   Type: {dec.get('decision_type')}")
+                print(f"   Section: {dec.get('section')}")
+                print(f"   Content ID: {dec.get('content_id')}")
+                print(f"   URL: {dec.get('url')}")
+                print()
 
-        result = await scraper.scrape_recent_decisions(
-            sections=[CourtSection.TRIBUTARIA, CourtSection.LAVORO],
-            days_back=30,  # Last 30 days
-            limit=3,
-        )
+            # Now scrape with limit
+            print("\n[3] SCRAPING DETAILS (limit=3, Tax+Labor sections)...")
+            print("-" * 40)
 
-        print("\nScraping Result:")
-        print(f"  - Decisions Found: {result.decisions_found}")
-        print(f"  - Decisions Processed: {result.decisions_processed}")
-        print(f"  - Decisions Saved: {result.decisions_saved}")
-        print(f"  - Errors: {result.errors}")
-        print(f"  - Duration: {result.duration_seconds}s")
+            result = await scraper.scrape_recent_decisions(
+                sections=[CourtSection.TRIBUTARIA, CourtSection.LAVORO],
+                days_back=30,  # Last 30 days
+                limit=3,
+            )
+
+            print("\nScraping Result:")
+            print(f"  - Decisions Found: {result.decisions_found}")
+            print(f"  - Decisions Processed: {result.decisions_processed}")
+            print(f"  - Decisions Saved: {result.decisions_saved}")
+            print(f"  - Errors: {result.errors}")
+            print(f"  - Duration: {result.duration_seconds}s")
 
     # Now check what was saved to database
     print("\n[4] DOCUMENTS STORED IN DATABASE:")

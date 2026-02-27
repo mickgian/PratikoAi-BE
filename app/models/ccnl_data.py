@@ -851,12 +851,7 @@ def create_ccnl_id(sector: CCNLSector, valid_from: date) -> str:
 def compare_ccnl_provisions(ccnl1: CCNLAgreement, ccnl2: CCNLAgreement, provision_type: str) -> dict[str, Any]:
     """Compare specific provisions between two CCNLs."""
     differences: list[dict[str, Any]] = []
-    comparison: dict[str, Any] = {
-        "ccnl1": ccnl1.name,
-        "ccnl2": ccnl2.name,
-        "provision_type": provision_type,
-        "differences": differences,
-    }
+    comparison: dict[str, Any] = {"ccnl1": ccnl1.name, "ccnl2": ccnl2.name, "provision_type": provision_type, "differences": differences}
 
     if provision_type == "leave_entitlements":
         for leave1 in ccnl1.leave_entitlements:

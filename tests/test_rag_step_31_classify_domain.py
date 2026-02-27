@@ -64,8 +64,7 @@ class TestRAGStep31ClassifyDomain:
         assert mock_logger.info.call_count >= 1
         # Find the classification log call (not the query_composition_detected one)
         classification_log_calls = [
-            call
-            for call in mock_logger.info.call_args_list
+            call for call in mock_logger.info.call_args_list
             if len(call[0]) > 0 and "Rule-based classification completed" in call[0][0]
         ]
         assert len(classification_log_calls) == 1

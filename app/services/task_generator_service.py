@@ -294,7 +294,7 @@ class TaskGeneratorService:
 ### {task_id}: {task_name}
 
 **Priority:** HIGH | **Effort:** TBD | **Dependencies:** None
-**Created:** {datetime.now().strftime("%Y-%m-%d")}
+**Created:** {datetime.now().strftime('%Y-%m-%d')}
 **Source:** Expert Feedback (ID: {feedback.id})
 **Expert:** User {expert.user_id} (Trust Score: {expert.trust_score:.2f})
 

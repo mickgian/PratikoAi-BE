@@ -113,7 +113,8 @@ class TestActionTemplatesSchema:
         for filename, action_path, action_dict in all_actions:
             category = action_dict.get("category", "")
             assert category in valid_categories, (
-                f"Invalid category '{category}' in {filename} ({action_path}). Valid categories: {valid_categories}"
+                f"Invalid category '{category}' in {filename} ({action_path}). "
+                f"Valid categories: {valid_categories}"
             )
 
     def test_all_actions_validate_against_schema(self, all_actions: list[tuple[str, str, dict]]):
@@ -139,7 +140,7 @@ class TestActionTemplatesSchema:
         for filename, action_path, action_dict in all_actions:
             if action_dict.get("requires_input", False):
                 assert action_dict.get("input_placeholder"), (
-                    f"Action with requires_input=True is missing input_placeholder in {filename} ({action_path})"
+                    f"Action with requires_input=True is missing input_placeholder " f"in {filename} ({action_path})"
                 )
 
 
@@ -332,7 +333,7 @@ class TestActionTemplatesDomainCoverage:
             if "actions" in data:
                 action_types = list(data["actions"].keys())
                 assert len(action_types) >= 2, (
-                    f"{yaml_file.name} should have at least 2 action types, found: {action_types}"
+                    f"{yaml_file.name} should have at least 2 action types, " f"found: {action_types}"
                 )
 
     def test_default_domain_has_fallback_actions(self):

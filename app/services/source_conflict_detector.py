@@ -89,7 +89,8 @@ HIERARCHY_RECOMMENDATION_TEMPLATE = (
 )
 
 TEMPORAL_RECOMMENDATION_TEMPLATE = (
-    "La fonte più recente ({newer_date}) prevale sulla fonte precedente ({older_date}). Lex posterior derogat priori."
+    "La fonte più recente ({newer_date}) prevale sulla fonte precedente ({older_date}). "
+    "Lex posterior derogat priori."
 )
 
 HIERARCHY_TEMPORAL_RECOMMENDATION_TEMPLATE = (

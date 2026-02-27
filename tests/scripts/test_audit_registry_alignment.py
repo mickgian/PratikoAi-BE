@@ -130,9 +130,9 @@ def test_registry_has_exact_ids(wiring_registry):
         registry_id = wiring_registry[step_num]["id"]
         expected_id = STEP_IDS[step_num]
 
-        assert registry_id == expected_id, (
-            f"ID mismatch for step {step_num}:\n  Registry: {registry_id}\n  Expected: {expected_id}"
-        )
+        assert (
+            registry_id == expected_id
+        ), f"ID mismatch for step {step_num}:\n  Registry: {registry_id}\n  Expected: {expected_id}"
 
     print(f"✅ All {len(expected_phases)} wired steps have exact IDs")
 
@@ -163,9 +163,9 @@ def test_audit_counts_use_registry(wiring_registry):
     introspect_count = len(data["wired_nodes"])
     registry_count = len(wiring_registry)
 
-    assert introspect_count == registry_count, (
-        f"Count mismatch:\n  Introspection script: {introspect_count}\n  Wiring registry:      {registry_count}"
-    )
+    assert (
+        introspect_count == registry_count
+    ), f"Count mismatch:\n  Introspection script: {introspect_count}\n  Wiring registry:      {registry_count}"
 
     # Verify expected minimum count (Phases 4-8 = 53 nodes)
     assert introspect_count >= 53, f"Expected at least 53 wired nodes from Phases 4-8, got {introspect_count}"
@@ -211,17 +211,17 @@ def test_doc_status_updates(wiring_registry):
         role_match = re.search(r"- \*\*Role:\*\* (Node|Internal)", content)
         assert role_match, f"Step {step_num}: Role not found in doc"
         actual_role = role_match.group(1)
-        assert actual_role == expected_role, (
-            f"Step {step_num}: Role mismatch\n  Expected: {expected_role}\n  Actual:   {actual_role}"
-        )
+        assert (
+            actual_role == expected_role
+        ), f"Step {step_num}: Role mismatch\n  Expected: {expected_role}\n  Actual:   {actual_role}"
 
         # Check Status in AUTO-AUDIT block
         status_match = re.search(r"Status: ([✅🔌🟡❌]) \(([^)]+)\)", content)
         assert status_match, f"Step {step_num}: Status not found in AUTO-AUDIT block"
         actual_status = status_match.group(1)
-        assert actual_status == expected_status, (
-            f"Step {step_num}: Status mismatch\n  Expected: {expected_status}\n  Actual:   {actual_status}"
-        )
+        assert (
+            actual_status == expected_status
+        ), f"Step {step_num}: Status mismatch\n  Expected: {expected_status}\n  Actual:   {actual_status}"
 
         # Check registry status
         registry_match = re.search(r"Registry: ([✅❌]) (Wired|Not in registry)", content)
@@ -269,9 +269,9 @@ def test_conformance_dashboard_updated(wiring_registry):
 
     # Should match registry count (or be close for canonical Nodes only)
     assert wired_count > 0, "Wired count is zero"
-    assert wired_count <= len(wiring_registry), (
-        f"Wired count in dashboard ({wired_count}) exceeds registry ({len(wiring_registry)})"
-    )
+    assert wired_count <= len(
+        wiring_registry
+    ), f"Wired count in dashboard ({wired_count}) exceeds registry ({len(wiring_registry)})"
 
     print(f"✅ Conformance dashboard has valid statistics (wired: {wired_count})")
 
@@ -305,9 +305,9 @@ def test_all_phase_nodes_have_correct_ids():
             expected_id = STEP_IDS[step_num]
             actual_id = node_info["id"]
 
-            assert actual_id == expected_id, (
-                f"{phase_name} step {step_num} ID mismatch:\n  Expected: {expected_id}\n  Actual:   {actual_id}"
-            )
+            assert (
+                actual_id == expected_id
+            ), f"{phase_name} step {step_num} ID mismatch:\n  Expected: {expected_id}\n  Actual:   {actual_id}"
 
     print("✅ All phase registries use correct STEP_IDS references")
 

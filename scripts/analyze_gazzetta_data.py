@@ -129,7 +129,7 @@ async def analyze_gazzetta_documents(
     irrelevant_count = total - relevant_count
 
     # Relevant documents
-    print(f"{'RELEVANT (to keep):':<30} {relevant_count:>6} ({relevant_count / total * 100:.1f}%)")
+    print(f"{'RELEVANT (to keep):':<30} {relevant_count:>6} ({relevant_count/total*100:.1f}%)")
     print()
 
     # Irrelevant categories
@@ -147,10 +147,10 @@ async def analyze_gazzetta_documents(
     for cat in irrelevant_categories:
         count = len(categories.get(cat, []))
         if count > 0:
-            print(f"  {cat:<26} {count:>6} ({count / total * 100:.1f}%)")
+            print(f"  {cat:<26} {count:>6} ({count/total*100:.1f}%)")
 
     print()
-    print(f"{'Total irrelevant:':<30} {irrelevant_count:>6} ({irrelevant_count / total * 100:.1f}%)")
+    print(f"{'Total irrelevant:':<30} {irrelevant_count:>6} ({irrelevant_count/total*100:.1f}%)")
     print()
 
     # Show samples if requested

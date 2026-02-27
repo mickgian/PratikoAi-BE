@@ -37,21 +37,21 @@ class VectorService:
         """DEPRECATED: Use PostgreSQL knowledge_chunks table instead."""
         logger.error("vector_service_deprecated_method", method="upsert_vectors")
         raise NotImplementedError(
-            "VectorService.upsert_vectors is deprecated. Use PostgreSQL knowledge_chunks table with pgvector."
+            "VectorService.upsert_vectors is deprecated. " "Use PostgreSQL knowledge_chunks table with pgvector."
         )
 
     def query_vectors(self, *args, **kwargs):
         """DEPRECATED: Use app.retrieval.postgres_retriever.PostgresRetriever instead."""
         logger.error("vector_service_deprecated_method", method="query_vectors")
         raise NotImplementedError(
-            "VectorService.query_vectors is deprecated. Use PostgresRetriever.hybrid_search() instead."
+            "VectorService.query_vectors is deprecated. " "Use PostgresRetriever.hybrid_search() instead."
         )
 
     def search_similar(self, *args, **kwargs):
         """DEPRECATED: Use PostgresRetriever.hybrid_search() instead."""
         logger.error("vector_service_deprecated_method", method="search_similar")
         raise NotImplementedError(
-            "VectorService.search_similar is deprecated. Use PostgresRetriever.hybrid_search() instead."
+            "VectorService.search_similar is deprecated. " "Use PostgresRetriever.hybrid_search() instead."
         )
 
 

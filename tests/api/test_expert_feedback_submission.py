@@ -528,40 +528,41 @@ class TestFeedbackSubmissionE2E:
         try:
             query_id = uuid4()
 
-            with patch("app.api.v1.expert_feedback.TaskGeneratorService"), TestClient(app) as client:
-                response = client.post(
-                    "/api/v1/expert-feedback/submit",
-                    json={
-                        "query_id": str(query_id),
-                        "feedback_type": "incorrect",
-                        "category": "interpretazione_errata",
-                        "query_text": "Quale aliquota IVA per gli e-book?",
-                        "original_answer": "Si applica l'aliquota del 22%",
-                        "expert_answer": "Per gli e-book si applica l'aliquota ridotta del 4%",
-                        "improvement_suggestions": [
-                            "Aggiornare knowledge base con aliquote ridotte",
-                            "Citare D.L. 83/2012",
-                        ],
-                        "regulatory_references": ["D.L. 83/2012", "Art. 74, comma 1-bis DPR 633/1972"],
-                        "confidence_score": 0.98,
-                        "time_spent_seconds": 240,
-                        "complexity_rating": 4,
-                        "additional_details": "La risposta è completamente errata. Gli e-book hanno aliquota 4%.",
-                    },
-                )
+            with patch("app.api.v1.expert_feedback.TaskGeneratorService"):
+                with TestClient(app) as client:
+                    response = client.post(
+                        "/api/v1/expert-feedback/submit",
+                        json={
+                            "query_id": str(query_id),
+                            "feedback_type": "incorrect",
+                            "category": "interpretazione_errata",
+                            "query_text": "Quale aliquota IVA per gli e-book?",
+                            "original_answer": "Si applica l'aliquota del 22%",
+                            "expert_answer": "Per gli e-book si applica l'aliquota ridotta del 4%",
+                            "improvement_suggestions": [
+                                "Aggiornare knowledge base con aliquote ridotte",
+                                "Citare D.L. 83/2012",
+                            ],
+                            "regulatory_references": ["D.L. 83/2012", "Art. 74, comma 1-bis DPR 633/1972"],
+                            "confidence_score": 0.98,
+                            "time_spent_seconds": 240,
+                            "complexity_rating": 4,
+                            "additional_details": "La risposta è completamente errata. Gli e-book hanno aliquota 4%.",
+                        },
+                    )
 
-                assert response.status_code == status.HTTP_201_CREATED
-                data = response.json()
+                    assert response.status_code == status.HTTP_201_CREATED
+                    data = response.json()
 
-                # Verify all fields were stored correctly
-                feedback_id = data["feedback_id"]
-                feedback = await real_db.get(ExpertFeedback, feedback_id)
+                    # Verify all fields were stored correctly
+                    feedback_id = data["feedback_id"]
+                    feedback = await real_db.get(ExpertFeedback, feedback_id)
 
-                assert feedback.feedback_type == FeedbackType.INCORRECT
-                assert feedback.expert_answer == "Per gli e-book si applica l'aliquota ridotta del 4%"
-                assert len(feedback.improvement_suggestions) == 2
-                assert len(feedback.regulatory_references) == 2
-                assert feedback.complexity_rating == 4
+                    assert feedback.feedback_type == FeedbackType.INCORRECT
+                    assert feedback.expert_answer == "Per gli e-book si applica l'aliquota ridotta del 4%"
+                    assert len(feedback.improvement_suggestions) == 2
+                    assert len(feedback.regulatory_references) == 2
+                    assert feedback.complexity_rating == 4
         finally:
             app.dependency_overrides.clear()
 

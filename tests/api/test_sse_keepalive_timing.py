@@ -123,9 +123,9 @@ class TestSSEKeepaliveTiming:
 
         # Keepalive sent immediately (< 1% of timeout threshold)
         keepalive_time = timings[0]
-        assert keepalive_time < (TIMEOUT_THRESHOLD * 0.01), (
-            f"Keepalive took {keepalive_time}s, should be << {TIMEOUT_THRESHOLD}s"
-        )
+        assert keepalive_time < (
+            TIMEOUT_THRESHOLD * 0.01
+        ), f"Keepalive took {keepalive_time}s, should be << {TIMEOUT_THRESHOLD}s"
 
         # Content arrives after blocking
         content_time = timings[1]

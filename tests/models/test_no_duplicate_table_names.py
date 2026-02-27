@@ -129,7 +129,6 @@ def test_subscription_models_not_both_imported():
     """
     # Read alembic/env.py
     from pathlib import Path
-
     alembic_env_path = Path(__file__).parent.parent.parent / "alembic" / "env.py"
     with open(alembic_env_path) as f:
         env_content = f.read()
@@ -176,7 +175,6 @@ def test_alembic_env_imports_match_expected():
     ]
 
     from pathlib import Path
-
     alembic_env_path = Path(__file__).parent.parent.parent / "alembic" / "env.py"
     with open(alembic_env_path) as f:
         env_content = f.read()

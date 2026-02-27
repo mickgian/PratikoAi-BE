@@ -45,7 +45,7 @@ class TestDeanonymizeResponse:
     def test_deanonymize_repeated_placeholder(self):
         """Test that same placeholder is replaced multiple times."""
         content = (
-            "[NOME_ABC123] ha richiesto informazioni. Pertanto, [NOME_ABC123] dovrà presentare la documentazione."
+            "[NOME_ABC123] ha richiesto informazioni. " "Pertanto, [NOME_ABC123] dovrà presentare la documentazione."
         )
         deanonymization_map = {"[NOME_ABC123]": "Lucia Verdi"}
 

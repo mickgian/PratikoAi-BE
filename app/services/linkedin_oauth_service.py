@@ -185,12 +185,10 @@ class LinkedInOAuthService:
                         # Get the largest image
                         largest = max(
                             elements,
-                            key=lambda x: (
-                                x.get("data", {})
-                                .get("com.linkedin.digitalmedia.mediaartifact.StillImage", {})
-                                .get("storageSize", {})
-                                .get("width", 0)
-                            ),
+                            key=lambda x: x.get("data", {})
+                            .get("com.linkedin.digitalmedia.mediaartifact.StillImage", {})
+                            .get("storageSize", {})
+                            .get("width", 0),
                         )
                         identifiers = largest.get("identifiers", [])
                         if identifiers:

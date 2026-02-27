@@ -273,7 +273,7 @@ François Müller,Düsseldorf,2.345,78"""
     @pytest.mark.asyncio
     @pytest.mark.skipif(
         bool(__import__("os").environ.get("CI") or __import__("os").environ.get("GITHUB_ACTIONS")),
-        reason="PDF OCR extraction requires poppler which is not installed in CI",
+        reason="PDF OCR extraction requires poppler which is not installed in CI"
     )
     async def test_extract_pdf_text_from_bytes(self, processor, sample_pdf_content):
         """Verify PDF extraction works with in-memory bytes."""

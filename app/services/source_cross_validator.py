@@ -291,7 +291,7 @@ class SourceCrossValidator:
             # Check if year is grounded in KB
             if year not in kb_years:
                 warnings.append(
-                    f"Anno {year} menzionato nella risposta ma non presente nelle fonti KB - verificare accuratezza"
+                    f"Anno {year} menzionato nella risposta ma non presente " "nelle fonti KB - verificare accuratezza"
                 )
 
         return warnings

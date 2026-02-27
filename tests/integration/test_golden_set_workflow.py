@@ -236,19 +236,19 @@ class TestGoldenSetWorkflow:
 
         # Check if embedding was generated (column may not exist yet)
         if hasattr(faq_candidate, "question_embedding"):
-            assert faq_candidate.question_embedding is not None, (
-                "question_embedding should be generated during FAQ creation"
-            )
-            assert len(faq_candidate.question_embedding) == 1536, (
-                "Embedding should be 1536 dimensions (OpenAI ada-002)"
-            )
+            assert (
+                faq_candidate.question_embedding is not None
+            ), "question_embedding should be generated during FAQ creation"
+            assert (
+                len(faq_candidate.question_embedding) == 1536
+            ), "Embedding should be 1536 dimensions (OpenAI ada-002)"
 
         # Check if feedback was linked to generated FAQ
         await db_session.refresh(feedback)
         assert feedback.generated_faq_id is not None, "expert_feedback.generated_faq_id should link to FAQ"
-        assert str(feedback.generated_faq_id) == str(faq_candidate.id), (
-            "Feedback should reference the created FAQ candidate"
-        )
+        assert str(feedback.generated_faq_id) == str(
+            faq_candidate.id
+        ), "Feedback should reference the created FAQ candidate"
 
     async def test_identical_question_retrieves_golden_set(
         self,
@@ -310,9 +310,9 @@ class TestGoldenSetWorkflow:
 
         # Verify it's a REAL match, not mock data
         assert golden_match.get("faq_id") != "mock_faq_001", "Step 24 should return REAL FAQ, not mock data"
-        assert golden_match.get("faq_id") == faq_id, (
-            f"Step 24 should return inserted FAQ ID {faq_id}, got {golden_match.get('faq_id')}"
-        )
+        assert (
+            golden_match.get("faq_id") == faq_id
+        ), f"Step 24 should return inserted FAQ ID {faq_id}, got {golden_match.get('faq_id')}"
         assert golden_match.get("answer") == answer, "Golden set answer should match stored FAQ answer"
 
         # Verify match metadata
@@ -478,20 +478,20 @@ class TestGoldenSetWorkflow:
             assert faq_id != "mock_faq_001", "Step 24 should return REAL FAQ ID, not 'mock_faq_001'"
 
             # Verify returned FAQ matches one of our inserted FAQs
-            assert faq_id in inserted_faq_ids, (
-                f"Returned FAQ ID {faq_id} should match one of inserted FAQs: {inserted_faq_ids}"
-            )
+            assert (
+                faq_id in inserted_faq_ids
+            ), f"Returned FAQ ID {faq_id} should match one of inserted FAQs: {inserted_faq_ids}"
 
             # Verify answer matches real data
-            assert golden_match.get("answer") == faqs_data[0]["answer"], (
-                "Answer should match inserted FAQ, not mock data"
-            )
+            assert (
+                golden_match.get("answer") == faqs_data[0]["answer"]
+            ), "Answer should match inserted FAQ, not mock data"
 
             # Verify search method indicates real database query
             search_method = match_metadata.get("search_method", "")
-            assert search_method != "mock", (
-                f"search_method should indicate real DB query, not 'mock' (was: {search_method})"
-            )
+            assert (
+                search_method != "mock"
+            ), f"search_method should indicate real DB query, not 'mock' (was: {search_method})"
 
         else:
             # No match found - this is the expected failure

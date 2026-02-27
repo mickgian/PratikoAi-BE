@@ -123,11 +123,15 @@ class ProactivityEngine:
         # Compile regex patterns for performance
         self._intent_patterns: dict[str, list[re.Pattern[str]]] = {}
         for intent, patterns in INTENT_PATTERNS.items():
-            self._intent_patterns[intent] = [re.compile(p, re.IGNORECASE) for p in patterns]
+            self._intent_patterns[intent] = [
+                re.compile(p, re.IGNORECASE) for p in patterns
+            ]
 
         self._param_patterns: dict[str, list[re.Pattern[str]]] = {}
         for param, patterns in PARAM_PATTERNS.items():
-            self._param_patterns[param] = [re.compile(p, re.IGNORECASE) for p in patterns]
+            self._param_patterns[param] = [
+                re.compile(p, re.IGNORECASE) for p in patterns
+            ]
 
     def process_query(
         self,

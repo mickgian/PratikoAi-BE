@@ -82,7 +82,7 @@ class PromptLoader:
                     available_prompts=available,
                 )
                 raise FileNotFoundError(
-                    f"Prompt '{prompt_name}' not found in {self.version}/. Available prompts: {available}"
+                    f"Prompt '{prompt_name}' not found in {self.version}/. " f"Available prompts: {available}"
                 )
 
             content = prompt_path.read_text(encoding="utf-8")
@@ -172,7 +172,7 @@ class PromptLoader:
                     "component_not_found",
                     component_name=name,
                 )
-                raise FileNotFoundError(f"Component '{name}' not found in components/. Path: {component_path}")
+                raise FileNotFoundError(f"Component '{name}' not found in components/. " f"Path: {component_path}")
 
             content = component_path.read_text(encoding="utf-8")
             self._cache[cache_key] = content

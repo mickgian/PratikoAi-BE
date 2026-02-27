@@ -222,9 +222,9 @@ class TestStep25GoldenHitNodeWrapper:
 
         # Assert - CRITICAL: Both locations must be set
         assert result_state["golden"]["hit"] is True, "golden['hit'] must be True when high_confidence_match is True"
-        assert result_state["decisions"]["golden_hit"] is True, (
-            "decisions['golden_hit'] must be True for routing decisions"
-        )
+        assert (
+            result_state["decisions"]["golden_hit"] is True
+        ), "decisions['golden_hit'] must be True for routing decisions"
 
     @pytest.mark.asyncio
     @patch(
@@ -373,9 +373,9 @@ class TestStep28ServeGoldenNodeWrapper:
         result_state = await node_step_28(state)
 
         # Assert - answer extracted correctly from nested structure
-        assert result_state["golden"]["answer"] == expected_answer, (
-            "Bug #8 regression: answer must be extracted from res['response']['answer']"
-        )
+        assert (
+            result_state["golden"]["answer"] == expected_answer
+        ), "Bug #8 regression: answer must be extracted from res['response']['answer']"
         assert result_state["golden"]["citations"] == expected_citations
 
     @pytest.mark.asyncio
@@ -415,9 +415,9 @@ class TestStep28ServeGoldenNodeWrapper:
 
         # Assert - CRITICAL: golden_answer must be at TOP level
         assert "golden_answer" in result_state, "Bug #6 regression: golden_answer must exist at state top level"
-        assert result_state["golden_answer"] == expected_answer, (
-            "Bug #6 regression: state['golden_answer'] must contain the answer string"
-        )
+        assert (
+            result_state["golden_answer"] == expected_answer
+        ), "Bug #6 regression: state['golden_answer'] must contain the answer string"
 
     @pytest.mark.asyncio
     @patch(
@@ -453,9 +453,9 @@ class TestStep28ServeGoldenNodeWrapper:
         result_state = await node_step_28(state)
 
         # Assert - golden_answer must be a string
-        assert isinstance(result_state["golden_answer"], str), (
-            "golden_answer must be a string, not a dict or other type"
-        )
+        assert isinstance(
+            result_state["golden_answer"], str
+        ), "golden_answer must be a string, not a dict or other type"
         assert result_state["golden_answer"] == answer_text
 
     @pytest.mark.asyncio
@@ -492,9 +492,9 @@ class TestStep28ServeGoldenNodeWrapper:
 
         # Assert - CRITICAL: golden_hit must be True at top level
         assert "golden_hit" in result_state, "Bug #6 regression: golden_hit must exist at state top level"
-        assert result_state["golden_hit"] is True, (
-            "Bug #6 regression: state['golden_hit'] must be True after serving golden answer"
-        )
+        assert (
+            result_state["golden_hit"] is True
+        ), "Bug #6 regression: state['golden_hit'] must be True after serving golden answer"
 
     @pytest.mark.asyncio
     @patch(
@@ -767,9 +767,9 @@ class TestGoldenSetStateFlow:
 
         # Assert - All fields needed by response handler
         assert final_state["golden_hit"] is True, "Response handler needs state['golden_hit']"
-        assert final_state["golden_answer"] == "Final golden answer for user", (
-            "Response handler needs state['golden_answer']"
-        )
+        assert (
+            final_state["golden_answer"] == "Final golden answer for user"
+        ), "Response handler needs state['golden_answer']"
         assert isinstance(final_state["golden_answer"], str), "golden_answer must be string for serialization"
         assert final_state["golden"]["served"] is True
         assert final_state.get("complete") is True

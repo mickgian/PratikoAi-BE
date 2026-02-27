@@ -188,9 +188,9 @@ class TestRAGStateAttachmentsField:
         # The annotation should be Annotated[list[dict] | None, merge_attachments]
         if hasattr(attachments_hint, "__metadata__"):
             metadata = attachments_hint.__metadata__
-            assert merge_attachments in metadata, (
-                "RAGState.attachments must be annotated with merge_attachments reducer"
-            )
+            assert (
+                merge_attachments in metadata
+            ), "RAGState.attachments must be annotated with merge_attachments reducer"
 
 
 class TestTurn2AttachmentScenario:
@@ -402,9 +402,9 @@ class TestMergeMessagesLangChainObjects:
             if (isinstance(m, dict) and m.get("role") == "assistant")
             or (hasattr(m, "type") and getattr(m, "type", None) == "ai")
         ]
-        assert ai_contents.count("Analysis of Payslip 10...") == 1, (
-            "AIMessage and dict with same content should deduplicate"
-        )
+        assert (
+            ai_contents.count("Analysis of Payslip 10...") == 1
+        ), "AIMessage and dict with same content should deduplicate"
 
     def test_merge_messages_deduplicates_humanmessage_vs_dict(self):
         """HumanMessage object should deduplicate with equivalent dict."""

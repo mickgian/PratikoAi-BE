@@ -79,9 +79,9 @@ class TestMultiAttachmentFilenames:
         assert "Payslip 8 - Agosto 2025.pdf" in filename_str, f"Should include Payslip 8, got: {filename_str}"
         assert "Payslip 9 - Settembre 2025.pdf" in filename_str, f"Should include Payslip 9, got: {filename_str}"
         # Should NOT include prior attachment
-        assert "Payslip 10 - Ottobre 2025.pdf" not in filename_str, (
-            f"Should NOT include prior attachment Payslip 10, got: {filename_str}"
-        )
+        assert (
+            "Payslip 10 - Ottobre 2025.pdf" not in filename_str
+        ), f"Should NOT include prior attachment Payslip 10, got: {filename_str}"
 
     @pytest.mark.asyncio
     async def test_classifier_filters_out_prior_attachments(self):
@@ -188,15 +188,15 @@ class TestMultiAttachmentRegression:
         # Then: Payslip 9 should NOT be ignored
         # The bug was that only attachments[0] was used (Payslip 10)
         # After fix, should have current attachments only
-        assert "Payslip 9 - Settembre 2025.pdf" in captured_filename, (
-            f"Payslip 9 should NOT be ignored! Got: {captured_filename}"
-        )
-        assert "Payslip 8 - Agosto 2025.pdf" in captured_filename, (
-            f"Payslip 8 should be included. Got: {captured_filename}"
-        )
-        assert "Payslip 10 - Ottobre 2025.pdf" not in captured_filename, (
-            f"Prior attachment Payslip 10 should be filtered out. Got: {captured_filename}"
-        )
+        assert (
+            "Payslip 9 - Settembre 2025.pdf" in captured_filename
+        ), f"Payslip 9 should NOT be ignored! Got: {captured_filename}"
+        assert (
+            "Payslip 8 - Agosto 2025.pdf" in captured_filename
+        ), f"Payslip 8 should be included. Got: {captured_filename}"
+        assert (
+            "Payslip 10 - Ottobre 2025.pdf" not in captured_filename
+        ), f"Prior attachment Payslip 10 should be filtered out. Got: {captured_filename}"
 
     @pytest.mark.asyncio
     async def test_single_current_attachment_still_works(self):

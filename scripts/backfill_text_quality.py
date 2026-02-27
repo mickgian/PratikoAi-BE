@@ -165,7 +165,7 @@ async def main():
                 # Progress indicator every 100 docs
                 if processed % 100 == 0:
                     avg_quality = quality_sum / processed
-                    print(f"  Processed {processed}/{missing_count} (avg quality: {avg_quality:.3f})")
+                    print(f"  Processed {processed}/{missing_count} " f"(avg quality: {avg_quality:.3f})")
 
             # Commit batch
             if not args.dry_run:
@@ -185,8 +185,8 @@ async def main():
 
         print("\nQuality Statistics:")
         print(f"  Average quality: {avg_quality:.3f}")
-        print(f"  High quality (≥0.8): {high_quality_count} ({high_quality_count / processed * 100:.1f}%)")
-        print(f"  Low quality (<0.5): {low_quality_count} ({low_quality_count / processed * 100:.1f}%)")
+        print(f"  High quality (≥0.8): {high_quality_count} ({high_quality_count/processed*100:.1f}%)")
+        print(f"  Low quality (<0.5): {low_quality_count} ({low_quality_count/processed*100:.1f}%)")
 
         if args.dry_run:
             print("\n⚠️  DRY RUN - No changes were made to the database")

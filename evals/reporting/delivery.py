@@ -41,7 +41,8 @@ def format_pr_comment(
         failures_section = "\n### Failures\n\n"
         for failure in metrics.failures[:5]:  # Limit to 5
             failures_section += (
-                f"- **{failure.test_case.id}** ({failure.test_case.category.value}): score={failure.grade.score:.2f}\n"
+                f"- **{failure.test_case.id}** ({failure.test_case.category.value}): "
+                f"score={failure.grade.score:.2f}\n"
             )
 
     return f"""## 🧪 Evaluation Results {status}
@@ -150,7 +151,7 @@ def format_email_body(
         {status_emoji} PratikoAI {run_mode.title()} Evaluation Report
     </h1>
 
-    <p>Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+    <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
 
     <table border="1" cellpadding="8" style="border-collapse: collapse;">
         <tr>

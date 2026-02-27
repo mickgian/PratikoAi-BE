@@ -489,7 +489,7 @@ async def test_semantic_variations_find_same_document(db_session_committed):
         results = await service.retrieve_topk(query_data)
 
         # ASSERTION: Should find the document
-        assert len(results) > 0, f"Query '{query}' should find document '{ingested_title}' but got no results"
+        assert len(results) > 0, f"Query '{query}' should find document '{ingested_title}' " f"but got no results"
 
         # Verify the ingested document is in results (flexible matching)
         found = _document_in_results(ingested_title, results)

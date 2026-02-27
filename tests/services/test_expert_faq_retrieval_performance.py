@@ -205,13 +205,13 @@ async def test_cache_hit_rate_measurement(async_session: AsyncSession, sample_fa
         print(f"  Unique queries: {unique_queries}")
         print(f"  Embedding API calls: {len(embedding_calls)}")
         print(f"  Cache hits: {cache_hits}")
-        print(f"  Cache hit rate: {cache_hit_rate * 100:.1f}% (target: >80%)")
+        print(f"  Cache hit rate: {cache_hit_rate*100:.1f}% (target: >80%)")
 
         # For 50% duplicate queries, we should see >80% cache hit rate after warm-up
         # First query for each unique query misses, subsequent ones hit
         # Expected: 50 misses + 50 hits = 50% hit rate minimum
         # With result caching: Should approach 50% hit rate (50 cache hits out of 100 queries)
-        assert cache_hit_rate >= 0.40, f"Cache hit rate {cache_hit_rate * 100:.1f}% below 40% minimum"
+        assert cache_hit_rate >= 0.40, f"Cache hit rate {cache_hit_rate*100:.1f}% below 40% minimum"
 
 
 @pytest.mark.asyncio
@@ -232,7 +232,7 @@ async def test_batch_retrieval_performance(async_session: AsyncSession, sample_f
         latency_ms = (time.time() - start) * 1000
 
         print(f"\nBatch retrieval (10 queries): {latency_ms:.2f}ms")
-        print(f"  Average per query: {latency_ms / 10:.2f}ms")
+        print(f"  Average per query: {latency_ms/10:.2f}ms")
 
         assert len(results) == 10, "Should return results for all queries"
 
@@ -363,7 +363,7 @@ async def test_embedding_cache_effectiveness(async_session: AsyncSession, sample
         print("\nEmbedding cache effectiveness:")
         print(f"  First query (cold): {time1:.2f}ms")
         print(f"  Second query (cached): {time2:.2f}ms")
-        print(f"  Speedup: {time1 / time2:.1f}x")
+        print(f"  Speedup: {time1/time2:.1f}x")
         print(f"  API calls: {len(api_call_count)}")
 
         # Should only call API once
@@ -396,7 +396,7 @@ async def test_result_cache_effectiveness(async_session: AsyncSession, sample_fa
         print("\nResult cache effectiveness:")
         print(f"  First query: {time1:.2f}ms")
         print(f"  Second query (cached): {time2:.2f}ms")
-        print(f"  Speedup: {time1 / time2:.1f}x")
+        print(f"  Speedup: {time1/time2:.1f}x")
 
         # Results should be identical
         assert len(results1) == len(results2), "Cached results should match"

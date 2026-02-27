@@ -52,7 +52,7 @@ def upgrade() -> None:
 
     def _index_exists(name: str) -> bool:
         result = conn.execute(
-            sa.text("SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = :name)"),
+            sa.text("SELECT EXISTS (SELECT 1 FROM pg_indexes " "WHERE indexname = :name)"),
             {"name": name},
         )
         return result.scalar()  # type: ignore[return-value]

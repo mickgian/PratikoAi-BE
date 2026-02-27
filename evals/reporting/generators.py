@@ -214,7 +214,7 @@ class HTMLReportGenerator:
 </head>
 <body>
     <h1>{status_emoji} {title}</h1>
-    <p class="timestamp">Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+    <p class="timestamp">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
 
     <div class="summary">
         <h2>Overall: {metrics.overall_pass_rate:.0%}</h2>
@@ -231,7 +231,7 @@ class HTMLReportGenerator:
             <div class="stat-label">Failed</div>
         </div>
         <div class="stat">
-            <div class="stat-value">{metrics.total_duration_ms / 1000:.1f}s</div>
+            <div class="stat-value">{metrics.total_duration_ms/1000:.1f}s</div>
             <div class="stat-label">Duration</div>
         </div>
     </div>

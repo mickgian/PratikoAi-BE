@@ -552,7 +552,7 @@ class TestInlineBoldNumberedSections:
         """Fix inline sections after regular space (not colon)."""
         from app.services.llm_response.section_numbering_fixer import SectionNumberingFixer
 
-        text = "Here are the sections 1. **First Section**: content 1. **Second Section**: more content"
+        text = "Here are the sections 1. **First Section**: content " "1. **Second Section**: more content"
 
         fixed = SectionNumberingFixer.fix_numbering(text)
 

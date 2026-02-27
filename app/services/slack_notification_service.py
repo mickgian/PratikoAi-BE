@@ -192,7 +192,7 @@ class SlackNotificationService:
                 "text": {
                     "type": "plain_text",
                     "text": f"📊 PROGRESS UPDATE - {datetime.now().strftime('%H:%M CET')}",
-                },
+                }
             },
             {
                 "type": "section",
@@ -200,48 +200,62 @@ class SlackNotificationService:
                     {"type": "mrkdwn", "text": f"*Sprint:*\n{sprint_name}"},
                     {"type": "mrkdwn", "text": f"*Progress:*\n{sprint_progress}"},
                     {"type": "mrkdwn", "text": f"*Status:*\n{status_emoji} {sprint_status}"},
-                ],
+                ]
             },
-            {"type": "divider"},
+            {"type": "divider"}
         ]
 
         # Add in-progress tasks
         if tasks_in_progress:
-            in_progress_text = "\n".join(
-                [
-                    f"• *{task['id']}*: {task['description']}\n  _{task['assignee']}_ - {task['progress']}"
-                    for task in tasks_in_progress
-                ]
-            )
-            blocks.append(
-                {"type": "section", "text": {"type": "mrkdwn", "text": f"*🔄 In Progress:*\n{in_progress_text}"}}
-            )
+            in_progress_text = "\n".join([
+                f"• *{task['id']}*: {task['description']}\n  _{task['assignee']}_ - {task['progress']}"
+                for task in tasks_in_progress
+            ])
+            blocks.append({
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*🔄 In Progress:*\n{in_progress_text}"}
+            })
 
         # Add completed tasks
         if tasks_completed_today:
             completed_text = "\n".join([f"• {task}" for task in tasks_completed_today])
-            blocks.append(
-                {"type": "section", "text": {"type": "mrkdwn", "text": f"*✅ Completed Today:*\n{completed_text}"}}
-            )
+            blocks.append({
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*✅ Completed Today:*\n{completed_text}"}
+            })
 
         # Add next up tasks
         if tasks_next_up:
             next_up_text = "\n".join([f"• {task}" for task in tasks_next_up])
-            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"*⏳ Next Up:*\n{next_up_text}"}})
+            blocks.append({
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*⏳ Next Up:*\n{next_up_text}"}
+            })
 
         # Add blockers if present
         if blockers:
             blockers_text = "\n".join([f"• {blocker}" for blocker in blockers])
-            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"*⚠️ Blockers:*\n{blockers_text}"}})
+            blocks.append({
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*⚠️ Blockers:*\n{blockers_text}"}
+            })
 
         # Add velocity if provided
         if velocity:
-            blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": f"📈 Velocity: *{velocity}*"}]})
+            blocks.append({
+                "type": "context",
+                "elements": [
+                    {"type": "mrkdwn", "text": f"📈 Velocity: *{velocity}*"}
+                ]
+            })
 
         # Add footer
-        blocks.append(
-            {"type": "context", "elements": [{"type": "mrkdwn", "text": "🤖 PratikoAI Scrum Master Subagent"}]}
-        )
+        blocks.append({
+            "type": "context",
+            "elements": [
+                {"type": "mrkdwn", "text": "🤖 PratikoAI Scrum Master Subagent"}
+            ]
+        })
 
         payload = {
             "text": f"📊 PROGRESS UPDATE - {datetime.now().strftime('%H:%M CET')}",

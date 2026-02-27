@@ -218,7 +218,7 @@ async def main():
             print(
                 f"{status} [{result.query_type:12}] {result.query[:40]:<40} "
                 f"→ {result.total_results} results, "
-                f"{result.precision_official * 100:.0f}% official"
+                f"{result.precision_official*100:.0f}% official"
             )
 
         # Aggregate by query type
@@ -237,7 +237,7 @@ async def main():
 
             print(f"\n{qtype.upper()}:")
             print(f"  Queries: {len(type_results)}")
-            print(f"  Avg Official Source %: {avg_official * 100:.1f}%")
+            print(f"  Avg Official Source %: {avg_official*100:.1f}%")
             print(f"  Avg Text Quality: {avg_quality:.2f}")
             print(f"  Avg Source Boost: {avg_boost:.3f}")
 
@@ -253,8 +253,8 @@ async def main():
         avg_boost = sum(r.avg_source_boost for r in results) / total_queries
 
         print(f"\nTotal queries: {total_queries}")
-        print(f"Queries with results: {queries_with_results} ({queries_with_results / total_queries * 100:.0f}%)")
-        print(f"\nAvg Official Source Precision: {avg_official * 100:.1f}%")
+        print(f"Queries with results: {queries_with_results} ({queries_with_results/total_queries*100:.0f}%)")
+        print(f"\nAvg Official Source Precision: {avg_official*100:.1f}%")
         print(f"Avg Text Quality (where available): {avg_quality:.2f}")
         print(f"Avg Source Authority Boost: {avg_boost:.3f}")
 
@@ -271,8 +271,8 @@ async def main():
         quality_pass = avg_quality >= quality_target or avg_quality == 0  # Pass if no quality data
 
         print(
-            f"\n✓ Official Source Precision: {avg_official * 100:.1f}% "
-            f"(target: ≥{official_target * 100:.0f}%) "
+            f"\n✓ Official Source Precision: {avg_official*100:.1f}% "
+            f"(target: ≥{official_target*100:.0f}%) "
             f"{'✅ PASS' if official_pass else '❌ FAIL'}"
         )
 

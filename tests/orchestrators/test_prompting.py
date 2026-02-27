@@ -84,9 +84,9 @@ class TestStep41DocumentAnalysisInjection:
             f"Got prompt type: {result.get('prompt_type')}"
         )
         # Verify override is at TOP (starts with it)
-        assert selected_prompt.startswith("[System context"), (
-            "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
-        )
+        assert selected_prompt.startswith(
+            "[System context"
+        ), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
 
     @pytest.mark.asyncio
     @patch("app.orchestrators.prompting.rag_step_log")
@@ -133,9 +133,9 @@ class TestStep41DocumentAnalysisInjection:
             f"Got prompt type: {result.get('prompt_type')}"
         )
         # Verify override is at TOP (starts with it)
-        assert selected_prompt.startswith("[System context"), (
-            "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
-        )
+        assert selected_prompt.startswith(
+            "[System context"
+        ), "DOCUMENT_ANALYSIS_OVERRIDE should be at the TOP of the prompt"
 
     @pytest.mark.asyncio
     @patch("app.orchestrators.prompting.rag_step_log")
@@ -178,9 +178,9 @@ class TestStep41DocumentAnalysisInjection:
         # Verify DOCUMENT_ANALYSIS_OVERRIDE is NOT injected
         assert result["prompt_selected"] is True
         selected_prompt = result.get("selected_prompt", "")
-        assert DOCUMENT_ANALYSIS_OVERRIDE not in selected_prompt, (
-            "DOCUMENT_ANALYSIS_OVERRIDE should NOT be in selected_prompt for pure_kb"
-        )
+        assert (
+            DOCUMENT_ANALYSIS_OVERRIDE not in selected_prompt
+        ), "DOCUMENT_ANALYSIS_OVERRIDE should NOT be in selected_prompt for pure_kb"
 
     @pytest.mark.asyncio
     @patch("app.orchestrators.prompting.rag_step_log")
@@ -222,9 +222,9 @@ class TestStep41DocumentAnalysisInjection:
         # Verify DOCUMENT_ANALYSIS_OVERRIDE is NOT injected
         assert result["prompt_selected"] is True
         selected_prompt = result.get("selected_prompt", "")
-        assert DOCUMENT_ANALYSIS_OVERRIDE not in selected_prompt, (
-            "DOCUMENT_ANALYSIS_OVERRIDE should NOT be in selected_prompt when query_composition is missing"
-        )
+        assert (
+            DOCUMENT_ANALYSIS_OVERRIDE not in selected_prompt
+        ), "DOCUMENT_ANALYSIS_OVERRIDE should NOT be in selected_prompt when query_composition is missing"
 
     @pytest.mark.asyncio
     @patch("app.orchestrators.prompting.rag_step_log")
@@ -266,9 +266,9 @@ class TestStep41DocumentAnalysisInjection:
 
         # Verify logging of injection
         info_calls = [call[0][0] for call in mock_logger.info.call_args_list]
-        assert any("document_analysis_override_injected_to_domain_prompt" in str(call) for call in info_calls), (
-            "Should log document_analysis_override_injected_to_domain_prompt"
-        )
+        assert any(
+            "document_analysis_override_injected_to_domain_prompt" in str(call) for call in info_calls
+        ), "Should log document_analysis_override_injected_to_domain_prompt"
 
 
 class TestStep44DocumentAnalysisInjection:
@@ -357,9 +357,9 @@ class TestStep44DocumentAnalysisInjection:
         result = step_44__default_sys_prompt(ctx=ctx)
 
         # Verify DOCUMENT_ANALYSIS_OVERRIDE is NOT injected
-        assert DOCUMENT_ANALYSIS_OVERRIDE not in result, (
-            "DOCUMENT_ANALYSIS_OVERRIDE should NOT be in result for pure_kb"
-        )
+        assert (
+            DOCUMENT_ANALYSIS_OVERRIDE not in result
+        ), "DOCUMENT_ANALYSIS_OVERRIDE should NOT be in result for pure_kb"
 
 
 class TestDEV245ConciseMode:

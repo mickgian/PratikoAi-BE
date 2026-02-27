@@ -405,6 +405,6 @@ async def test_various_query_types(test_queries):
         if test_data["expected_eligible"]:
             assert result.decision == EligibilityDecision.ELIGIBLE, f"Query type {query_type} should be eligible"
         else:
-            assert result.decision == EligibilityDecision.NOT_ELIGIBLE, (
-                f"Query type {query_type} should not be eligible"
-            )
+            assert (
+                result.decision == EligibilityDecision.NOT_ELIGIBLE
+            ), f"Query type {query_type} should not be eligible"

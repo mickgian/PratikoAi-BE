@@ -80,7 +80,8 @@ COT_SUMMARY_MULTIPLE_SOURCES = "La risposta si basa sull'analisi di {count} font
 
 TOT_SUMMARY_SINGLE = "La risposta è stata elaborata considerando le normative pertinenti."
 TOT_SUMMARY_MULTIPLE = (
-    "Abbiamo considerato {count} possibili interpretazioni e selezionato quella più supportata dalle fonti normative."
+    "Abbiamo considerato {count} possibili interpretazioni "
+    "e selezionato quella più supportata dalle fonti normative."
 )
 
 # Alternative note templates

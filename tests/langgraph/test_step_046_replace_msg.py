@@ -57,9 +57,9 @@ class TestStep46SystemPromptKeyLookup:
         result = step_46__replace_msg(messages=messages, ctx=ctx)
 
         # Then: System message should be replaced with new content
-        assert result[0].content == "New context about Payslip 8 and Payslip 9", (
-            "Step 46 must retrieve and use ctx['system_prompt'] from Step 44"
-        )
+        assert (
+            result[0].content == "New context about Payslip 8 and Payslip 9"
+        ), "Step 46 must retrieve and use ctx['system_prompt'] from Step 44"
 
     @patch("app.orchestrators.prompting.rag_step_log")
     @patch("app.orchestrators.prompting.rag_step_timer")
@@ -312,9 +312,9 @@ Payslip content for September 2025...
         assert "NUOVI DOCUMENTI APPENA CARICATI (2)" in system_content, "Turn 2 context must show 2 new documents"
 
         # Verify Turn 1's "NUOVI DOCUMENTI (1)" header is replaced
-        assert "NUOVI DOCUMENTI APPENA CARICATI (1): Payslip 10" not in system_content, (
-            "Turn 1's header should be replaced with Turn 2's header"
-        )
+        assert (
+            "NUOVI DOCUMENTI APPENA CARICATI (1): Payslip 10" not in system_content
+        ), "Turn 1's header should be replaced with Turn 2's header"
 
     @patch("app.orchestrators.prompting.rag_step_log")
     @patch("app.orchestrators.prompting.rag_step_timer")
@@ -377,9 +377,9 @@ class TestStep46NodeWrapperIntegration:
         result_state = await node_step_46(state)
 
         # Then: Messages should be updated with new system prompt
-        assert result_state.get("sys_msg_replaced") is True, (
-            "Step 46 node should mark sys_msg_replaced=True when replacement succeeds"
-        )
+        assert (
+            result_state.get("sys_msg_replaced") is True
+        ), "Step 46 node should mark sys_msg_replaced=True when replacement succeeds"
 
     @pytest.mark.asyncio
     async def test_node_step_46_skips_without_system_prompt(self):

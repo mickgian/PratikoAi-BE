@@ -58,11 +58,7 @@ def upgrade():
             )
 
     # Create index for efficient lookups (IF NOT EXISTS)
-    op.execute(
-        sa.text(
-            "CREATE INDEX IF NOT EXISTS idx_expert_feedback_generated_faq_id ON expert_feedback (generated_faq_id)"
-        )
-    )
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS idx_expert_feedback_generated_faq_id ON expert_feedback (generated_faq_id)'))
 
 
 def downgrade():

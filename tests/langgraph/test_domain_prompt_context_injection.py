@@ -150,7 +150,7 @@ class TestDomainPromptContextInjection:
         # Then: The selected prompt must contain the document content
         selected_prompt = result.get("selected_prompt", "")
         assert "DEFAULT_PATH_DOCUMENT_CONTENT" in selected_prompt, (
-            f"Default path should include context! Got prompt: {selected_prompt[:200]}..."
+            "Default path should include context! " f"Got prompt: {selected_prompt[:200]}..."
         )
 
 
@@ -208,7 +208,7 @@ Periodo: 01/09/2025 - 30/09/2025"""
 
         # BOTH payslips must be in the final prompt sent to LLM
         assert "UNIQUE_MARKER_PAYSLIP_8_AGOSTO" in selected_prompt, (
-            f"Payslip 8 (August) must be in domain prompt! Got: {selected_prompt[:300]}..."
+            "Payslip 8 (August) must be in domain prompt! " f"Got: {selected_prompt[:300]}..."
         )
         assert "UNIQUE_MARKER_PAYSLIP_9_SETTEMBRE" in selected_prompt, (
             "DEV-007 BUG: Payslip 9 (September) must be in domain prompt! "

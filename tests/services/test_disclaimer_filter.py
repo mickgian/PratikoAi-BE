@@ -397,9 +397,9 @@ La rottamazione quinquies rappresenta un'opportunità significativa per regolari
         cleaned_length = len(cleaned)
 
         # Should preserve >95% (only one small phrase removed)
-        assert cleaned_length >= original_length * 0.95, (
-            f"Response too short: {cleaned_length} chars (was {original_length})"
-        )
+        assert (
+            cleaned_length >= original_length * 0.95
+        ), f"Response too short: {cleaned_length} chars (was {original_length})"
 
         # Key structure preserved
         assert "## Requisiti di ammissibilità" in cleaned

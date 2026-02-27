@@ -128,7 +128,8 @@ class TestGoldenStreamingPriority:
 
         # Assert - Golden answer must win, NOT final_response
         assert content == golden_content, (
-            f"Bug #7: golden_answer was overwritten by final_response. Expected '{golden_content}', got '{content}'"
+            f"Bug #7: golden_answer was overwritten by final_response. "
+            f"Expected '{golden_content}', got '{content}'"
         )
         assert content != final_response_content
         assert source == "priority_0_golden"
@@ -429,7 +430,9 @@ class TestGoldenStreamingPriorityEdgeCases:
         """
         # Arrange
         special_content = (
-            "IVA al 22%: calcolo = base * 0.22\nFormula: totale = base + (base * aliquota)\nEsempio: 100 + 22 = 122"
+            "IVA al 22%: calcolo = base * 0.22\n"
+            "Formula: totale = base + (base * aliquota)\n"
+            "Esempio: 100 + 22 = 122"
         )
         state = {
             "golden_hit": True,
@@ -498,9 +501,9 @@ class TestBug7Regression:
         content, source = ContentPriorityExtractor.extract_content(state, final_response, streaming_requested)
 
         # Assert - The fix ensures golden_answer wins
-        assert content == "Correct golden answer from FAQ", (
-            "BUG #7 REGRESSION: golden_answer was overwritten by final_response!"
-        )
+        assert (
+            content == "Correct golden answer from FAQ"
+        ), "BUG #7 REGRESSION: golden_answer was overwritten by final_response!"
         assert "Wrong" not in content
         assert source == "priority_0_golden"
 

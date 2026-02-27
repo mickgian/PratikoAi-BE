@@ -985,7 +985,6 @@ async def step_11__convert_messages(
 
             return result
 
-
 async def _convert_single_message(raw_msg: Any, index: int) -> Optional["Message"]:
     """Convert a single message from any format to Message object.
 

@@ -155,7 +155,8 @@ class TestDocumentSearchPatterns:
         results = await self._search(db_session, query)
 
         assert len(results) > 0, (
-            "Cassazione ordinanza 30016 NOT found - regression! LLM type override or NULL publication_date filter bug."
+            "Cassazione ordinanza 30016 NOT found - regression! "
+            "LLM type override or NULL publication_date filter bug."
         )
 
         # Verify we found the right document
@@ -183,7 +184,7 @@ class TestDocumentSearchPatterns:
         patterns = service._generate_title_patterns("ordinanza", "30016")
 
         assert len(patterns) >= 3, f"Expected at least 3 patterns, got {len(patterns)}"
-        assert any("ordinanza" in p.lower() and "30016" in p for p in patterns), (
-            f"Missing 'ordinanza n. 30016' pattern in: {patterns}"
-        )
+        assert any(
+            "ordinanza" in p.lower() and "30016" in p for p in patterns
+        ), f"Missing 'ordinanza n. 30016' pattern in: {patterns}"
         print(f"Generated ordinanza patterns: {patterns}")

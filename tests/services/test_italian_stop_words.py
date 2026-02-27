@@ -227,7 +227,7 @@ class TestStopWordListProperties:
     def test_minimal_is_subset_of_full(self):
         """Minimal list should be subset of full list."""
         assert STOP_WORDS_MINIMAL.issubset(STOP_WORDS), (
-            f"STOP_WORDS_MINIMAL has words not in STOP_WORDS: {STOP_WORDS_MINIMAL - STOP_WORDS}"
+            f"STOP_WORDS_MINIMAL has words not in STOP_WORDS: " f"{STOP_WORDS_MINIMAL - STOP_WORDS}"
         )
 
     def test_stop_words_are_lowercase(self):
@@ -248,9 +248,9 @@ class TestStopWordListProperties:
 
     def test_minimal_list_has_reasonable_size(self):
         """Minimal list should have ~50 words for basic coverage."""
-        assert 40 <= len(STOP_WORDS_MINIMAL) <= 80, (
-            f"STOP_WORDS_MINIMAL has {len(STOP_WORDS_MINIMAL)} words, expected 40-80"
-        )
+        assert (
+            40 <= len(STOP_WORDS_MINIMAL) <= 80
+        ), f"STOP_WORDS_MINIMAL has {len(STOP_WORDS_MINIMAL)} words, expected 40-80"
 
     def test_no_empty_strings(self):
         """Stop word lists should not contain empty strings."""

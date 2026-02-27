@@ -4,6 +4,12 @@ This file provides guidelines for Claude Code when working on the PratikoAI code
 
 ---
 
+## Project Overview
+
+This is a monorepo with a Next.js frontend (TypeScript) and a Python/FastAPI backend. Key technologies: SQLModel ORM, Flagsmith feature flags, Caddy reverse proxy, Docker Compose for deployment, GitHub Actions CI/CD.
+
+---
+
 ## CRITICAL RULES (Never Violate)
 
 1. **NO TODOs or incomplete code** - Always complete implementations. No "will implement later" patterns.
@@ -224,6 +230,30 @@ CONTRACT: Backend removes old endpoint (after all clients migrated)
 2. Wait for backend health check
 3. Frontend deploys second (frontend, caddy)
 4. Smoke tests run against both
+
+---
+
+## Infrastructure
+
+This project uses a Hetzner QA server for deployment — NOT Vercel, NOT Netlify. The QA deploy pipeline uses Docker Compose via SSH/SCP to the Hetzner server. Never suggest or attempt Vercel-based deployment.
+
+---
+
+## Git Workflow
+
+When asked to commit and push, do it immediately without entering plan mode or creating plan files first. The user expects direct action for git operations.
+
+---
+
+## Working Style
+
+When the user asks to update documentation or task files, do NOT start implementing actual code changes or explore the codebase extensively. Stick to the documentation/planning scope unless explicitly asked to implement.
+
+---
+
+## Figma / Design References
+
+Figma references use Figma Make MCP. Component names may differ from expected screen names (e.g., ProceduraInterattivaPage vs ProceduraPage). When a Figma resource isn't found by expected name, search by partial match before asking the user.
 
 ---
 

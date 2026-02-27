@@ -240,9 +240,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Remove seeded matching rules
-    op.execute(
-        "DELETE FROM matching_rules WHERE name LIKE 'R0%'"
-    )
+    op.execute("DELETE FROM matching_rules WHERE name LIKE 'R0%'")
 
     op.drop_table("breach_notifications")
     op.drop_table("dpa_acceptances")

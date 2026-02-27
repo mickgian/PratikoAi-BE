@@ -240,9 +240,9 @@ class TestStep40AuthorityBoostPreservation:
 
         doc = kb_results[0]
         # Verify authority_boost is preserved for kb_metadata_builder exemption
-        assert (
-            doc.get("authority_boost") == 1.8
-        ), f"Expected authority_boost=1.8 to survive transformation, got {doc.get('authority_boost')}"
+        assert doc.get("authority_boost") == 1.8, (
+            f"Expected authority_boost=1.8 to survive transformation, got {doc.get('authority_boost')}"
+        )
 
     @pytest.mark.asyncio
     async def test_step40_preserves_authority_boost_from_top_level(self):
@@ -305,6 +305,6 @@ class TestStep40AuthorityBoostPreservation:
 
         doc = kb_results[0]
         # Should default to 1.0 (no exemption from low-score filter)
-        assert (
-            doc.get("authority_boost") == 1.0
-        ), f"Expected authority_boost=1.0 as default, got {doc.get('authority_boost')}"
+        assert doc.get("authority_boost") == 1.0, (
+            f"Expected authority_boost=1.0 as default, got {doc.get('authority_boost')}"
+        )

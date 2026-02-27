@@ -137,9 +137,9 @@ class TestRAGStep121TrustScoreOK:
 
                 result = await step_121__trust_score_ok(ctx=ctx)
 
-                assert (
-                    result["trust_score_decision"] == case["expected_decision"]
-                ), f"Failed for {case['case_name']}: score {case['trust_score']}"
+                assert result["trust_score_decision"] == case["expected_decision"], (
+                    f"Failed for {case['case_name']}: score {case['trust_score']}"
+                )
                 assert result["next_step"] == case["expected_next_step"], f"Failed routing for {case['case_name']}"
                 assert result["threshold_met"] == case["expected_decision"]
 
@@ -333,9 +333,9 @@ class TestRAGStep121TrustScoreOK:
 
                 result = await step_121__trust_score_ok(ctx=ctx)
 
-                assert (
-                    result["next_step"] == scenario["expected_route"]
-                ), f"Routing inconsistent for {scenario['description']}: score {scenario['score']}"
+                assert result["next_step"] == scenario["expected_route"], (
+                    f"Routing inconsistent for {scenario['description']}: score {scenario['score']}"
+                )
 
                 # Verify decision consistency
                 if scenario["expected_route"] == "CreateFeedbackRec":
@@ -612,9 +612,9 @@ class TestRAGStep121Integration:
                 result = await step_121__trust_score_ok(ctx=ctx)
 
                 # Verify scenario-specific routing
-                assert (
-                    result["next_step"] == scenario["expected_route"]
-                ), f"Failed routing for scenario: {scenario['name']}"
+                assert result["next_step"] == scenario["expected_route"], (
+                    f"Failed routing for scenario: {scenario['name']}"
+                )
                 assert result["trust_score"] == scenario["trust_score"]
 
                 # Verify decision consistency

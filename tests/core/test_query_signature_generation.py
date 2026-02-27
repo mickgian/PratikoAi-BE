@@ -104,9 +104,9 @@ class TestQuerySignatureUniqueness:
         print(f"[DEBUG] Hash component 2: {hash_component_2}")
 
         # BUG: Hash components are IDENTICAL
-        assert (
-            hash_component_1 == hash_component_2
-        ), "This assertion confirms the bug: hash components are identical for the same question"
+        assert hash_component_1 == hash_component_2, (
+            "This assertion confirms the bug: hash components are identical for the same question"
+        )
 
         # Now test what SHOULD happen (with fixed implementation)
         def generate_fixed_query_signature(session_id: str, message: str) -> str:
@@ -125,7 +125,7 @@ class TestQuerySignatureUniqueness:
 
         # EXPECTED BEHAVIOR: Fixed signatures should be DIFFERENT
         assert signature_1_fixed != signature_2_fixed, (
-            "Fixed signatures MUST be unique across different requests, " "even for identical questions"
+            "Fixed signatures MUST be unique across different requests, even for identical questions"
         )
 
         # TEST FAILURE CONDITION: Current buggy implementation produces colliding signatures

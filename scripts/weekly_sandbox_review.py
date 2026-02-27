@@ -287,11 +287,11 @@ def generate_html_report(network_analysis: dict, filesystem_analysis: dict, days
                 <h3>🌐 Network Activity</h3>
                 <div class="metric">
                     <span>Allowed requests:</span>
-                    <strong>{network_analysis['total_allowed']}</strong>
+                    <strong>{network_analysis["total_allowed"]}</strong>
                 </div>
                 <div class="metric">
                     <span>Blocked requests:</span>
-                    <strong style="color: {'#dc3545' if network_analysis['total_blocked'] > 0 else '#28a745'};">{network_analysis['total_blocked']}</strong>
+                    <strong style="color: {"#dc3545" if network_analysis["total_blocked"] > 0 else "#28a745"};">{network_analysis["total_blocked"]}</strong>
                 </div>
     """
 
@@ -322,7 +322,7 @@ def generate_html_report(network_analysis: dict, filesystem_analysis: dict, days
                 <h3>📁 Filesystem Activity</h3>
                 <div class="metric">
                     <span>Blocked access attempts:</span>
-                    <strong style="color: {'#dc3545' if filesystem_analysis['total_blocked'] > 0 else '#28a745'};">{filesystem_analysis['total_blocked']}</strong>
+                    <strong style="color: {"#dc3545" if filesystem_analysis["total_blocked"] > 0 else "#28a745"};">{filesystem_analysis["total_blocked"]}</strong>
                 </div>
     """
 

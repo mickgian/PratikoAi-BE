@@ -22,7 +22,7 @@ def upgrade():
     # Add OAuth profile fields (idempotent)
     op.execute('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS name VARCHAR(255)')
     op.execute('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512)')
-    op.execute('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS provider VARCHAR(50) NOT NULL DEFAULT \'email\'')
+    op.execute("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS provider VARCHAR(50) NOT NULL DEFAULT 'email'")
     op.execute('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS provider_id VARCHAR(255)')
 
     # Make hashed_password nullable for OAuth users (idempotent - fails silently if already nullable)
@@ -63,7 +63,9 @@ def upgrade():
         op.create_check_constraint(
             "ck_users_oauth_provider_id",
             "user",
-            sa.text("(provider = 'email' AND provider_id IS NULL) OR (provider != 'email' AND provider_id IS NOT NULL)"),
+            sa.text(
+                "(provider = 'email' AND provider_id IS NULL) OR (provider != 'email' AND provider_id IS NOT NULL)"
+            ),
         )
     except Exception:
         pass  # Constraint already exists

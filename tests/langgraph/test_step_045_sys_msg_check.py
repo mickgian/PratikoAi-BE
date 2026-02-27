@@ -81,9 +81,9 @@ class TestStep45NodeWrapper:
         result_state = await node_step_45(state)
 
         # Then: sys_msg_exists should be True in state
-        assert (
-            result_state.get("sys_msg_exists") is True
-        ), "Node wrapper must set sys_msg_exists=True when system message exists"
+        assert result_state.get("sys_msg_exists") is True, (
+            "Node wrapper must set sys_msg_exists=True when system message exists"
+        )
 
 
 class TestStep45RegressionMultipleAttachments:
@@ -117,6 +117,6 @@ class TestStep45RegressionMultipleAttachments:
         result_state = await node_step_45(state)
 
         # Then: sys_msg_exists should be True, triggering ReplaceMsg path
-        assert (
-            result_state.get("sys_msg_exists") is True
-        ), "Must detect existing system message to trigger ReplaceMsg path"
+        assert result_state.get("sys_msg_exists") is True, (
+            "Must detect existing system message to trigger ReplaceMsg path"
+        )

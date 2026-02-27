@@ -22,9 +22,9 @@ class TestUnifiedResponsePrompt:
         content = prompt_path.read_text()
 
         # Check for sequential numbering instruction
-        assert (
-            "SEQUENZIALI" in content or "sequenziali" in content
-        ), "Prompt must include instruction for sequential numbering"
+        assert "SEQUENZIALI" in content or "sequenziali" in content, (
+            "Prompt must include instruction for sequential numbering"
+        )
         assert "1, 2, 3" in content, "Prompt must show example of sequential numbering (1, 2, 3)"
 
     def test_prompt_warns_against_repeating_one(self):
@@ -37,9 +37,9 @@ class TestUnifiedResponsePrompt:
         content = prompt_path.read_text()
 
         # Check for warning about repeating "1."
-        assert (
-            "MAI ripetere" in content or "mai ripetere" in content.lower()
-        ), "Prompt must warn against repeating '1.' for every section"
+        assert "MAI ripetere" in content or "mai ripetere" in content.lower(), (
+            "Prompt must warn against repeating '1.' for every section"
+        )
 
     def test_prompt_shows_correct_and_incorrect_section_examples(self):
         """DEV-250: Prompt must show correct numbered section header examples."""
@@ -47,9 +47,9 @@ class TestUnifiedResponsePrompt:
         content = prompt_path.read_text()
 
         # Check for section header examples with sequential numbers
-        assert (
-            "## 1." in content and "## 2." in content
-        ), "Prompt must show sequential section header examples (## 1., ## 2.)"
+        assert "## 1." in content and "## 2." in content, (
+            "Prompt must show sequential section header examples (## 1., ## 2.)"
+        )
         # Check for correct/incorrect indicators
         assert "CORRETTO" in content, "Prompt must show correct format example"
         assert "ERRATO" in content, "Prompt must show incorrect format example to avoid"

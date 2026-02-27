@@ -419,5 +419,5 @@ async def test_gazzetta_full_e2e_flow(db_session_committed, test_expert_profile_
 
     # Verify golden set was hit
     assert golden_hit_second, (
-        "Second query should hit golden set. " "Semantic matching may need tuning for Gazzetta queries."
+        "Second query should hit golden set. Semantic matching may need tuning for Gazzetta queries."
     )

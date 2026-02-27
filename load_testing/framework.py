@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiofiles
 import aiohttp
+from tests.test_load_testing import LoadTestMetrics
 
 from load_testing.config import (
     LoadTestConfig,
@@ -30,7 +31,6 @@ from load_testing.config import (
     get_environment_config,
 )
 from load_testing.monitoring import LoadTestMonitor, LoadTestSession, PerformanceSnapshot
-from tests.test_load_testing import LoadTestMetrics
 
 logger = logging.getLogger(__name__)
 

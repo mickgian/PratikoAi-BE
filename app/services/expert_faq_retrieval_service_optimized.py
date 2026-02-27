@@ -211,7 +211,7 @@ class ExpertFAQRetrievalServiceOptimized:
 
             latency = time.time() - start_time
             logger.info(
-                f"FAQ search completed: {len(results)} results in {latency*1000:.2f}ms",
+                f"FAQ search completed: {len(results)} results in {latency * 1000:.2f}ms",
                 extra={
                     "query_preview": query[:50],
                     "cache_status": cache_status,

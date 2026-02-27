@@ -140,9 +140,9 @@ class TestCalculableIntentsQuestions:
 
         for intent, query in test_queries.items():
             result = engine.process_query(query=query, document=None, session_context=None)
-            assert (
-                result.interactive_question is not None
-            ), f"Intent {intent} should return question for incomplete query"
+            assert result.interactive_question is not None, (
+                f"Intent {intent} should return question for incomplete query"
+            )
             assert result.use_llm_actions is False
 
     def test_partial_parameters_asks_for_missing_only(self, engine: ProactivityEngine):
@@ -240,9 +240,9 @@ class TestDocumentActionTemplates:
             )
 
             assert result.template_actions is not None, f"Document type {doc_type} should return template actions"
-            assert (
-                len(result.template_actions) == expected_actions
-            ), f"Document type {doc_type} should have {expected_actions} actions"
+            assert len(result.template_actions) == expected_actions, (
+                f"Document type {doc_type} should have {expected_actions} actions"
+            )
 
     def test_process_query_unknown_document_uses_llm(self, engine: ProactivityEngine):
         """Test unknown document type uses LLM actions."""

@@ -29,7 +29,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.version_schema import CompatibilityLevel, Environment, ServiceType
 from registry.database import VersionRegistryDB, init_database
-
 from scripts.compatibility_checker import CompatibilityChecker
 
 # Initialize colorama

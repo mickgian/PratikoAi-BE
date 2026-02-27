@@ -88,6 +88,79 @@ class ClientExportService:
         )
         return export_data
 
+    async def export_client_by_id(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+        client_id: int,
+    ) -> dict | None:
+        """Export a single client's data for GDPR data portability.
+
+        Returns the client data as a dict, or None if the client is not found.
+        PII fields are decrypted at the ORM layer (transparent encryption).
+        """
+        result = await db.execute(
+            select(Client, ClientProfile)
+            .outerjoin(ClientProfile, Client.id == ClientProfile.client_id)
+            .where(
+                and_(
+                    Client.studio_id == studio_id,
+                    Client.id == client_id,
+                    Client.deleted_at.is_(None),
+                )
+            )
+        )
+        row = result.one_or_none()
+        if row is None:
+            return None
+
+        client, profile = row
+
+        record: dict = {
+            "id": client.id,
+            "codice_fiscale": client.codice_fiscale,
+            "nome": client.nome,
+            "tipo_cliente": (
+                client.tipo_cliente.value if hasattr(client.tipo_cliente, "value") else str(client.tipo_cliente)
+            ),
+            "stato_cliente": (
+                client.stato_cliente.value if hasattr(client.stato_cliente, "value") else str(client.stato_cliente)
+            ),
+            "partita_iva": client.partita_iva,
+            "email": client.email,
+            "phone": client.phone,
+            "indirizzo": client.indirizzo,
+            "cap": client.cap,
+            "comune": client.comune,
+            "provincia": client.provincia,
+            "note_studio": client.note_studio,
+        }
+
+        if profile is not None:
+            record.update(
+                {
+                    "codice_ateco_principale": profile.codice_ateco_principale,
+                    "regime_fiscale": (
+                        profile.regime_fiscale.value
+                        if hasattr(profile.regime_fiscale, "value")
+                        else str(profile.regime_fiscale)
+                    ),
+                    "ccnl_applicato": profile.ccnl_applicato,
+                    "n_dipendenti": profile.n_dipendenti,
+                    "data_inizio_attivita": (
+                        profile.data_inizio_attivita.isoformat() if profile.data_inizio_attivita else None
+                    ),
+                }
+            )
+
+        logger.info(
+            "client_export_by_id_completed",
+            studio_id=str(studio_id),
+            client_id=client_id,
+        )
+        return record
+
     async def export_to_rows(
         self,
         db: AsyncSession,

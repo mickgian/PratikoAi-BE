@@ -285,6 +285,57 @@ class ProceduraService:
         return progress
 
     # ---------------------------------------------------------------
+    # DEV-346: Completion analytics
+    # ---------------------------------------------------------------
+
+    async def get_completion_analytics(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+    ) -> dict:
+        """Return analytics: started, completed, avg completion time.
+
+        Queries all ProceduraProgress records for the given studio and computes:
+        - total_started: count of all progress records
+        - total_completed: count where completed_at is not None
+        - completion_rate: ratio of completed to started (0.0 if none started)
+        - avg_completion_seconds: average (completed_at - started_at) in seconds,
+          or None if no completions exist
+        """
+        result = await db.execute(
+            select(ProceduraProgress).where(
+                ProceduraProgress.studio_id == studio_id,
+            )
+        )
+        records = list(result.scalars().all())
+
+        total_started = len(records)
+        completed_records = [r for r in records if r.completed_at is not None]
+        total_completed = len(completed_records)
+
+        completion_rate = total_completed / total_started if total_started > 0 else 0.0
+
+        avg_completion_seconds: float | None = None
+        if completed_records:
+            durations = [(r.completed_at - r.started_at).total_seconds() for r in completed_records]
+            avg_completion_seconds = sum(durations) / len(durations)
+
+        logger.info(
+            "procedura_analytics_computed",
+            studio_id=str(studio_id),
+            total_started=total_started,
+            total_completed=total_completed,
+        )
+
+        return {
+            "total_started": total_started,
+            "total_completed": total_completed,
+            "completion_rate": completion_rate,
+            "avg_completion_seconds": avg_completion_seconds,
+        }
+
+    # ---------------------------------------------------------------
     # Private helpers
     # ---------------------------------------------------------------
 

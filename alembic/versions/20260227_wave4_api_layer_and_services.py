@@ -17,7 +17,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from alembic import op
 
 revision = "wave4_20260227"
-down_revision = None
+down_revision = "add_wave3_20260226"
 branch_labels = None
 depends_on = None
 

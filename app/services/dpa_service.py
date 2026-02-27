@@ -3,7 +3,6 @@
 Manages DPA versions and studio acceptance. Users must accept DPA before adding clients.
 """
 
-from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import and_, select

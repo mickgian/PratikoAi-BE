@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.communication import CanaleInvio, StatoComunicazione
+from app.models.communication import CanaleInvio
 
 
 class CommunicationCreate(BaseModel):

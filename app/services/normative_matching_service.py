@@ -4,7 +4,7 @@ Structured rules (fast, explainable) + semantic fallback via profile vectors.
 Must complete in <100ms for inline use.
 """
 
-from datetime import UTC, date, datetime
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import and_, select
@@ -270,7 +270,7 @@ def _compare(actual: object, op: str, expected: object) -> bool:
             return str(actual) in [str(v) for v in expected]
         return False
     elif op == "contains":
-        if isinstance(actual, (list, str)):
+        if isinstance(actual, list | str):
             return (
                 str(expected) in [str(v) for v in actual] if isinstance(actual, list) else str(expected) in str(actual)
             )

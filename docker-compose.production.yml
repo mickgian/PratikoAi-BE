@@ -105,6 +105,8 @@ services:
       - API_DOMAIN=${API_DOMAIN:-api.pratiko.app}
       - APP_DOMAIN=${APP_DOMAIN:-app.pratiko.app}
       - FLAGS_DOMAIN=${FLAGS_DOMAIN:-flags.pratiko.app}
+      - WWW_DOMAIN=${WWW_DOMAIN:-www.pratiko.app}
+      - BARE_DOMAIN=${BARE_DOMAIN:-pratiko.app}
     depends_on:
       - app
       - frontend

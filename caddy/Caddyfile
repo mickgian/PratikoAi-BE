@@ -47,6 +47,11 @@
 	}
 }
 
+# Bare domain redirect → www
+{$BARE_DOMAIN:pratiko.app} {
+	redir https://{$WWW_DOMAIN:www.pratiko.app}{uri} permanent
+}
+
 # Production Placeholder (www.pratiko.app)
 {$WWW_DOMAIN:www.pratiko.app} {
 	reverse_proxy frontend:3000

@@ -220,7 +220,7 @@ def upgrade() -> None:
                         (id, name, description, rule_type, conditions, priority,
                          is_active, valid_from, valid_to, categoria, fonte_normativa, created_at)
                     VALUES
-                        (gen_random_uuid(), :name, :description, :rule_type, :conditions::jsonb,
+                        (gen_random_uuid(), :name, :description, :rule_type, CAST(:conditions AS jsonb),
                          :priority, true, :valid_from, :valid_to, :categoria, :fonte_normativa, now())
                     """
                 ),
@@ -240,9 +240,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Remove seeded matching rules
-    op.execute(
-        "DELETE FROM matching_rules WHERE name LIKE 'R0%'"
-    )
+    op.execute("DELETE FROM matching_rules WHERE name LIKE 'R0%'")
 
     op.drop_table("breach_notifications")
     op.drop_table("dpa_acceptances")

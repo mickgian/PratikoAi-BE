@@ -455,3 +455,185 @@ class TestListUserProgress:
             result = await list_user_progress(studio_id=studio_id, user_id=1, db=mock_db)
 
         assert len(result) == 2
+
+
+# ---------------------------------------------------------------------------
+# PUT /procedure/progress/{id}/checklist — Update checklist
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateChecklistItem:
+    """Tests for PUT /procedure/progress/{id}/checklist endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_update_checklist_success(
+        self,
+        mock_db: AsyncMock,
+        progress_id: UUID,
+        sample_progress: MagicMock,
+    ) -> None:
+        """Happy path: mark checklist item as completed."""
+        from app.api.v1.procedure import update_checklist_item
+        from app.schemas.procedura import ChecklistItemUpdate
+
+        body = ChecklistItemUpdate(step_index=0, item_index=0, completed=True)
+
+        with patch("app.api.v1.procedure.procedura_service") as mock_svc:
+            mock_svc.update_checklist_item = AsyncMock(return_value=sample_progress)
+            result = await update_checklist_item(progress_id=progress_id, body=body, db=mock_db)
+
+        assert result.id == progress_id
+        mock_db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_update_checklist_invalid_index_returns_400(
+        self,
+        mock_db: AsyncMock,
+        progress_id: UUID,
+    ) -> None:
+        """Error case: invalid step/item index raises 400."""
+        from app.api.v1.procedure import update_checklist_item
+        from app.schemas.procedura import ChecklistItemUpdate
+
+        body = ChecklistItemUpdate(step_index=99, item_index=0, completed=True)
+
+        with patch("app.api.v1.procedure.procedura_service") as mock_svc:
+            mock_svc.update_checklist_item = AsyncMock(side_effect=ValueError("Indice dello step non valido."))
+            with pytest.raises(HTTPException) as exc_info:
+                await update_checklist_item(progress_id=progress_id, body=body, db=mock_db)
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_update_checklist_not_found_returns_404(
+        self,
+        mock_db: AsyncMock,
+    ) -> None:
+        """Error case: nonexistent progress raises 404."""
+        from app.api.v1.procedure import update_checklist_item
+        from app.schemas.procedura import ChecklistItemUpdate
+
+        body = ChecklistItemUpdate(step_index=0, item_index=0, completed=True)
+
+        with patch("app.api.v1.procedure.procedura_service") as mock_svc:
+            mock_svc.update_checklist_item = AsyncMock(return_value=None)
+            with pytest.raises(HTTPException) as exc_info:
+                await update_checklist_item(progress_id=uuid4(), body=body, db=mock_db)
+
+        assert exc_info.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# PUT /procedure/progress/{id}/notes — Update notes
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateNotes:
+    """Tests for PUT /procedure/progress/{id}/notes endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_update_notes_success(
+        self,
+        mock_db: AsyncMock,
+        progress_id: UUID,
+        sample_progress: MagicMock,
+    ) -> None:
+        """Happy path: update progress notes."""
+        from app.api.v1.procedure import update_notes
+        from app.schemas.procedura import ProceduraNotesUpdate
+
+        sample_progress.notes = "Note aggiornate"
+        body = ProceduraNotesUpdate(notes="Note aggiornate")
+
+        with patch("app.api.v1.procedure.procedura_service") as mock_svc:
+            mock_svc.update_notes = AsyncMock(return_value=sample_progress)
+            result = await update_notes(progress_id=progress_id, body=body, db=mock_db)
+
+        assert result.notes == "Note aggiornate"
+        mock_db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_update_notes_not_found_returns_404(
+        self,
+        mock_db: AsyncMock,
+    ) -> None:
+        """Error case: nonexistent progress raises 404."""
+        from app.api.v1.procedure import update_notes
+        from app.schemas.procedura import ProceduraNotesUpdate
+
+        body = ProceduraNotesUpdate(notes="Qualcosa")
+
+        with patch("app.api.v1.procedure.procedura_service") as mock_svc:
+            mock_svc.update_notes = AsyncMock(return_value=None)
+            with pytest.raises(HTTPException) as exc_info:
+                await update_notes(progress_id=uuid4(), body=body, db=mock_db)
+
+        assert exc_info.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# PUT /procedure/progress/{id}/document — Update document status
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateDocumentStatus:
+    """Tests for PUT /procedure/progress/{id}/document endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_update_document_status_success(
+        self,
+        mock_db: AsyncMock,
+        progress_id: UUID,
+        sample_progress: MagicMock,
+    ) -> None:
+        """Happy path: mark a document as verified."""
+        from app.api.v1.procedure import update_document_status
+        from app.schemas.procedura import DocumentChecklistUpdate
+
+        body = DocumentChecklistUpdate(document_name="Documento identita'", verified=True)
+
+        with patch("app.api.v1.procedure.procedura_service") as mock_svc:
+            mock_svc.update_document_status = AsyncMock(return_value=sample_progress)
+            result = await update_document_status(progress_id=progress_id, body=body, db=mock_db)
+
+        assert result.id == progress_id
+        mock_db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_update_document_status_invalid_doc_returns_400(
+        self,
+        mock_db: AsyncMock,
+        progress_id: UUID,
+    ) -> None:
+        """Error case: unknown document name raises 400."""
+        from app.api.v1.procedure import update_document_status
+        from app.schemas.procedura import DocumentChecklistUpdate
+
+        body = DocumentChecklistUpdate(document_name="NonEsiste", verified=True)
+
+        with patch("app.api.v1.procedure.procedura_service") as mock_svc:
+            mock_svc.update_document_status = AsyncMock(
+                side_effect=ValueError("Documento non presente nella procedura.")
+            )
+            with pytest.raises(HTTPException) as exc_info:
+                await update_document_status(progress_id=progress_id, body=body, db=mock_db)
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_update_document_status_not_found_returns_404(
+        self,
+        mock_db: AsyncMock,
+    ) -> None:
+        """Error case: nonexistent progress raises 404."""
+        from app.api.v1.procedure import update_document_status
+        from app.schemas.procedura import DocumentChecklistUpdate
+
+        body = DocumentChecklistUpdate(document_name="Doc", verified=True)
+
+        with patch("app.api.v1.procedure.procedura_service") as mock_svc:
+            mock_svc.update_document_status = AsyncMock(return_value=None)
+            with pytest.raises(HTTPException) as exc_info:
+                await update_document_status(progress_id=uuid4(), body=body, db=mock_db)
+
+        assert exc_info.value.status_code == 404

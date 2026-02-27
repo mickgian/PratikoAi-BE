@@ -265,7 +265,7 @@ async def repair_dedup(db: AsyncSession, dry_run: bool) -> None:
 # -------------------------------------------------------------------------
 async def repair_embeddings(db: AsyncSession, dry_run: bool) -> None:
     """Re-embed items and chunks with missing embeddings."""
-    from app.core.embed import generate_embedding, generate_embeddings_batch
+    from app.core.embed import embedding_to_pgvector, generate_embeddings_batch
 
     print_section("Step D: Re-embed missing items/chunks")
 
@@ -289,6 +289,7 @@ async def repair_embeddings(db: AsyncSession, dry_run: bool) -> None:
 
     # Re-embed items
     embedded_items = 0
+    failed_items = 0
     result = await db.execute(
         text("SELECT id, content FROM knowledge_items WHERE embedding IS NULL AND status = 'active' ORDER BY id")
     )
@@ -301,11 +302,17 @@ async def repair_embeddings(db: AsyncSession, dry_run: bool) -> None:
 
         for (item_id, _), emb in zip(batch, embeddings, strict=False):
             if emb is not None:
-                await db.execute(
-                    text("UPDATE knowledge_items SET embedding = :emb WHERE id = :id"),
-                    {"emb": str(emb), "id": item_id},
-                )
-                embedded_items += 1
+                emb_str = embedding_to_pgvector(emb)
+                if emb_str:
+                    await db.execute(
+                        text("UPDATE knowledge_items SET embedding = :emb::vector WHERE id = :id"),
+                        {"emb": emb_str, "id": item_id},
+                    )
+                    embedded_items += 1
+                else:
+                    failed_items += 1
+            else:
+                failed_items += 1
 
         await db.commit()
         print(f"    Embedded {min(i + 20, len(rows))}/{len(rows)} items...")
@@ -313,6 +320,7 @@ async def repair_embeddings(db: AsyncSession, dry_run: bool) -> None:
 
     # Re-embed chunks
     embedded_chunks = 0
+    failed_chunks = 0
     result = await db.execute(text("SELECT id, chunk_text FROM knowledge_chunks WHERE embedding IS NULL ORDER BY id"))
     rows = result.fetchall()
 
@@ -323,17 +331,25 @@ async def repair_embeddings(db: AsyncSession, dry_run: bool) -> None:
 
         for (chunk_id, _), emb in zip(batch, embeddings, strict=False):
             if emb is not None:
-                await db.execute(
-                    text("UPDATE knowledge_chunks SET embedding = :emb WHERE id = :id"),
-                    {"emb": str(emb), "id": chunk_id},
-                )
-                embedded_chunks += 1
+                emb_str = embedding_to_pgvector(emb)
+                if emb_str:
+                    await db.execute(
+                        text("UPDATE knowledge_chunks SET embedding = :emb::vector WHERE id = :id"),
+                        {"emb": emb_str, "id": chunk_id},
+                    )
+                    embedded_chunks += 1
+                else:
+                    failed_chunks += 1
+            else:
+                failed_chunks += 1
 
         await db.commit()
         print(f"    Embedded {min(i + 20, len(rows))}/{len(rows)} chunks...")
         await asyncio.sleep(0.5)
 
-    print(f"  Embedded {embedded_items} items, {embedded_chunks} chunks.")
+    print(
+        f"  Embedded {embedded_items} items ({failed_items} failed), {embedded_chunks} chunks ({failed_chunks} failed)."
+    )
 
 
 # -------------------------------------------------------------------------

@@ -65,6 +65,27 @@ class TestBulkIcs:
         assert "BEGIN:VCALENDAR" in ics
         assert "BEGIN:VEVENT" not in ics
 
+    def test_bulk_skips_missing_due_date(self, svc):
+        deadlines = [
+            {"summary": "F24", "due_date": date(2026, 6, 16)},
+            {"summary": "Missing", "due_date": None},
+        ]
+        ics = svc.generate_bulk_ics(deadlines)
+        assert ics.count("BEGIN:VEVENT") == 1
+        assert "F24" in ics
+        assert "Missing" not in ics
+
+    def test_bulk_with_description(self, svc):
+        deadlines = [
+            {
+                "summary": "F24",
+                "due_date": date(2026, 6, 16),
+                "description": "Versamento imposte",
+            },
+        ]
+        ics = svc.generate_bulk_ics(deadlines)
+        assert "DESCRIPTION:Versamento imposte" in ics
+
 
 class TestTimezone:
     def test_europe_rome_timezone(self, svc):

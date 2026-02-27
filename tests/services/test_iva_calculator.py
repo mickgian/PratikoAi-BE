@@ -78,6 +78,10 @@ class TestCalcolaIva:
         with pytest.raises(ValueError, match="negativo"):
             svc.calcola_iva(Decimal("-1"))
 
+    def test_calcola_iva_invalid_rate_raises(self, svc):
+        with pytest.raises(ValueError, match="aliquota"):
+            svc.calcola_iva(Decimal("100"), Decimal("150"))
+
 
 # --- Liquidazione IVA ---
 
@@ -115,6 +119,10 @@ class TestLiquidazioneIva:
         with pytest.raises(ValueError, match="acquisti"):
             svc.liquidazione_iva(Decimal("0"), Decimal("-1"))
 
+    def test_negative_credito_raises(self, svc):
+        with pytest.raises(ValueError, match="credito"):
+            svc.liquidazione_iva(Decimal("0"), Decimal("0"), Decimal("-1"))
+
 
 # --- Forfettario ---
 
@@ -136,6 +144,14 @@ class TestForfettario:
     def test_forfettario_invalid_aliquota_raises(self, svc):
         with pytest.raises(ValueError, match="aliquota sostitutiva"):
             svc.calcolo_forfettario(Decimal("50000"), Decimal("78"), Decimal("10"))
+
+    def test_forfettario_invalid_coefficiente_zero_raises(self, svc):
+        with pytest.raises(ValueError, match="coefficiente"):
+            svc.calcolo_forfettario(Decimal("50000"), Decimal("0"))
+
+    def test_forfettario_invalid_coefficiente_over_100_raises(self, svc):
+        with pytest.raises(ValueError, match="coefficiente"):
+            svc.calcolo_forfettario(Decimal("50000"), Decimal("101"))
 
     def test_get_coefficiente_attivita_professionali(self, svc):
         coeff = svc.get_coefficiente_by_attivita("attivita_professionali")

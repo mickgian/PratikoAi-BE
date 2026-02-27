@@ -47,6 +47,17 @@ class TestNettoDaRal:
         result_without = svc.calcola_netto_da_ral(Decimal("30000"), apply_detrazioni=False)
         assert result_with["netto_annuo"] > result_without["netto_annuo"]
 
+    def test_low_income_deduction(self, svc):
+        """RAL 12000 should hit the <= 15000 deduction bracket."""
+        result = svc.calcola_netto_da_ral(Decimal("12000"))
+        assert result["netto_annuo"] > 0
+
+    def test_high_income_no_deduction(self, svc):
+        """RAL 60000 should get zero detrazioni (over 50k)."""
+        result = svc.calcola_netto_da_ral(Decimal("60000"))
+        assert result["netto_annuo"] > 0
+        assert result["netto_annuo"] < 60000.0
+
     def test_zero_ral(self, svc):
         result = svc.calcola_netto_da_ral(Decimal("0"))
         assert result["netto_annuo"] == 0.0

@@ -40,6 +40,17 @@ class TestCalculateMetrics:
         assert "hours_saved" in estimate
         assert estimate["hours_saved"] >= 0
 
+    @pytest.mark.asyncio
+    async def test_get_studio_metrics_calc_history_error_handled(self, svc, mock_db):
+        """When calculation history query fails, it should still return metrics with 0."""
+        # First two calls succeed (clients, communications), third fails (calculations)
+        ok_result = MagicMock(scalar_one_or_none=MagicMock(return_value=5))
+        mock_db.execute = AsyncMock(side_effect=[ok_result, ok_result, Exception("DB error")])
+        metrics = await svc.get_studio_metrics(mock_db, studio_id=uuid.uuid4())
+        assert isinstance(metrics, dict)
+        assert metrics["total_clients"] == 5
+        assert metrics["calculations_performed"] == 0
+
 
 class TestMonthlyReport:
     @pytest.mark.asyncio

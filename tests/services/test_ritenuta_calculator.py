@@ -68,6 +68,10 @@ class TestCalcolaRitenuta:
         # 20% of 50% of 1000 = 20% of 500 = 100
         assert result["ritenuta"] == 100.0
 
+    def test_invalid_tipo_raises(self, svc):
+        with pytest.raises(ValueError, match="non supportato"):
+            svc.calcola_ritenuta(Decimal("1000"), "tipo_inesistente")
+
 
 class TestCalcolaNettoDaLordo:
     def test_professionista_con_iva(self, svc):
@@ -99,3 +103,7 @@ class TestCalcolaNettoDaLordo:
     def test_negative_raises(self, svc):
         with pytest.raises(ValueError, match="negativo"):
             svc.calcola_netto_da_lordo(Decimal("-100"))
+
+    def test_invalid_tipo_raises(self, svc):
+        with pytest.raises(ValueError, match="non supportato"):
+            svc.calcola_netto_da_lordo(Decimal("1000"), "tipo_inesistente")

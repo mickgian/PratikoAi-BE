@@ -130,7 +130,7 @@ class F24Parser:
         extracted["totale_versamento"] = sum(t["importo"] for t in extracted["tributi"])
 
         # Extract contribuente info
-        cf_match = re.search(r"codice\s+fiscale[\s:]+([A-Z0-9]{11,16})", content.upper())
+        cf_match = re.search(r"CODICE\s+FISCALE[\s:]+([A-Z0-9]{11,16})", content.upper())
         if cf_match:
             extracted["codice_fiscale"] = cf_match.group(1)
 

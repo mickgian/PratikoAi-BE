@@ -76,6 +76,13 @@ class TestMultiAnno:
         with pytest.raises(ValueError, match="vuote"):
             svc.calcola_tfr_multi_anno([], [])
 
+    def test_negative_ral_in_list_raises(self, svc):
+        with pytest.raises(ValueError, match="negativa"):
+            svc.calcola_tfr_multi_anno(
+                [Decimal("-1000")],
+                [Decimal("2")],
+            )
+
 
 class TestParziale:
     def test_six_months(self, svc):
@@ -87,6 +94,14 @@ class TestParziale:
         result = svc.calcola_tfr_parziale(Decimal("30000"), 12)
         assert result["accantonamento_parziale"] == 2222.22
 
-    def test_invalid_months_raises(self, svc):
+    def test_invalid_months_over_12_raises(self, svc):
         with pytest.raises(ValueError, match="mesi"):
             svc.calcola_tfr_parziale(Decimal("30000"), 13)
+
+    def test_negative_months_raises(self, svc):
+        with pytest.raises(ValueError, match="mesi"):
+            svc.calcola_tfr_parziale(Decimal("30000"), -1)
+
+    def test_negative_ral_raises(self, svc):
+        with pytest.raises(ValueError, match="negativa"):
+            svc.calcola_tfr_parziale(Decimal("-1000"), 6)

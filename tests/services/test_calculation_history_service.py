@@ -65,10 +65,30 @@ async def test_list_by_client(svc, mock_db):
 
 
 @pytest.mark.asyncio
+async def test_list_by_client_with_type_filter(svc, mock_db):
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = []
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    results = await svc.list_by_client(mock_db, studio_id=uuid.uuid4(), client_id=1, calculation_type="irpef")
+    assert results == []
+
+
+@pytest.mark.asyncio
 async def test_list_by_studio(svc, mock_db):
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     results = await svc.list_by_studio(mock_db, studio_id=uuid.uuid4())
+    assert results == []
+
+
+@pytest.mark.asyncio
+async def test_list_by_studio_with_type_filter(svc, mock_db):
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = []
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    results = await svc.list_by_studio(mock_db, studio_id=uuid.uuid4(), calculation_type="iva")
     assert results == []

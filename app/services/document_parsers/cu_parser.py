@@ -87,7 +87,7 @@ class CuParser:
             extracted["anno_cu"] = int(year_match.group(1))
 
         # Extract sostituto d'imposta info
-        cf_match = re.search(r"codice fiscale[\s:]+([A-Z0-9]{11,16})", content.upper())
+        cf_match = re.search(r"CODICE FISCALE[\s:]+([A-Z0-9]{11,16})", content.upper())
         if cf_match:
             extracted["codice_fiscale_sostituto"] = cf_match.group(1)
 

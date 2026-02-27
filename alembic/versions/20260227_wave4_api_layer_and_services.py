@@ -418,11 +418,18 @@ def _seed_procedures(conn) -> None:
     ]
 
     for proc in procedures:
+        # Check if this specific code already exists (safe for partial re-runs)
+        exists = conn.execute(
+            sa.text("SELECT 1 FROM procedure WHERE code = :code"),
+            {"code": proc["code"]},
+        ).fetchone()
+        if exists:
+            continue
+
         conn.execute(
             sa.text(
                 "INSERT INTO procedure (id, code, title, description, category, steps, estimated_time_minutes, version, is_active) "
-                "VALUES (:id, :code, :title, :description, :category, :steps::jsonb, :estimated_time_minutes, 1, true) "
-                "ON CONFLICT (code) DO NOTHING"
+                "VALUES (:id, :code, :title, :description, :category, :steps::jsonb, :estimated_time_minutes, 1, true)"
             ),
             {
                 "id": str(uuid.uuid4()),

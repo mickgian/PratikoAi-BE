@@ -11,6 +11,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import logger
+from app.models.client import Client
 from app.models.communication import CanaleInvio, Communication, StatoComunicazione
 
 # Valid state transitions
@@ -195,6 +196,75 @@ class CommunicationService:
             )
         )
         return result.scalar_one_or_none()
+
+    # ---------------------------------------------------------------
+    # DEV-335: Bulk communication creation
+    # ---------------------------------------------------------------
+
+    async def create_bulk_drafts(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+        client_ids: list[int],
+        subject: str,
+        content: str,
+        channel: CanaleInvio,
+        created_by: int,
+        normativa_riferimento: str | None = None,
+        matching_rule_id: UUID | None = None,
+    ) -> list[Communication]:
+        """Create draft communications for multiple clients at once.
+
+        Validates that client IDs belong to the given studio for tenant isolation.
+        """
+        if not client_ids:
+            raise ValueError("La lista dei clienti non può essere vuota.")
+
+        # Validate client IDs belong to studio (multi-tenant isolation)
+        result = await db.execute(
+            select(Client).where(
+                and_(
+                    Client.id.in_(client_ids),
+                    Client.studio_id == studio_id,
+                    Client.deleted_at.is_(None),
+                )
+            )
+        )
+        valid_clients = result.scalars().all()
+        valid_client_ids = {c.id for c in valid_clients}
+
+        communications = []
+        for cid in client_ids:
+            if cid not in valid_client_ids:
+                logger.warning(
+                    "bulk_draft_client_skipped",
+                    client_id=cid,
+                    studio_id=str(studio_id),
+                )
+                continue
+            comm = Communication(
+                studio_id=studio_id,
+                client_id=cid,
+                subject=subject,
+                content=content,
+                channel=channel,
+                status=StatoComunicazione.DRAFT,
+                created_by=created_by,
+                normativa_riferimento=normativa_riferimento,
+                matching_rule_id=matching_rule_id,
+            )
+            db.add(comm)
+            communications.append(comm)
+
+        await db.flush()
+
+        logger.info(
+            "bulk_communications_created",
+            studio_id=str(studio_id),
+            count=len(communications),
+        )
+        return communications
 
     @staticmethod
     def _validate_transition(current: StatoComunicazione, target: StatoComunicazione) -> None:

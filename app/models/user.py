@@ -68,6 +68,9 @@ class User(BaseModel, table=True):  # type: ignore[call-arg]
     # Billing plan slug for usage-based billing (DEV-257)
     billing_plan_slug: str = Field(default="base", max_length=50, index=True)
 
+    # DEV-315: User-Studio Association (nullable FK for backward compatibility)
+    studio_id: str | None = Field(default=None, max_length=36, index=True)
+
     sessions: list["Session"] = Relationship(back_populates="user")
 
     def verify_password(self, password: str) -> bool:

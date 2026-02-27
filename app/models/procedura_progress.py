@@ -67,6 +67,18 @@ class ProceduraProgress(SQLModel, table=True):  # type: ignore[call-arg]
         sa_column=Column(Text, nullable=True),
     )
 
+    # DEV-343: Checklist state tracking (JSONB: {"step_idx": {"item_idx": bool}})
+    checklist_state: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, server_default="{}"),
+    )
+
+    # DEV-344: Document verification state (JSONB: {"doc_name": bool})
+    document_status: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, server_default="{}"),
+    )
+
     # Indexes
     __table_args__ = (
         Index("ix_procedura_progress_user_procedura", "user_id", "procedura_id"),

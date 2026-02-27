@@ -16,7 +16,9 @@ from app.api.v1.chatbot import router as chatbot_router
 # Wave 4: New API routers (DEV-311, DEV-312, DEV-332, DEV-342, DEV-373)
 from app.api.v1.clients import router as clients_router
 from app.api.v1.communications import router as communications_router
+from app.api.v1.data_rights import router as data_rights_router
 from app.api.v1.data_sources import router as data_sources_router
+from app.api.v1.deadlines import router as deadlines_router
 from app.api.v1.demo import router as demo_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.dpa import router as dpa_router
@@ -30,6 +32,7 @@ from app.api.v1.gdpr_audit import router as gdpr_audit_router
 from app.api.v1.health import router as health_router
 from app.api.v1.intent_labeling import router as intent_labeling_router
 from app.api.v1.italian import router as italian_router
+from app.api.v1.matching import router as matching_router
 from app.api.v1.model_comparison import router as model_comparison_router
 
 # TEMPORARY: Commented out due to duplicate Subscription model conflict
@@ -98,6 +101,9 @@ api_router.include_router(clients_router)  # Includes /clients prefix from route
 api_router.include_router(communications_router)  # Includes /communications prefix from router
 api_router.include_router(procedure_router)  # Includes /procedure prefix from router
 api_router.include_router(dpa_router)  # Includes /dpa prefix from router
+api_router.include_router(matching_router)  # Includes /matching prefix from router (DEV-326)
+api_router.include_router(data_rights_router)  # Includes /data-rights prefix from router (DEV-377)
+api_router.include_router(deadlines_router)  # Includes /deadlines prefix from router (DEV-385)
 
 
 @api_router.get("/health")

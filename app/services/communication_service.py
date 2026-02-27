@@ -11,6 +11,11 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import logger
+from app.core.security.audit_logger import (
+    SecurityEventType,
+    SecuritySeverity,
+    security_audit_logger,
+)
 from app.models.client import Client
 from app.models.communication import CanaleInvio, Communication, StatoComunicazione
 
@@ -33,6 +38,25 @@ _VALID_TRANSITIONS: dict[StatoComunicazione, set[StatoComunicazione]] = {
 
 class CommunicationService:
     """Service for communication workflow management."""
+
+    def __init__(self) -> None:
+        self._audit_logger = security_audit_logger
+
+    async def _log_audit(
+        self,
+        action: str,
+        details: dict[str, str | int | None],
+    ) -> None:
+        """Log a communication audit event via SecurityAuditLogger."""
+        await self._audit_logger.log_security_event(
+            event_type=SecurityEventType.DATA_EXPORT,
+            severity=SecuritySeverity.LOW,
+            action=action,
+            resource="communication",
+            outcome="success",
+            details=details,
+            compliance_tags=["communication", "audit"],
+        )
 
     async def create_draft(
         self,
@@ -67,6 +91,16 @@ class CommunicationService:
             communication_id=str(comm.id),
             studio_id=str(studio_id),
         )
+
+        await self._log_audit(
+            action="communication_created",
+            details={
+                "communication_id": str(comm.id),
+                "studio_id": str(studio_id),
+                "channel": str(channel),
+                "created_by": created_by,
+            },
+        )
         return comm
 
     async def submit_for_review(
@@ -82,6 +116,14 @@ class CommunicationService:
         await db.flush()
 
         logger.info("communication_submitted", communication_id=str(communication_id))
+
+        await self._log_audit(
+            action="communication_submitted",
+            details={
+                "communication_id": str(communication_id),
+                "studio_id": str(studio_id),
+            },
+        )
         return comm
 
     async def approve(
@@ -119,6 +161,15 @@ class CommunicationService:
             communication_id=str(communication_id),
             approved_by=approved_by,
         )
+
+        await self._log_audit(
+            action="communication_approved",
+            details={
+                "communication_id": str(communication_id),
+                "studio_id": str(studio_id),
+                "approved_by": approved_by,
+            },
+        )
         return comm
 
     async def reject(self, db: AsyncSession, *, communication_id: UUID, studio_id: UUID) -> Communication | None:
@@ -132,6 +183,14 @@ class CommunicationService:
         await db.flush()
 
         logger.info("communication_rejected", communication_id=str(communication_id))
+
+        await self._log_audit(
+            action="communication_rejected",
+            details={
+                "communication_id": str(communication_id),
+                "studio_id": str(studio_id),
+            },
+        )
         return comm
 
     async def mark_sent(self, db: AsyncSession, *, communication_id: UUID, studio_id: UUID) -> Communication | None:
@@ -146,6 +205,14 @@ class CommunicationService:
         await db.flush()
 
         logger.info("communication_sent", communication_id=str(communication_id))
+
+        await self._log_audit(
+            action="communication_sent",
+            details={
+                "communication_id": str(communication_id),
+                "studio_id": str(studio_id),
+            },
+        )
         return comm
 
     async def mark_failed(self, db: AsyncSession, *, communication_id: UUID, studio_id: UUID) -> Communication | None:
@@ -159,6 +226,14 @@ class CommunicationService:
         await db.flush()
 
         logger.info("communication_failed", communication_id=str(communication_id))
+
+        await self._log_audit(
+            action="communication_failed",
+            details={
+                "communication_id": str(communication_id),
+                "studio_id": str(studio_id),
+            },
+        )
         return comm
 
     async def get_by_id(self, db: AsyncSession, *, communication_id: UUID, studio_id: UUID) -> Communication | None:

@@ -26,8 +26,10 @@ from app.core.config import (
 )
 from app.core.logging import logger
 from app.models.database import AsyncSessionLocal
+from app.models.matching_rule import MatchingRule  # noqa: F401 — FK target for communications
 from app.models.quality_analysis import ExpertProfile
 from app.models.session import Session as ChatSession
+from app.models.studio import Studio  # noqa: F401 — FK target for multi-tenant models
 from app.models.user import User
 from app.utils.account_code import generate_account_code
 

@@ -159,6 +159,135 @@ class ProceduraService:
         )
         return list(result.scalars().all())
 
+    # ---------------------------------------------------------------
+    # DEV-343: Checklist item tracking
+    # ---------------------------------------------------------------
+
+    async def update_checklist_item(
+        self,
+        db: AsyncSession,
+        *,
+        progress_id: UUID,
+        step_index: int,
+        item_index: int,
+        completed: bool,
+    ) -> ProceduraProgress | None:
+        """Update completion status of a checklist item within a step.
+
+        Raises ValueError if step_index or item_index is out of bounds.
+        """
+        result = await db.execute(select(ProceduraProgress).where(ProceduraProgress.id == progress_id))
+        progress = result.scalar_one_or_none()
+        if progress is None:
+            return None
+
+        proc = await db.get(Procedura, progress.procedura_id)
+        if proc is None:
+            return None
+
+        if step_index < 0 or step_index >= len(proc.steps):
+            raise ValueError(f"Indice step non valido: {step_index}")
+
+        step = proc.steps[step_index]
+        checklist = step.get("checklist", [])
+        if item_index < 0 or item_index >= len(checklist):
+            raise ValueError(f"Indice item checklist non valido: {item_index}")
+
+        # Track checklist items in dedicated JSONB field: {"step_idx": {"item_idx": bool}}
+        state = dict(progress.checklist_state) if progress.checklist_state else {}
+        step_key = str(step_index)
+        if step_key not in state:
+            state[step_key] = {}
+        state[step_key][str(item_index)] = completed
+        progress.checklist_state = state
+
+        await db.flush()
+
+        logger.info(
+            "checklist_item_updated",
+            progress_id=str(progress_id),
+            step_index=step_index,
+            item_index=item_index,
+            completed=completed,
+        )
+        return progress
+
+    # ---------------------------------------------------------------
+    # DEV-344: Notes and document checklist
+    # ---------------------------------------------------------------
+
+    async def update_notes(
+        self,
+        db: AsyncSession,
+        *,
+        progress_id: UUID,
+        notes: str | None,
+    ) -> ProceduraProgress | None:
+        """Update notes for a progress record."""
+        result = await db.execute(select(ProceduraProgress).where(ProceduraProgress.id == progress_id))
+        progress = result.scalar_one_or_none()
+        if progress is None:
+            return None
+
+        progress.notes = notes
+        await db.flush()
+
+        logger.info("procedura_notes_updated", progress_id=str(progress_id))
+        return progress
+
+    async def update_document_status(
+        self,
+        db: AsyncSession,
+        *,
+        progress_id: UUID,
+        document_name: str,
+        verified: bool,
+    ) -> ProceduraProgress | None:
+        """Update document verification status (checkbox-based, no file upload).
+
+        ADR-036: Only track verified/not-verified status per document.
+        Raises ValueError if document_name is not in the procedure's document list.
+        """
+        result = await db.execute(select(ProceduraProgress).where(ProceduraProgress.id == progress_id))
+        progress = result.scalar_one_or_none()
+        if progress is None:
+            return None
+
+        proc = await db.get(Procedura, progress.procedura_id)
+        if proc is None:
+            return None
+
+        # Collect all document names from all steps
+        all_docs: set[str] = set()
+        for step in proc.steps:
+            docs = step.get("documents", [])
+            for doc in docs:
+                if isinstance(doc, str):
+                    all_docs.add(doc)
+                elif isinstance(doc, dict):
+                    all_docs.add(doc.get("name", ""))
+
+        if document_name not in all_docs:
+            raise ValueError(f"Il documento '{document_name}' non è presente nella procedura.")
+
+        # Store in dedicated JSONB field: {"doc_name": bool}
+        doc_status = dict(progress.document_status) if progress.document_status else {}
+        doc_status[document_name] = verified
+        progress.document_status = doc_status
+        await db.flush()
+
+        logger.info(
+            "procedura_document_status_updated",
+            progress_id=str(progress_id),
+            document=document_name,
+            verified=verified,
+        )
+        return progress
+
+    # ---------------------------------------------------------------
+    # Private helpers
+    # ---------------------------------------------------------------
+
     async def _get_active_progress(
         self,
         db: AsyncSession,

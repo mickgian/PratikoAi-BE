@@ -12,9 +12,14 @@ from app.api.v1.billing import router as billing_router
 from app.api.v1.ccnl_calculations import router as ccnl_calculations_router
 from app.api.v1.ccnl_search import router as ccnl_search_router
 from app.api.v1.chatbot import router as chatbot_router
+
+# Wave 4: New API routers (DEV-311, DEV-312, DEV-332, DEV-342, DEV-373)
+from app.api.v1.clients import router as clients_router
+from app.api.v1.communications import router as communications_router
 from app.api.v1.data_sources import router as data_sources_router
 from app.api.v1.demo import router as demo_router
 from app.api.v1.documents import router as documents_router
+from app.api.v1.dpa import router as dpa_router
 from app.api.v1.expert_feedback import router as expert_feedback_router
 from app.api.v1.features import router as features_router
 from app.api.v1.feedback import router as feedback_router
@@ -38,12 +43,14 @@ from app.api.v1.model_comparison import router as model_comparison_router
 from app.api.v1.monitoring import router as monitoring_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.privacy import router as privacy_router
+from app.api.v1.procedure import router as procedure_router
 
 # from app.api.v1.faq import router as faq_router
 from app.api.v1.regional_taxes import router as regional_taxes_router
 from app.api.v1.regulatory import router as regulatory_router
 from app.api.v1.release_notes import router as release_notes_router
 from app.api.v1.scrapers import router as scrapers_router
+from app.api.v1.studio import router as studio_router
 from app.api.v1.success_criteria import router as success_criteria_router
 from app.core.logging import logger
 
@@ -84,6 +91,13 @@ api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"]
 api_router.include_router(model_comparison_router)  # Includes /model-comparison prefix from router
 api_router.include_router(features_router, tags=["features"])
 api_router.include_router(release_notes_router)  # Includes /release-notes prefix from router
+
+# Wave 4: New routers (DEV-311, DEV-312, DEV-332, DEV-342, DEV-373)
+api_router.include_router(studio_router)  # Includes /studios prefix from router
+api_router.include_router(clients_router)  # Includes /clients prefix from router
+api_router.include_router(communications_router)  # Includes /communications prefix from router
+api_router.include_router(procedure_router)  # Includes /procedure prefix from router
+api_router.include_router(dpa_router)  # Includes /dpa prefix from router
 
 
 @api_router.get("/health")

@@ -1,0 +1,207 @@
+"""DEV-330: CommunicationService — Draft/approve workflow state machine.
+
+State transitions: DRAFT → PENDING_REVIEW → APPROVED → SENT (or REJECTED / FAILED).
+Self-approval is forbidden: creator cannot approve their own communication.
+"""
+
+from datetime import UTC, datetime, timezone
+from uuid import UUID
+
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.logging import logger
+from app.models.communication import CanaleInvio, Communication, StatoComunicazione
+
+# Valid state transitions
+_VALID_TRANSITIONS: dict[StatoComunicazione, set[StatoComunicazione]] = {
+    StatoComunicazione.DRAFT: {StatoComunicazione.PENDING_REVIEW},
+    StatoComunicazione.PENDING_REVIEW: {
+        StatoComunicazione.APPROVED,
+        StatoComunicazione.REJECTED,
+    },
+    StatoComunicazione.APPROVED: {
+        StatoComunicazione.SENT,
+        StatoComunicazione.FAILED,
+    },
+    StatoComunicazione.REJECTED: {StatoComunicazione.DRAFT},
+    StatoComunicazione.SENT: set(),
+    StatoComunicazione.FAILED: {StatoComunicazione.DRAFT},
+}
+
+
+class CommunicationService:
+    """Service for communication workflow management."""
+
+    async def create_draft(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+        subject: str,
+        content: str,
+        channel: CanaleInvio,
+        created_by: int,
+        client_id: int | None = None,
+        normativa_riferimento: str | None = None,
+        matching_rule_id: UUID | None = None,
+    ) -> Communication:
+        """Create a new communication draft."""
+        comm = Communication(
+            studio_id=studio_id,
+            client_id=client_id,
+            subject=subject,
+            content=content,
+            channel=channel,
+            status=StatoComunicazione.DRAFT,
+            created_by=created_by,
+            normativa_riferimento=normativa_riferimento,
+            matching_rule_id=matching_rule_id,
+        )
+        db.add(comm)
+        await db.flush()
+
+        logger.info(
+            "communication_draft_created",
+            communication_id=str(comm.id),
+            studio_id=str(studio_id),
+        )
+        return comm
+
+    async def submit_for_review(
+        self, db: AsyncSession, *, communication_id: UUID, studio_id: UUID
+    ) -> Communication | None:
+        """DRAFT → PENDING_REVIEW."""
+        comm = await self._get_communication(db, communication_id, studio_id)
+        if comm is None:
+            return None
+
+        self._validate_transition(comm.status, StatoComunicazione.PENDING_REVIEW)
+        comm.status = StatoComunicazione.PENDING_REVIEW
+        await db.flush()
+
+        logger.info("communication_submitted", communication_id=str(communication_id))
+        return comm
+
+    async def approve(
+        self,
+        db: AsyncSession,
+        *,
+        communication_id: UUID,
+        studio_id: UUID,
+        approved_by: int,
+    ) -> Communication | None:
+        """PENDING_REVIEW → APPROVED.
+
+        Raises:
+            ValueError: If approver is the creator (self-approval).
+            ValueError: If current status is not PENDING_REVIEW.
+        """
+        comm = await self._get_communication(db, communication_id, studio_id)
+        if comm is None:
+            return None
+
+        self._validate_transition(comm.status, StatoComunicazione.APPROVED)
+
+        if approved_by == comm.created_by:
+            raise ValueError(
+                "L'auto-approvazione non è consentita: il creatore non può approvare la propria comunicazione."
+            )
+
+        comm.status = StatoComunicazione.APPROVED
+        comm.approved_by = approved_by
+        comm.approved_at = datetime.now(UTC)
+        await db.flush()
+
+        logger.info(
+            "communication_approved",
+            communication_id=str(communication_id),
+            approved_by=approved_by,
+        )
+        return comm
+
+    async def reject(self, db: AsyncSession, *, communication_id: UUID, studio_id: UUID) -> Communication | None:
+        """PENDING_REVIEW → REJECTED."""
+        comm = await self._get_communication(db, communication_id, studio_id)
+        if comm is None:
+            return None
+
+        self._validate_transition(comm.status, StatoComunicazione.REJECTED)
+        comm.status = StatoComunicazione.REJECTED
+        await db.flush()
+
+        logger.info("communication_rejected", communication_id=str(communication_id))
+        return comm
+
+    async def mark_sent(self, db: AsyncSession, *, communication_id: UUID, studio_id: UUID) -> Communication | None:
+        """APPROVED → SENT."""
+        comm = await self._get_communication(db, communication_id, studio_id)
+        if comm is None:
+            return None
+
+        self._validate_transition(comm.status, StatoComunicazione.SENT)
+        comm.status = StatoComunicazione.SENT
+        comm.sent_at = datetime.now(UTC)
+        await db.flush()
+
+        logger.info("communication_sent", communication_id=str(communication_id))
+        return comm
+
+    async def mark_failed(self, db: AsyncSession, *, communication_id: UUID, studio_id: UUID) -> Communication | None:
+        """APPROVED → FAILED."""
+        comm = await self._get_communication(db, communication_id, studio_id)
+        if comm is None:
+            return None
+
+        self._validate_transition(comm.status, StatoComunicazione.FAILED)
+        comm.status = StatoComunicazione.FAILED
+        await db.flush()
+
+        logger.info("communication_failed", communication_id=str(communication_id))
+        return comm
+
+    async def get_by_id(self, db: AsyncSession, *, communication_id: UUID, studio_id: UUID) -> Communication | None:
+        """Get communication by ID within studio."""
+        return await self._get_communication(db, communication_id, studio_id)
+
+    async def list_by_studio(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+        status: StatoComunicazione | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> list[Communication]:
+        """List communications for a studio with optional status filter."""
+        query = select(Communication).where(Communication.studio_id == studio_id)
+        if status is not None:
+            query = query.where(Communication.status == status)
+        query = query.offset(offset).limit(limit).order_by(Communication.created_at.desc())
+
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
+    async def _get_communication(
+        self, db: AsyncSession, communication_id: UUID, studio_id: UUID
+    ) -> Communication | None:
+        """Fetch communication enforcing tenant isolation."""
+        result = await db.execute(
+            select(Communication).where(
+                and_(
+                    Communication.id == communication_id,
+                    Communication.studio_id == studio_id,
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    def _validate_transition(current: StatoComunicazione, target: StatoComunicazione) -> None:
+        """Raise ValueError if transition is not allowed."""
+        allowed = _VALID_TRANSITIONS.get(current, set())
+        if target not in allowed:
+            raise ValueError(f"La transizione da '{current.value}' a '{target.value}' non è valida.")
+
+
+communication_service = CommunicationService()

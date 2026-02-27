@@ -16,11 +16,16 @@ const mockRedirect = jest.fn((url: URL) => ({
   type: 'redirect',
   url: url.toString(),
 }));
+const mockRewrite = jest.fn((url: URL) => ({
+  type: 'rewrite',
+  url: url.toString(),
+}));
 
 jest.mock('next/server', () => ({
   NextResponse: {
     next: () => mockNext(),
     redirect: (url: URL) => mockRedirect(url),
+    rewrite: (url: URL) => mockRewrite(url),
   },
 }));
 
@@ -46,9 +51,14 @@ function createMockRequest(
   const origin = options.origin ?? 'http://localhost:3000';
   const nextUrl = createCloneableUrl(`${origin}${path}`);
 
+  const hostHeader = new URL(`${origin}`).host;
+
   return {
     nextUrl,
     url: nextUrl.toString(),
+    headers: {
+      get: (name: string) => (name === 'host' ? hostHeader : null),
+    },
     cookies: {
       get: (name: string) => {
         const value = options.cookies?.[name];
@@ -257,6 +267,43 @@ describe('middleware', () => {
       expect(redirectUrl.searchParams.get('returnUrl')).toBe(
         '/chat/session/abc123'
       );
+    });
+  });
+
+  describe('Placeholder rewrite (www.pratiko.app)', () => {
+    it('should rewrite www.pratiko.app to /placeholder', () => {
+      const request = createMockRequest('/', {
+        origin: 'https://www.pratiko.app',
+      });
+
+      middleware(request);
+
+      expect(mockRewrite).toHaveBeenCalled();
+      const rewriteUrl = mockRewrite.mock.calls[0][0];
+      expect(rewriteUrl.pathname).toBe('/placeholder');
+    });
+
+    it('should rewrite pratiko.app (bare domain) to /placeholder', () => {
+      const request = createMockRequest('/any-path', {
+        origin: 'https://pratiko.app',
+      });
+
+      middleware(request);
+
+      expect(mockRewrite).toHaveBeenCalled();
+      const rewriteUrl = mockRewrite.mock.calls[0][0];
+      expect(rewriteUrl.pathname).toBe('/placeholder');
+    });
+
+    it('should NOT rewrite app-qa.pratiko.app', () => {
+      const request = createMockRequest('/', {
+        origin: 'https://app-qa.pratiko.app',
+      });
+
+      middleware(request);
+
+      expect(mockRewrite).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalled();
     });
   });
 });

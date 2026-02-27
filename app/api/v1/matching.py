@@ -90,24 +90,28 @@ async def _run_matching_background(
     knowledge_item_id: int | None,
     trigger: str,
 ) -> None:
-    """Execute matching job in the background.
+    """Execute matching job in the background with its own DB session.
 
     Imports run_matching_job lazily to avoid circular imports
     and to allow the job module to be created independently.
     """
     try:
         from app.jobs.matching_job import run_matching_job
+        from app.models.database import AsyncSessionLocal
 
-        await run_matching_job(
-            studio_id=studio_id,
-            knowledge_item_id=knowledge_item_id,
-            trigger=trigger,
-        )
+        async with AsyncSessionLocal() as db:
+            await run_matching_job(
+                db=db,
+                studio_id=studio_id,
+                knowledge_item_id=knowledge_item_id,
+                trigger=trigger,
+            )
+            await db.commit()
     except ImportError:
         logger.warning(
             "matching_job_not_available",
             studio_id=str(studio_id),
-            message="Il modulo matching_job non e' ancora disponibile.",
+            message="Il modulo matching_job non è ancora disponibile.",
         )
     except Exception as exc:
         logger.error(

@@ -23,9 +23,7 @@ from app.models.client import Client, StatoCliente, TipoCliente
 from app.services.client_import_service import (
     ClientImportService,
     ImportReport,
-)
-from app.services.client_import_service import (
-    ImportError as ImportRowError,
+    ImportRowError,
 )
 
 

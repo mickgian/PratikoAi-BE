@@ -4,7 +4,7 @@ State transitions: DRAFT → PENDING_REVIEW → APPROVED → SENT (or REJECTED /
 Self-approval is forbidden: creator cannot approve their own communication.
 """
 
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import and_, select

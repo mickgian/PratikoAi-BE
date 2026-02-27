@@ -30,7 +30,7 @@ _TIPO_CLIENTE_MAP: dict[str, TipoCliente] = {t.value.lower(): t for t in TipoCli
 
 
 @dataclass
-class ImportError:
+class ImportRowError:
     """A single row-level import error."""
 
     row_number: int
@@ -45,7 +45,7 @@ class ImportReport:
     total: int = 0
     success_count: int = 0
     error_count: int = 0
-    errors: list[ImportError] = field(default_factory=list)
+    errors: list[ImportRowError] = field(default_factory=list)
 
 
 def _resolve_tipo_cliente(raw: str | None) -> TipoCliente:
@@ -79,7 +79,7 @@ class ClientImportService:
             ValueError: If required columns are missing from the header row.
         """
         if openpyxl is None:  # pragma: no cover
-            raise ImportError("openpyxl non è installato. Installa con: pip install openpyxl")
+            raise RuntimeError("openpyxl non è installato. Installa con: pip install openpyxl")
 
         wb = openpyxl.load_workbook(io.BytesIO(file_content), read_only=True, data_only=True)
         ws = wb.active
@@ -138,7 +138,7 @@ class ClientImportService:
                 first_missing = sorted(missing_fields)[0]
                 report.error_count += 1
                 report.errors.append(
-                    ImportError(
+                    ImportRowError(
                         row_number=idx,
                         field=first_missing,
                         message=(f"Campi obbligatori mancanti alla riga {idx}: {', '.join(sorted(missing_fields))}."),
@@ -152,7 +152,7 @@ class ClientImportService:
             if cf in seen_cf:
                 report.error_count += 1
                 report.errors.append(
-                    ImportError(
+                    ImportRowError(
                         row_number=idx,
                         field="codice_fiscale",
                         message=f"Codice fiscale duplicato nel batch alla riga {idx}: già presente in una riga precedente.",
@@ -182,7 +182,7 @@ class ClientImportService:
             except ValueError as exc:
                 report.error_count += 1
                 report.errors.append(
-                    ImportError(
+                    ImportRowError(
                         row_number=idx,
                         field="codice_fiscale",
                         message=str(exc),

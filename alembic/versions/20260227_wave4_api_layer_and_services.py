@@ -429,7 +429,7 @@ def _seed_procedures(conn) -> None:
         conn.execute(
             sa.text(
                 "INSERT INTO procedure (id, code, title, description, category, steps, estimated_time_minutes, version, is_active) "
-                "VALUES (:id, :code, :title, :description, :category, :steps::jsonb, :estimated_time_minutes, 1, true)"
+                "VALUES (:id, :code, :title, :description, :category, CAST(:steps AS jsonb), :estimated_time_minutes, 1, true)"
             ),
             {
                 "id": str(uuid.uuid4()),

@@ -224,13 +224,16 @@ class ItalianTaxCalculator:
             if iva_rate == 0:
                 iva_amount = Decimal("0")
                 actual_net = net_amount
+                gross_amount = net_amount
+                net_amount = actual_net
+                formula = f"€{gross_amount:,.2f} (exempt) = €{net_amount:,.2f} (net) + €0.00 (IVA)"
             else:
                 divisor = 1 + iva_rate / 100
                 actual_net = net_amount / divisor
                 iva_amount = net_amount - actual_net
-            gross_amount = net_amount
-            net_amount = actual_net
-            formula = f"€{gross_amount:,.2f} ÷ {divisor:.2f} = €{net_amount:,.2f} (net) + €{iva_amount:,.2f} (IVA)"
+                gross_amount = net_amount
+                net_amount = actual_net
+                formula = f"€{gross_amount:,.2f} ÷ {divisor:.2f} = €{net_amount:,.2f} (net) + €{iva_amount:,.2f} (IVA)"
         else:
             raise ValueError("Invalid calculation type")
 

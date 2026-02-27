@@ -175,3 +175,213 @@ class TestFatturaXmlParser:
         </p:FatturaElettronica>"""
         with pytest.raises(ValueError, match="Body"):
             parser.parse(xml)
+
+    def test_whitespace_only_raises(self, parser):
+        with pytest.raises(ValueError, match="vuoto"):
+            parser.parse("   \n  ")
+
+
+FATTURA_WITH_RITENUTA = """\
+<FatturaElettronica>
+  <FatturaElettronicaHeader>
+    <CedentePrestatore>
+      <DatiAnagrafici>
+        <Anagrafica>
+          <Nome>Mario</Nome>
+          <Cognome>Rossi</Cognome>
+        </Anagrafica>
+      </DatiAnagrafici>
+    </CedentePrestatore>
+    <CessionarioCommittente>
+      <DatiAnagrafici>
+        <Anagrafica>
+          <Nome>Laura</Nome>
+          <Cognome>Bianchi</Cognome>
+        </Anagrafica>
+      </DatiAnagrafici>
+    </CessionarioCommittente>
+  </FatturaElettronicaHeader>
+  <FatturaElettronicaBody>
+    <DatiGenerali>
+      <DatiGeneraliDocumento>
+        <TipoDocumento>TD06</TipoDocumento>
+        <Data>2024-06-01</Data>
+        <Numero>2024/099</Numero>
+        <ImportoTotaleDocumento>500.00</ImportoTotaleDocumento>
+      </DatiGeneraliDocumento>
+      <DatiRitenuta>
+        <TipoRitenuta>RT01</TipoRitenuta>
+        <ImportoRitenuta>100.00</ImportoRitenuta>
+        <AliquotaRitenuta>20.00</AliquotaRitenuta>
+        <CausalePagamento>A</CausalePagamento>
+      </DatiRitenuta>
+    </DatiGenerali>
+    <DatiBeniServizi>
+      <DettaglioLinee>
+        <NumeroLinea>1</NumeroLinea>
+        <Descrizione>Prestazione professionale</Descrizione>
+        <Quantita>1.00</Quantita>
+        <PrezzoUnitario>500.00</PrezzoUnitario>
+        <PrezzoTotale>500.00</PrezzoTotale>
+        <AliquotaIVA>22.00</AliquotaIVA>
+      </DettaglioLinee>
+      <DatiRiepilogo>
+        <AliquotaIVA>22.00</AliquotaIVA>
+        <ImponibileImporto>500.00</ImponibileImporto>
+        <Imposta>110.00</Imposta>
+      </DatiRiepilogo>
+    </DatiBeniServizi>
+  </FatturaElettronicaBody>
+</FatturaElettronica>"""
+
+
+class TestRitenuta:
+    """Tests for fattura with ritenuta d'acconto."""
+
+    def test_ritenuta_present(self, parser):
+        result = parser.parse(FATTURA_WITH_RITENUTA)
+        assert "ritenuta_acconto" in result
+
+    def test_ritenuta_fields(self, parser):
+        result = parser.parse(FATTURA_WITH_RITENUTA)
+        rit = result["ritenuta_acconto"]
+        assert rit["tipo_ritenuta"] == "RT01"
+        assert rit["importo_ritenuta"] == 100.0
+        assert rit["aliquota_ritenuta"] == 20.0
+        assert rit["causale_pagamento"] == "A"
+
+    def test_nome_cognome_fornitore(self, parser):
+        result = parser.parse(FATTURA_WITH_RITENUTA)
+        assert result["fornitore"]["nome"] == "Mario"
+        assert result["fornitore"]["cognome"] == "Rossi"
+
+    def test_nome_cognome_cliente(self, parser):
+        result = parser.parse(FATTURA_WITH_RITENUTA)
+        assert result["cliente"]["nome"] == "Laura"
+        assert result["cliente"]["cognome"] == "Bianchi"
+
+
+class TestHelperFunctions:
+    """Tests for _find_text and _find_all helpers."""
+
+    def test_find_text_none_element(self):
+        from app.services.document_parsers.fattura_xml_parser import _find_text
+
+        assert _find_text(None, "Foo") == ""
+
+    def test_find_text_custom_default(self):
+        from app.services.document_parsers.fattura_xml_parser import _find_text
+
+        assert _find_text(None, "Foo", "bar") == "bar"
+
+    def test_find_text_strips_whitespace(self):
+        import xml.etree.ElementTree as ET
+
+        from app.services.document_parsers.fattura_xml_parser import _find_text
+
+        root = ET.fromstring("<Root><A>  hello  </A></Root>")
+        assert _find_text(root, "A") == "hello"
+
+    def test_find_all_none_element(self):
+        from app.services.document_parsers.fattura_xml_parser import _find_all
+
+        assert _find_all(None, "Foo") == []
+
+
+class TestNoHeaderEdgeCases:
+    """Tests for fattura without header or missing sections."""
+
+    def test_missing_header_gives_empty_dicts(self, parser):
+        xml = """\
+<FatturaElettronica>
+  <FatturaElettronicaBody>
+    <DatiGenerali>
+      <DatiGeneraliDocumento>
+        <TipoDocumento>TD01</TipoDocumento>
+        <Numero>1</Numero>
+      </DatiGeneraliDocumento>
+    </DatiGenerali>
+    <DatiBeniServizi/>
+  </FatturaElettronicaBody>
+</FatturaElettronica>"""
+        result = parser.parse(xml)
+        assert result["fornitore"] == {}
+        assert result["cliente"] == {}
+
+    def test_missing_dati_generali_defaults(self, parser):
+        xml = """\
+<FatturaElettronica>
+  <FatturaElettronicaBody>
+    <DatiBeniServizi/>
+  </FatturaElettronicaBody>
+</FatturaElettronica>"""
+        result = parser.parse(xml)
+        assert result["tipo_documento"] == ""
+        assert result["divisa"] == "EUR"
+        assert result["importo_totale"] == 0.0
+
+    def test_no_ritenuta_in_simple_fattura(self, parser):
+        result = parser.parse(SAMPLE_FATTURA_XML)
+        assert "ritenuta_acconto" not in result
+
+    def test_header_without_cedente(self, parser):
+        xml = """\
+<FatturaElettronica>
+  <FatturaElettronicaHeader>
+    <CessionarioCommittente>
+      <DatiAnagrafici>
+        <Anagrafica><Denominazione>Test</Denominazione></Anagrafica>
+      </DatiAnagrafici>
+    </CessionarioCommittente>
+  </FatturaElettronicaHeader>
+  <FatturaElettronicaBody>
+    <DatiGenerali>
+      <DatiGeneraliDocumento>
+        <TipoDocumento>TD01</TipoDocumento>
+        <Numero>1</Numero>
+      </DatiGeneraliDocumento>
+    </DatiGenerali>
+    <DatiBeniServizi/>
+  </FatturaElettronicaBody>
+</FatturaElettronica>"""
+        result = parser.parse(xml)
+        assert result["fornitore"] == {}
+        assert result["cliente"]["denominazione"] == "Test"
+
+    def test_header_without_cessionario(self, parser):
+        xml = """\
+<FatturaElettronica>
+  <FatturaElettronicaHeader>
+    <CedentePrestatore>
+      <DatiAnagrafici>
+        <Anagrafica><Denominazione>Fornitore</Denominazione></Anagrafica>
+      </DatiAnagrafici>
+    </CedentePrestatore>
+  </FatturaElettronicaHeader>
+  <FatturaElettronicaBody>
+    <DatiGenerali>
+      <DatiGeneraliDocumento>
+        <TipoDocumento>TD01</TipoDocumento>
+        <Numero>1</Numero>
+      </DatiGeneraliDocumento>
+    </DatiGenerali>
+    <DatiBeniServizi/>
+  </FatturaElettronicaBody>
+</FatturaElettronica>"""
+        result = parser.parse(xml)
+        assert result["fornitore"]["denominazione"] == "Fornitore"
+        assert result["cliente"] == {}
+
+
+class TestSingleton:
+    """Tests for singleton instance."""
+
+    def test_singleton_exists(self):
+        from app.services.document_parsers.fattura_xml_parser import fattura_xml_parser
+
+        assert fattura_xml_parser is not None
+
+    def test_singleton_is_parser(self):
+        from app.services.document_parsers.fattura_xml_parser import fattura_xml_parser
+
+        assert isinstance(fattura_xml_parser, FatturaXmlParser)

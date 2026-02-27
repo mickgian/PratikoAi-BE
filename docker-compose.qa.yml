@@ -103,6 +103,7 @@ services:
       - API_DOMAIN=${API_DOMAIN:-api-qa.pratiko.app}
       - APP_DOMAIN=${APP_DOMAIN:-app-qa.pratiko.app}
       - FLAGS_DOMAIN=${FLAGS_DOMAIN:-flags-qa.pratiko.app}
+      - WWW_DOMAIN=${WWW_DOMAIN:-www.pratiko.app}
     depends_on:
       app:
         condition: service_healthy

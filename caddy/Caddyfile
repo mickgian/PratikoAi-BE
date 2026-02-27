@@ -47,6 +47,25 @@
 	}
 }
 
+# Production Placeholder (www.pratiko.app)
+{$WWW_DOMAIN:www.pratiko.app} {
+	reverse_proxy frontend:3000
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		-Server
+	}
+
+	log {
+		output file /data/logs/www-access.log
+		format json
+	}
+}
+
 # Flagsmith Feature Flags UI
 {$FLAGS_DOMAIN:flags-qa.pratiko.app} {
 	reverse_proxy flagsmith:8000

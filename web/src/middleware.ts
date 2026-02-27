@@ -86,6 +86,14 @@ function hasAuthCookie(request: NextRequest): boolean {
 }
 
 export function middleware(request: NextRequest) {
+  // Rewrite www.pratiko.app (production placeholder) to /placeholder page
+  const host = request.headers.get('host') || '';
+  if (host.startsWith('www.pratiko.app') || host === 'pratiko.app') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/placeholder';
+    return NextResponse.rewrite(url);
+  }
+
   const { pathname } = request.nextUrl;
 
   // Skip middleware for API routes, static files, and Next.js internals

@@ -32,3 +32,4 @@ to fetch the latest source and save it here.
 | `ClientMentionAutocomplete.tsx` | Client Mention Autocomplete dropdown + pill + context card (Screen 8) | DEV-403 |
 | `ClientActionPicker.tsx` | Client Action Picker — 4-action grid + full profile card (Screen 8) | DEV-403, 428, 429 |
 | `ChatPage.tsx` | Chat Page entry point with mentions integration (Screen 8) | DEV-403, 430, 433, 439 |
+| `PlaceholderPage.tsx` | Coming Soon placeholder — pulsing Brain icon on dark background with animated particles | www.pratiko.app |

@@ -37,8 +37,14 @@ async def node_step_39a(state: RAGState) -> RAGState:
     route = routing_decision.get("route", "technical_research")
     messages = state.get("messages", [])
 
-    expanded_query = await reformulate_short_query_llm(user_query, messages)
-    query_was_expanded = expanded_query != user_query
+    # Chitchat cost optimization: skip LLM reformulation for routes that
+    # will be skipped anyway (avoids unnecessary LLM call for chitchat)
+    if route in SKIP_EXPANSION_ROUTES:
+        expanded_query = user_query
+        query_was_expanded = False
+    else:
+        expanded_query = await reformulate_short_query_llm(user_query, messages)
+        query_was_expanded = expanded_query != user_query
 
     rag_step_log(
         STEP_NUM,

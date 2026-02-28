@@ -10,13 +10,10 @@ from typing import TYPE_CHECKING, List, Optional
 
 import bcrypt
 from sqlalchemy import DateTime
-from sqlmodel import Column, Field, Relationship, String
+from sqlmodel import Column, Field, String
 
 from app.core.encryption.encrypted_types import EncryptedEmail, EncryptedPersonalData, EncryptedPhone, EncryptedTaxID
 from app.models.base import BaseModel
-
-if TYPE_CHECKING:
-    from app.models.session import Session
 
 
 class EncryptedUser(BaseModel, table=True):
@@ -95,9 +92,6 @@ class EncryptedUser(BaseModel, table=True):
     encryption_key_version: int | None = Field(
         default=None, description="Version of encryption key used for this user's data"
     )
-
-    # Relationships
-    sessions: list["Session"] = Relationship(back_populates="user")
 
     def verify_password(self, password: str) -> bool:
         """Verify if the provided password matches the hash.
@@ -335,6 +329,3 @@ class EncryptedSubscriptionData(BaseModel, table=True):
 
 # Backward compatibility alias
 User = EncryptedUser
-
-# Avoid circular imports
-from app.models.session import Session  # noqa: E402

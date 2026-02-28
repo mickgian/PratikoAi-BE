@@ -1,6 +1,7 @@
 """Tests for Financial Validation API endpoints."""
 
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
@@ -245,3 +246,99 @@ class TestEngineStatus:
         assert data["configuration"]["tax_calculations_enabled"] is True
         assert "health_check" in data
         assert "memory_usage_mb" in data["health_check"]
+
+    def test_engine_status_has_all_config_fields(self, fv_client):
+        resp = fv_client.get("/engine/status")
+        data = resp.json()
+        config = data["configuration"]
+        assert "business_valuations_enabled" in config
+        assert "financial_ratios_enabled" in config
+        assert "labor_calculations_enabled" in config
+        assert "document_parsing_enabled" in config
+        assert "precision_decimal_places" in config
+        assert "performance_timeout_seconds" in config
+        assert "quality_threshold" in config
+
+    def test_engine_status_health_check_has_timestamp(self, fv_client):
+        resp = fv_client.get("/engine/status")
+        data = resp.json()
+        assert "timestamp" in data["health_check"]
+
+
+class TestExceptionHandling:
+    """Tests to cover except blocks in all endpoints."""
+
+    @patch("app.api.v1.financial_validation.validation_engine")
+    def test_tax_calculation_engine_error(self, mock_engine, fv_client):
+        mock_engine.execute_single_task.side_effect = RuntimeError("Engine crashed")
+        resp = fv_client.post("/tax/calculate", json={"gross_income": 50000})
+        assert resp.status_code == 500
+        assert "Tax calculation failed" in resp.json()["detail"]
+
+    @patch("app.api.v1.financial_validation.validation_engine")
+    def test_business_valuation_engine_error(self, mock_engine, fv_client):
+        mock_engine.execute_single_task.side_effect = ValueError("Invalid data")
+        resp = fv_client.post(
+            "/business/valuation",
+            json={"cash_flows": [100000], "discount_rate": 0.10},
+        )
+        assert resp.status_code == 500
+        assert "Business valuation failed" in resp.json()["detail"]
+
+    @patch("app.api.v1.financial_validation.validation_engine")
+    def test_financial_analysis_engine_error(self, mock_engine, fv_client):
+        mock_engine.execute_single_task.side_effect = Exception("Analysis error")
+        resp = fv_client.post(
+            "/financial/analysis",
+            json={
+                "balance_sheet": {"current_assets": 500000},
+                "income_statement": {"revenue": 3000000},
+            },
+        )
+        assert resp.status_code == 500
+        assert "Financial analysis failed" in resp.json()["detail"]
+
+    @patch("app.api.v1.financial_validation.validation_engine")
+    def test_labor_calculation_engine_error(self, mock_engine, fv_client):
+        mock_engine.execute_single_task.side_effect = RuntimeError("Labor error")
+        resp = fv_client.post(
+            "/labor/calculate",
+            json={
+                "gross_salary": 35000,
+                "contract_type": "permanent",
+                "hire_date": "2020-01-15",
+            },
+        )
+        assert resp.status_code == 500
+        assert "Labor calculation failed" in resp.json()["detail"]
+
+    @patch("app.api.v1.financial_validation.validation_engine")
+    def test_document_parsing_engine_error(self, mock_engine, fv_client):
+        mock_engine.execute_single_task.side_effect = OSError("File not found")
+        resp = fv_client.post(
+            "/documents/parse",
+            json={
+                "document_path": "/nonexistent",
+                "document_type": "balance_sheet",
+                "expected_format": "excel",
+            },
+        )
+        assert resp.status_code == 500
+        assert "Document parsing failed" in resp.json()["detail"]
+
+    @patch("app.api.v1.financial_validation.validation_engine")
+    def test_pipeline_engine_error(self, mock_engine, fv_client):
+        mock_engine.execute_pipeline.side_effect = RuntimeError("Pipeline failed")
+        resp = fv_client.post(
+            "/validate/pipeline",
+            json={
+                "tasks": [
+                    {
+                        "task_type": "tax_calculation",
+                        "input_data": {"gross_income": 50000},
+                    }
+                ],
+            },
+        )
+        assert resp.status_code == 500
+        assert "Validation pipeline failed" in resp.json()["detail"]

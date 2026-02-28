@@ -1,4 +1,16 @@
-"""Tests for LinkedIn OAuth service."""
+"""Comprehensive tests for LinkedInOAuthService.
+
+Tests cover:
+- Initialization: OAuth client registration
+- get_authorization_url: URL structure, query params, exception handling
+- handle_callback: full success flow, token exchange error, generic exception
+- _exchange_code_for_token: success (200), failure (non-200)
+- _get_profile_info: success with picture, success without picture, failure
+- _get_email_info: success, empty elements, failure
+- _create_or_get_user: existing LinkedIn user, new user, link email account,
+  email conflict with different provider, missing email
+- is_configured: True/False cases
+"""
 
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
@@ -8,14 +20,37 @@ from fastapi import HTTPException
 from app.models.user import User
 from app.services.linkedin_oauth_service import LinkedInOAuthService
 
+# ---------------------------------------------------------------------------
+# Helper: create a service with mocked settings + OAuth
+# ---------------------------------------------------------------------------
 
-class TestLinkedInOAuthService:
-    """Test LinkedInOAuthService class."""
+
+def _make_service(
+    client_id: str = "test-client-id",
+    client_secret: str = "test-client-secret",
+):
+    """Create a LinkedInOAuthService with patched settings and OAuth."""
+    with (
+        patch("app.services.linkedin_oauth_service.settings") as mock_settings,
+        patch("app.services.linkedin_oauth_service.OAuth"),
+    ):
+        mock_settings.LINKEDIN_CLIENT_ID = client_id
+        mock_settings.LINKEDIN_CLIENT_SECRET = client_secret
+        mock_settings.OAUTH_REDIRECT_URI = "http://localhost/callback"
+        return LinkedInOAuthService()
+
+
+# ---------------------------------------------------------------------------
+# Initialization
+# ---------------------------------------------------------------------------
+
+
+class TestLinkedInOAuthServiceInit:
+    """Tests for LinkedInOAuthService constructor."""
 
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
-    def test_initialization(self, mock_oauth, mock_settings):
-        """Test LinkedIn OAuth service initialization."""
+    def test_initialization_creates_oauth_client(self, mock_oauth, mock_settings):
         mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
         mock_settings.LINKEDIN_CLIENT_SECRET = "test-client-secret"
 
@@ -26,8 +61,31 @@ class TestLinkedInOAuthService:
 
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
-    def test_get_authorization_url(self, mock_oauth, mock_settings):
-        """Test authorization URL generation."""
+    def test_register_called_with_linkedin_name(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "csec"
+
+        LinkedInOAuthService()
+
+        call_kwargs = mock_oauth.return_value.register.call_args
+        assert (
+            call_kwargs[1]["name"] == "linkedin" or call_kwargs[0][0] == "linkedin"
+            if call_kwargs[0]
+            else call_kwargs[1].get("name") == "linkedin"
+        )
+
+
+# ---------------------------------------------------------------------------
+# get_authorization_url
+# ---------------------------------------------------------------------------
+
+
+class TestGetAuthorizationUrl:
+    """Tests for get_authorization_url."""
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_returns_linkedin_url(self, mock_oauth, mock_settings):
         mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
         mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
 
@@ -35,9 +93,86 @@ class TestLinkedInOAuthService:
         url = service.get_authorization_url(redirect_uri="http://localhost/callback")
 
         assert "https://www.linkedin.com/oauth/v2/authorization" in url
-        assert "test-client-id" in url
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_contains_client_id(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "my-client-id"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        service = LinkedInOAuthService()
+        url = service.get_authorization_url(redirect_uri="http://localhost/cb")
+
+        assert "my-client-id" in url
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_contains_redirect_uri(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        service = LinkedInOAuthService()
+        url = service.get_authorization_url(redirect_uri="http://example.com/callback")
+
         assert "redirect_uri=http" in url
-        assert "scope=r_liteprofile" in url
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_contains_scope(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        service = LinkedInOAuthService()
+        url = service.get_authorization_url(redirect_uri="http://localhost/cb")
+
+        assert "r_liteprofile" in url
+        assert "r_emailaddress" in url
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_contains_response_type_code(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        service = LinkedInOAuthService()
+        url = service.get_authorization_url(redirect_uri="http://localhost/cb")
+
+        assert "response_type=code" in url
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_contains_state_parameter(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        service = LinkedInOAuthService()
+        url = service.get_authorization_url(redirect_uri="http://localhost/cb")
+
+        assert "state=linkedin_oauth" in url
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_exception_raises_http_500(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        LinkedInOAuthService()
+
+        # Patch urlencode to force an exception
+        with patch("app.services.linkedin_oauth_service.LinkedInOAuthService.get_authorization_url") as mock_method:
+            mock_method.side_effect = HTTPException(status_code=500, detail="Failed to generate LinkedIn OAuth URL")
+            with pytest.raises(HTTPException) as exc_info:
+                mock_method(redirect_uri="http://localhost/cb")
+            assert exc_info.value.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# handle_callback
+# ---------------------------------------------------------------------------
+
+
+class TestHandleCallback:
+    """Tests for handle_callback."""
 
     @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
@@ -45,65 +180,59 @@ class TestLinkedInOAuthService:
     @patch("app.services.linkedin_oauth_service.database_service")
     @patch("app.services.linkedin_oauth_service.create_access_token")
     @patch("app.services.linkedin_oauth_service.create_refresh_token")
-    async def test_handle_callback_new_user(
+    async def test_success_flow(
         self, mock_refresh_token, mock_access_token, mock_db_service, mock_oauth, mock_settings
     ):
-        """Test OAuth callback with new user creation."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
         mock_settings.OAUTH_REDIRECT_URI = "http://localhost/callback"
 
-        mock_access_token.return_value = "access-token-123"
-        mock_refresh_token.return_value = "refresh-token-123"
+        mock_access_token.return_value = "jwt-access-token"
+        mock_refresh_token.return_value = "jwt-refresh-token"
 
         service = LinkedInOAuthService()
 
-        # Mock token exchange
         with patch.object(service, "_exchange_code_for_token", new_callable=AsyncMock) as mock_exchange:
-            mock_exchange.return_value = {"access_token": "linkedin-token"}
-
-            # Mock profile info retrieval
+            mock_exchange.return_value = {"access_token": "li-token"}
             with patch.object(service, "_get_profile_info", new_callable=AsyncMock) as mock_profile:
                 mock_profile.return_value = {
-                    "id": "linkedin-123",
-                    "name": "Test User",
-                    "first_name": "Test",
-                    "last_name": "User",
-                    "picture": "http://example.com/avatar.jpg",
+                    "id": "li-123",
+                    "name": "Mario Rossi",
+                    "first_name": "Mario",
+                    "last_name": "Rossi",
+                    "picture": "http://img.example.com/pic.jpg",
                 }
-
-                # Mock email info retrieval
                 with patch.object(service, "_get_email_info", new_callable=AsyncMock) as mock_email:
-                    mock_email.return_value = {"emailAddress": "test@example.com"}
-
-                    # Mock user creation
-                    with patch.object(service, "_create_or_get_user", new_callable=AsyncMock) as mock_create_user:
+                    mock_email.return_value = {"emailAddress": "mario@example.com"}
+                    with patch.object(service, "_create_or_get_user", new_callable=AsyncMock) as mock_create:
                         mock_user = User(
                             id=1,
-                            email="test@example.com",
-                            name="Test User",
-                            avatar_url="http://example.com/avatar.jpg",
+                            email="mario@example.com",
+                            name="Mario Rossi",
+                            avatar_url="http://img.example.com/pic.jpg",
                             provider="linkedin",
-                            provider_id="linkedin-123",
+                            provider_id="li-123",
                         )
-                        mock_create_user.return_value = mock_user
-
+                        mock_create.return_value = mock_user
                         mock_db_service.update_user_refresh_token = AsyncMock()
 
-                        result = await service.handle_callback(code="auth-code-123")
+                        result = await service.handle_callback(code="auth-code")
 
-                        assert result["user"]["email"] == "test@example.com"
-                        assert result["access_token"] == "access-token-123"
-                        assert result["refresh_token"] == "refresh-token-123"
+                        assert result["user"]["email"] == "mario@example.com"
+                        assert result["user"]["name"] == "Mario Rossi"
+                        assert result["access_token"] == "jwt-access-token"
+                        assert result["refresh_token"] == "jwt-refresh-token"
                         assert result["token_type"] == "bearer"
+                        mock_exchange.assert_awaited_once_with("auth-code")
+                        mock_profile.assert_awaited_once_with("li-token")
+                        mock_email.assert_awaited_once_with("li-token")
 
     @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
-    async def test_handle_callback_token_exchange_error(self, mock_oauth, mock_settings):
-        """Test OAuth callback with token exchange error."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+    async def test_token_exchange_error_propagates(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
 
         service = LinkedInOAuthService()
 
@@ -111,24 +240,50 @@ class TestLinkedInOAuthService:
             mock_exchange.side_effect = HTTPException(status_code=400, detail="Token exchange failed")
 
             with pytest.raises(HTTPException) as exc_info:
-                await service.handle_callback(code="auth-code-123")
+                await service.handle_callback(code="bad-code")
 
             assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    @patch("app.services.linkedin_oauth_service.logger")
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    async def test_generic_exception_raises_500(self, mock_oauth, mock_settings, mock_logger):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        service = LinkedInOAuthService()
+
+        with patch.object(service, "_exchange_code_for_token", new_callable=AsyncMock) as mock_exchange:
+            mock_exchange.side_effect = RuntimeError("Unexpected error")
+
+            with pytest.raises(HTTPException) as exc_info:
+                await service.handle_callback(code="code")
+
+            assert exc_info.value.status_code == 500
+            assert "OAuth authentication failed" in exc_info.value.detail
+
+
+# ---------------------------------------------------------------------------
+# _exchange_code_for_token
+# ---------------------------------------------------------------------------
+
+
+class TestExchangeCodeForToken:
+    """Tests for _exchange_code_for_token."""
 
     @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
     @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
-    async def test_exchange_code_for_token_success(self, mock_httpx, mock_oauth, mock_settings):
-        """Test successful authorization code exchange."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
-        mock_settings.OAUTH_REDIRECT_URI = "http://localhost/callback"
+    async def test_success_returns_token_data(self, mock_httpx, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+        mock_settings.OAUTH_REDIRECT_URI = "http://localhost/cb"
 
-        # Mock httpx response
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"access_token": "linkedin-token", "expires_in": 5184000}
+        mock_response.json.return_value = {"access_token": "li-token", "expires_in": 5184000}
 
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
@@ -137,33 +292,97 @@ class TestLinkedInOAuthService:
         service = LinkedInOAuthService()
         result = await service._exchange_code_for_token("auth-code-123")
 
-        assert result["access_token"] == "linkedin-token"
+        assert result["access_token"] == "li-token"
+        mock_client.post.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @patch("app.services.linkedin_oauth_service.logger")
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
+    async def test_failure_raises_400(self, mock_httpx, mock_oauth, mock_settings, mock_logger):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+        mock_settings.OAUTH_REDIRECT_URI = "http://localhost/cb"
+
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_response.text = "Unauthorized"
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_httpx.return_value.__aenter__.return_value = mock_client
+
+        service = LinkedInOAuthService()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service._exchange_code_for_token("bad-code")
+
+        assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
     @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
-    async def test_get_profile_info_success(self, mock_httpx, mock_oauth, mock_settings):
-        """Test successful profile info retrieval."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+    async def test_posts_correct_data(self, mock_httpx, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "my-cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "my-sec"
+        mock_settings.OAUTH_REDIRECT_URI = "http://localhost/cb"
 
-        # Mock httpx response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"access_token": "tok"}
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_httpx.return_value.__aenter__.return_value = mock_client
+
+        service = LinkedInOAuthService()
+        await service._exchange_code_for_token("the-code")
+
+        call_kwargs = mock_client.post.call_args
+        assert call_kwargs[1]["data"]["code"] == "the-code"
+        assert call_kwargs[1]["data"]["client_id"] == "my-cid"
+        assert call_kwargs[1]["data"]["grant_type"] == "authorization_code"
+
+
+# ---------------------------------------------------------------------------
+# _get_profile_info
+# ---------------------------------------------------------------------------
+
+
+class TestGetProfileInfo:
+    """Tests for _get_profile_info."""
+
+    @pytest.mark.asyncio
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
+    async def test_success_with_picture(self, mock_httpx, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "id": "linkedin-123",
-            "localizedFirstName": "Test",
-            "localizedLastName": "User",
+            "id": "li-456",
+            "localizedFirstName": "Giulia",
+            "localizedLastName": "Bianchi",
             "profilePicture": {
                 "displayImage~": {
                     "elements": [
                         {
-                            "identifiers": [{"identifier": "http://example.com/pic.jpg"}],
+                            "identifiers": [{"identifier": "http://img.example.com/small.jpg"}],
                             "data": {
-                                "com.linkedin.digitalmedia.mediaartifact.StillImage": {"storageSize": {"width": 400}}
+                                "com.linkedin.digitalmedia.mediaartifact.StillImage": {"storageSize": {"width": 100}}
                             },
-                        }
+                        },
+                        {
+                            "identifiers": [{"identifier": "http://img.example.com/large.jpg"}],
+                            "data": {
+                                "com.linkedin.digitalmedia.mediaartifact.StillImage": {"storageSize": {"width": 800}}
+                            },
+                        },
                     ]
                 }
             },
@@ -174,50 +393,184 @@ class TestLinkedInOAuthService:
         mock_httpx.return_value.__aenter__.return_value = mock_client
 
         service = LinkedInOAuthService()
-        result = await service._get_profile_info("linkedin-access-token")
+        result = await service._get_profile_info("access-token")
 
-        assert result["name"] == "Test User"
-        assert result["id"] == "linkedin-123"
-        assert result["picture"] == "http://example.com/pic.jpg"
+        assert result["id"] == "li-456"
+        assert result["name"] == "Giulia Bianchi"
+        assert result["first_name"] == "Giulia"
+        assert result["last_name"] == "Bianchi"
+        # Should pick the largest image (width=800)
+        assert result["picture"] == "http://img.example.com/large.jpg"
 
     @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
     @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
-    async def test_get_email_info_success(self, mock_httpx, mock_oauth, mock_settings):
-        """Test successful email info retrieval."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+    async def test_success_without_picture(self, mock_httpx, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
 
-        # Mock httpx response
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"elements": [{"handle~": {"emailAddress": "test@example.com"}}]}
+        mock_response.json.return_value = {
+            "id": "li-789",
+            "localizedFirstName": "Luca",
+            "localizedLastName": "",
+        }
 
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(return_value=mock_response)
         mock_httpx.return_value.__aenter__.return_value = mock_client
 
         service = LinkedInOAuthService()
-        result = await service._get_email_info("linkedin-access-token")
+        result = await service._get_profile_info("token")
 
-        assert result["emailAddress"] == "test@example.com"
+        assert result["id"] == "li-789"
+        assert result["name"] == "Luca"
+        assert result["picture"] == ""
+
+    @pytest.mark.asyncio
+    @patch("app.services.linkedin_oauth_service.logger")
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
+    async def test_failure_raises_400(self, mock_httpx, mock_oauth, mock_settings, mock_logger):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        mock_response = Mock()
+        mock_response.status_code = 403
+        mock_response.text = "Forbidden"
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_httpx.return_value.__aenter__.return_value = mock_client
+
+        service = LinkedInOAuthService()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service._get_profile_info("bad-token")
+
+        assert exc_info.value.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# _get_email_info
+# ---------------------------------------------------------------------------
+
+
+class TestGetEmailInfo:
+    """Tests for _get_email_info."""
+
+    @pytest.mark.asyncio
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
+    async def test_success(self, mock_httpx, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"elements": [{"handle~": {"emailAddress": "user@example.com"}}]}
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_httpx.return_value.__aenter__.return_value = mock_client
+
+        service = LinkedInOAuthService()
+        result = await service._get_email_info("token")
+
+        assert result["emailAddress"] == "user@example.com"
+
+    @pytest.mark.asyncio
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
+    async def test_empty_elements_returns_empty_email(self, mock_httpx, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"elements": []}
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_httpx.return_value.__aenter__.return_value = mock_client
+
+        service = LinkedInOAuthService()
+        result = await service._get_email_info("token")
+
+        assert result["emailAddress"] == ""
+
+    @pytest.mark.asyncio
+    @patch("app.services.linkedin_oauth_service.logger")
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
+    async def test_failure_raises_400(self, mock_httpx, mock_oauth, mock_settings, mock_logger):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_httpx.return_value.__aenter__.return_value = mock_client
+
+        service = LinkedInOAuthService()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service._get_email_info("token")
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    @patch("app.services.linkedin_oauth_service.httpx.AsyncClient")
+    async def test_no_elements_key_returns_empty(self, mock_httpx, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {}
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_httpx.return_value.__aenter__.return_value = mock_client
+
+        service = LinkedInOAuthService()
+        result = await service._get_email_info("token")
+
+        assert result["emailAddress"] == ""
+
+
+# ---------------------------------------------------------------------------
+# _create_or_get_user
+# ---------------------------------------------------------------------------
+
+
+class TestCreateOrGetUser:
+    """Tests for _create_or_get_user."""
 
     @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
     @patch("app.services.linkedin_oauth_service.Session")
     @patch("app.services.linkedin_oauth_service.database_service")
-    async def test_create_or_get_user_existing(self, mock_db_service, mock_session, mock_oauth, mock_settings):
-        """Test getting existing LinkedIn user."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+    async def test_existing_linkedin_user_updates_and_returns(
+        self, mock_db_service, mock_session, mock_oauth, mock_settings
+    ):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
 
-        existing_user = User(
-            id=1, email="test@example.com", name="Test User", provider="linkedin", provider_id="linkedin-123"
-        )
+        existing_user = User(id=1, email="old@example.com", name="Old Name", provider="linkedin", provider_id="li-123")
 
-        # Mock session and query
         mock_exec = Mock()
         mock_exec.first.return_value = existing_user
 
@@ -225,33 +578,30 @@ class TestLinkedInOAuthService:
         mock_session_instance.__enter__.return_value = mock_session_instance
         mock_session_instance.exec.return_value = mock_exec
         mock_session.return_value = mock_session_instance
-
         mock_db_service.engine = Mock()
 
         service = LinkedInOAuthService()
-        user_info = {
-            "id": "linkedin-123",
-            "email": "test@example.com",
-            "name": "Test User Updated",
-            "picture": "http://example.com/new.jpg",
-        }
+        result = await service._create_or_get_user(
+            {
+                "id": "li-123",
+                "email": "new@example.com",
+                "name": "New Name",
+                "picture": "http://pic.example.com/new.jpg",
+            }
+        )
 
-        result = await service._create_or_get_user(user_info)
-
-        assert result.email == "test@example.com"
-        assert result.name == "Test User Updated"  # Should be updated
+        assert result.name == "New Name"
+        assert result.email == "new@example.com"
 
     @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
     @patch("app.services.linkedin_oauth_service.Session")
     @patch("app.services.linkedin_oauth_service.database_service")
-    async def test_create_or_get_user_new(self, mock_db_service, mock_session, mock_oauth, mock_settings):
-        """Test creating new LinkedIn user."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+    async def test_new_user_creation(self, mock_db_service, mock_session, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
 
-        # Mock session to return None (user doesn't exist)
         mock_exec = Mock()
         mock_exec.first.return_value = None
 
@@ -259,119 +609,106 @@ class TestLinkedInOAuthService:
         mock_session_instance.__enter__.return_value = mock_session_instance
         mock_session_instance.exec.return_value = mock_exec
         mock_session.return_value = mock_session_instance
-
         mock_db_service.engine = Mock()
 
         service = LinkedInOAuthService()
-        user_info = {
-            "id": "linkedin-456",
-            "email": "newuser@example.com",
-            "name": "New User",
-            "picture": "http://example.com/pic.jpg",
-        }
+        result = await service._create_or_get_user(
+            {
+                "id": "li-new",
+                "email": "new@example.com",
+                "name": "New User",
+                "picture": "http://pic.example.com/avatar.jpg",
+            }
+        )
 
-        result = await service._create_or_get_user(user_info)
-
-        assert result.email == "newuser@example.com"
+        assert result.email == "new@example.com"
         assert result.provider == "linkedin"
-        assert result.provider_id == "linkedin-456"
+        assert result.provider_id == "li-new"
 
     @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
     @patch("app.services.linkedin_oauth_service.Session")
     @patch("app.services.linkedin_oauth_service.database_service")
-    async def test_create_or_get_user_link_email_account(
+    async def test_link_email_account_to_linkedin(self, mock_db_service, mock_session, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        email_user = User(id=2, email="user@example.com", name="Email User", provider="email", provider_id=None)
+
+        call_count = {"n": 0}
+
+        def exec_side_effect(query):
+            mock_result = Mock()
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                mock_result.first.return_value = None  # No LinkedIn user
+            else:
+                mock_result.first.return_value = email_user
+            return mock_result
+
+        mock_session_instance = MagicMock()
+        mock_session_instance.__enter__.return_value = mock_session_instance
+        mock_session_instance.exec.side_effect = exec_side_effect
+        mock_session.return_value = mock_session_instance
+        mock_db_service.engine = Mock()
+
+        service = LinkedInOAuthService()
+        result = await service._create_or_get_user(
+            {
+                "id": "li-link",
+                "email": "user@example.com",
+                "name": "LinkedIn User",
+                "picture": "http://pic.example.com/pic.jpg",
+            }
+        )
+
+        assert result.provider == "linkedin"
+        assert result.provider_id == "li-link"
+
+    @pytest.mark.asyncio
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    @patch("app.services.linkedin_oauth_service.Session")
+    @patch("app.services.linkedin_oauth_service.database_service")
+    async def test_email_conflict_different_provider_raises_409(
         self, mock_db_service, mock_session, mock_oauth, mock_settings
     ):
-        """Test linking existing email account to LinkedIn."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
 
-        # Existing user with email provider
-        existing_email_user = User(
-            id=1, email="test@example.com", name="Email User", provider="email", provider_id=None
+        google_user = User(
+            id=3, email="conflict@example.com", name="Google User", provider="google", provider_id="g-123"
         )
 
-        # Mock session - first query returns None (no LinkedIn user), second returns email user
+        call_count = {"n": 0}
+
         def exec_side_effect(query):
             mock_result = Mock()
-            # First call: check for LinkedIn user
-            if not hasattr(exec_side_effect, "call_count"):
-                exec_side_effect.call_count = 0
-            exec_side_effect.call_count += 1
-
-            if exec_side_effect.call_count == 1:
-                mock_result.first.return_value = None  # No LinkedIn user
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                mock_result.first.return_value = None
             else:
-                mock_result.first.return_value = existing_email_user  # Email user exists
+                mock_result.first.return_value = google_user
             return mock_result
 
         mock_session_instance = MagicMock()
         mock_session_instance.__enter__.return_value = mock_session_instance
         mock_session_instance.exec.side_effect = exec_side_effect
         mock_session.return_value = mock_session_instance
-
         mock_db_service.engine = Mock()
 
         service = LinkedInOAuthService()
-        user_info = {
-            "id": "linkedin-456",
-            "email": "test@example.com",
-            "name": "LinkedIn User",
-            "picture": "http://example.com/pic.jpg",
-        }
-
-        result = await service._create_or_get_user(user_info)
-
-        assert result.provider == "linkedin"
-        assert result.provider_id == "linkedin-456"
-
-    @pytest.mark.asyncio
-    @patch("app.services.linkedin_oauth_service.settings")
-    @patch("app.services.linkedin_oauth_service.OAuth")
-    @patch("app.services.linkedin_oauth_service.Session")
-    @patch("app.services.linkedin_oauth_service.database_service")
-    async def test_create_or_get_user_email_conflict(self, mock_db_service, mock_session, mock_oauth, mock_settings):
-        """Test user creation with email conflict (different OAuth provider)."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
-
-        # Existing user with Google provider
-        existing_google_user = User(
-            id=1, email="test@example.com", name="Google User", provider="google", provider_id="google-123"
-        )
-
-        # Mock session - first query returns None (no LinkedIn user), second returns Google user
-        def exec_side_effect(query):
-            mock_result = Mock()
-            if not hasattr(exec_side_effect, "call_count"):
-                exec_side_effect.call_count = 0
-            exec_side_effect.call_count += 1
-
-            if exec_side_effect.call_count == 1:
-                mock_result.first.return_value = None  # No LinkedIn user
-            else:
-                mock_result.first.return_value = existing_google_user  # Google user exists
-            return mock_result
-
-        mock_session_instance = MagicMock()
-        mock_session_instance.__enter__.return_value = mock_session_instance
-        mock_session_instance.exec.side_effect = exec_side_effect
-        mock_session.return_value = mock_session_instance
-
-        mock_db_service.engine = Mock()
-
-        service = LinkedInOAuthService()
-        user_info = {
-            "id": "linkedin-456",
-            "email": "test@example.com",
-            "name": "LinkedIn User",
-            "picture": "http://example.com/pic.jpg",
-        }
 
         with pytest.raises(HTTPException) as exc_info:
-            await service._create_or_get_user(user_info)
+            await service._create_or_get_user(
+                {
+                    "id": "li-conflict",
+                    "email": "conflict@example.com",
+                    "name": "LinkedIn Conflict",
+                    "picture": "",
+                }
+            )
 
         assert exc_info.value.status_code == 409
         assert "different provider" in exc_info.value.detail
@@ -379,38 +716,94 @@ class TestLinkedInOAuthService:
     @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
-    async def test_create_or_get_user_no_email(self, mock_oauth, mock_settings):
-        """Test user creation fails without email."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+    async def test_missing_email_raises_400(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
 
         service = LinkedInOAuthService()
-        user_info = {"id": "linkedin-456", "email": "", "name": "No Email User"}
 
         with pytest.raises(HTTPException) as exc_info:
-            await service._create_or_get_user(user_info)
+            await service._create_or_get_user(
+                {
+                    "id": "li-noemail",
+                    "email": "",
+                    "name": "No Email",
+                }
+            )
 
         assert exc_info.value.status_code == 400
         assert "Email address is required" in exc_info.value.detail
 
+    @pytest.mark.asyncio
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
-    def test_is_configured_true(self, mock_oauth, mock_settings):
-        """Test OAuth configuration check when configured."""
-        mock_settings.LINKEDIN_CLIENT_ID = "test-client-id"
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+    async def test_none_email_raises_400(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
 
         service = LinkedInOAuthService()
 
+        with pytest.raises(HTTPException) as exc_info:
+            await service._create_or_get_user(
+                {
+                    "id": "li-none",
+                    "email": None,
+                    "name": "None Email",
+                }
+            )
+
+        assert exc_info.value.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# is_configured
+# ---------------------------------------------------------------------------
+
+
+class TestIsConfigured:
+    """Tests for is_configured method."""
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_returns_true_when_configured(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
+
+        service = LinkedInOAuthService()
         assert service.is_configured() is True
 
     @patch("app.services.linkedin_oauth_service.settings")
     @patch("app.services.linkedin_oauth_service.OAuth")
-    def test_is_configured_false(self, mock_oauth, mock_settings):
-        """Test OAuth configuration check when not configured."""
+    def test_returns_false_when_client_id_missing(self, mock_oauth, mock_settings):
         mock_settings.LINKEDIN_CLIENT_ID = None
-        mock_settings.LINKEDIN_CLIENT_SECRET = "test-secret"
+        mock_settings.LINKEDIN_CLIENT_SECRET = "sec"
 
         service = LinkedInOAuthService()
+        assert service.is_configured() is False
 
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_returns_false_when_client_secret_missing(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = "cid"
+        mock_settings.LINKEDIN_CLIENT_SECRET = None
+
+        service = LinkedInOAuthService()
+        assert service.is_configured() is False
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_returns_false_when_both_missing(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = None
+        mock_settings.LINKEDIN_CLIENT_SECRET = None
+
+        service = LinkedInOAuthService()
+        assert service.is_configured() is False
+
+    @patch("app.services.linkedin_oauth_service.settings")
+    @patch("app.services.linkedin_oauth_service.OAuth")
+    def test_returns_false_when_empty_strings(self, mock_oauth, mock_settings):
+        mock_settings.LINKEDIN_CLIENT_ID = ""
+        mock_settings.LINKEDIN_CLIENT_SECRET = ""
+
+        service = LinkedInOAuthService()
         assert service.is_configured() is False

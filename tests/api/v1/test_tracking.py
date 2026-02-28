@@ -4,8 +4,38 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-from app.api.v1.tracking import router
+# Guard the import — tracking module triggers DB engine creation at import time
+try:
+    from app.api.v1.tracking import router
+
+    _TRACKING_IMPORTABLE = True
+except Exception:
+    _TRACKING_IMPORTABLE = False
+    router = None  # type: ignore[assignment]
+
+pytestmark = pytest.mark.skipif(not _TRACKING_IMPORTABLE, reason="Cannot import tracking module (requires DB)")
+
+
+@pytest.fixture
+def tracking_client():
+    """TestClient with mocked DB dependency."""
+    from app.api.v1.tracking import get_db
+
+    app = FastAPI()
+    app.include_router(router)
+
+    mock_db = AsyncMock()
+
+    async def override_get_db():
+        yield mock_db
+
+    app.dependency_overrides[get_db] = override_get_db
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
 
 
 class TestTrackingRouter:
@@ -43,3 +73,67 @@ class TestTrackingRouter:
         from app.api.v1.tracking import get_tracking_stats
 
         assert callable(get_tracking_stats)
+
+
+class TestTrackRedirect:
+    """Tests for GET /t/{tracking_type}/{token}."""
+
+    @patch("app.api.v1.tracking.email_tracking_service")
+    def test_track_redirect_success(self, mock_service, tracking_client):
+        mock_service.record_event = AsyncMock(return_value=None)
+        cid = str(uuid.uuid4())
+        resp = tracking_client.get(
+            "/t/click/test-token-123",
+            params={"dest": "https://example.com", "cid": cid},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "https://example.com"
+        mock_service.record_event.assert_awaited_once()
+
+    @patch("app.api.v1.tracking.email_tracking_service")
+    def test_track_redirect_open_type(self, mock_service, tracking_client):
+        mock_service.record_event = AsyncMock(return_value=None)
+        cid = str(uuid.uuid4())
+        resp = tracking_client.get(
+            "/t/open/token-abc",
+            params={"dest": "https://example.com/page", "cid": cid},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+
+    @patch("app.api.v1.tracking.email_tracking_service")
+    def test_track_redirect_missing_dest_returns_422(self, mock_service, tracking_client):
+        cid = str(uuid.uuid4())
+        resp = tracking_client.get(
+            "/t/click/some-token",
+            params={"cid": cid},
+        )
+        assert resp.status_code == 422
+
+    @patch("app.api.v1.tracking.email_tracking_service")
+    def test_track_redirect_missing_cid_returns_422(self, mock_service, tracking_client):
+        resp = tracking_client.get(
+            "/t/click/some-token",
+            params={"dest": "https://example.com"},
+        )
+        assert resp.status_code == 422
+
+
+class TestGetTrackingStats:
+    """Tests for GET /t/stats/{communication_id}."""
+
+    @patch("app.api.v1.tracking.email_tracking_service")
+    def test_stats_success(self, mock_service, tracking_client):
+        cid = str(uuid.uuid4())
+        mock_service.get_communication_stats = AsyncMock(return_value={"opens": 5, "clicks": 3})
+        resp = tracking_client.get(f"/t/stats/{cid}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["opens"] == 5
+        assert data["clicks"] == 3
+
+    @patch("app.api.v1.tracking.email_tracking_service")
+    def test_stats_invalid_uuid_returns_422(self, mock_service, tracking_client):
+        resp = tracking_client.get("/t/stats/not-a-uuid")
+        assert resp.status_code == 422

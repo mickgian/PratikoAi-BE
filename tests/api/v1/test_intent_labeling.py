@@ -661,8 +661,8 @@ class TestLabelingExport:
             app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
-    async def test_export_requires_admin(self, expert_user):
-        """Export should only be accessible to admins."""
+    async def test_export_requires_admin_or_superuser(self, expert_user):
+        """Export should only be accessible to admins and super users."""
         mock_db = create_mock_db()
 
         async def get_mock_db():
@@ -675,8 +675,42 @@ class TestLabelingExport:
             with TestClient(app) as client:
                 response = client.get("/api/v1/labeling/export")
 
-                # Experts cannot export, only admins
+                # Experts cannot export, only admins/super_users
                 assert response.status_code == 403
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_export_allowed_for_superuser(self, super_user):
+        """Export should be accessible to super users."""
+        mock_db = create_mock_db()
+
+        async def get_mock_db():
+            return mock_db
+
+        app.dependency_overrides[get_current_user] = lambda: super_user
+        app.dependency_overrides[get_db] = get_mock_db
+
+        try:
+            mock_queries = [
+                MagicMock(
+                    id=uuid4(),
+                    query="Test query",
+                    expert_intent="chitchat",
+                    confidence=0.45,
+                    labeled_at=datetime.utcnow(),
+                ),
+            ]
+
+            mock_result = MagicMock()
+            mock_result.scalars.return_value.all.return_value = mock_queries
+            mock_db.execute.side_effect = [mock_result, MagicMock()]
+
+            with TestClient(app) as client:
+                response = client.get("/api/v1/labeling/export?format=jsonl")
+
+                assert response.status_code == 200
+                assert "application/x-ndjson" in response.headers["content-type"]
         finally:
             app.dependency_overrides.clear()
 

@@ -27,11 +27,23 @@ jest.mock('@/components/MigrationBanner', () => ({
 }));
 
 jest.mock('../ChatHeader', () => ({
-  ChatHeader: () => <div data-testid="chat-header">Header</div>,
+  ChatHeader: ({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void }) => (
+    <div data-testid="chat-header">
+      <button data-testid="mobile-menu-button" onClick={onMobileMenuToggle}>
+        Menu
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock('../ChatSidebar', () => ({
-  ChatSidebar: () => <div data-testid="chat-sidebar">Sidebar</div>,
+  ChatSidebar: ({ onClose }: { onClose?: () => void }) => (
+    <div data-testid="chat-sidebar">
+      <button data-testid="sidebar-close-button" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock('../ChatMessagesArea', () => ({
@@ -156,5 +168,49 @@ describe('ChatLayoutV2', () => {
     render(<ChatLayoutV2 />);
 
     expect(useChatStorageV2).toHaveBeenCalledWith('');
+  });
+
+  describe('Mobile Sidebar', () => {
+    it('should not show mobile sidebar overlay by default', () => {
+      render(<ChatLayoutV2 />);
+
+      expect(
+        screen.queryByTestId('mobile-sidebar-backdrop')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should open mobile sidebar when hamburger menu is clicked', () => {
+      render(<ChatLayoutV2 />);
+
+      fireEvent.click(screen.getByTestId('mobile-menu-button'));
+
+      expect(screen.getByTestId('mobile-sidebar-backdrop')).toBeInTheDocument();
+    });
+
+    it('should close mobile sidebar when backdrop is clicked', () => {
+      render(<ChatLayoutV2 />);
+
+      fireEvent.click(screen.getByTestId('mobile-menu-button'));
+      expect(screen.getByTestId('mobile-sidebar-backdrop')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('mobile-sidebar-backdrop'));
+      expect(
+        screen.queryByTestId('mobile-sidebar-backdrop')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should close mobile sidebar when close button is clicked', () => {
+      render(<ChatLayoutV2 />);
+
+      fireEvent.click(screen.getByTestId('mobile-menu-button'));
+      expect(screen.getByTestId('mobile-sidebar-backdrop')).toBeInTheDocument();
+
+      // The close button is inside the mobile overlay sidebar (second one)
+      const closeButtons = screen.getAllByTestId('sidebar-close-button');
+      fireEvent.click(closeButtons[closeButtons.length - 1]);
+      expect(
+        screen.queryByTestId('mobile-sidebar-backdrop')
+      ).not.toBeInTheDocument();
+    });
   });
 });

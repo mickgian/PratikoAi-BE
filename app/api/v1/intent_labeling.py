@@ -11,7 +11,7 @@ Provides REST API endpoints for:
 
 Access control (DEV-253c):
 - Queue, label, skip, stats: SUPER_USER or ADMIN with verified ExpertProfile
-- Export: ADMIN only (training data export)
+- Export: ADMIN or SUPER_USER (training data export)
 """
 
 from uuid import UUID
@@ -73,15 +73,15 @@ async def _require_verified_expert(user: User, db: AsyncSession) -> None:
 
 
 def _require_admin(user: User) -> None:
-    """Validate user has ADMIN role.
+    """Validate user has ADMIN or SUPER_USER role.
 
     Args:
         user: Authenticated user
 
     Raises:
-        HTTPException: 403 if user is not admin
+        HTTPException: 403 if user is not admin or super_user
     """
-    if user.role != UserRole.ADMIN.value:
+    if user.role not in [UserRole.ADMIN.value, UserRole.SUPER_USER.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accesso non autorizzato",
@@ -248,7 +248,7 @@ async def export_training_data(
 ) -> Response:
     """Export labeled data for HuggingFace model training.
 
-    Only accessible to ADMIN users. Exports labeled queries in JSONL
+    Accessible to ADMIN and SUPER_USER roles. Exports labeled queries in JSONL
     (HuggingFace-compatible) or CSV format.
 
     Args:

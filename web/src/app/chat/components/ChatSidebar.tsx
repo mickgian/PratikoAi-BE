@@ -28,7 +28,11 @@ import { LogPrefix } from '../utils/LogPrefix';
  * - Active session indicator
  * - Responsive visibility (hidden on mobile, visible on desktop)
  */
-export function ChatSidebar() {
+interface ChatSidebarProps {
+  onClose?: () => void;
+}
+
+export function ChatSidebar({ onClose }: ChatSidebarProps = {}) {
   const {
     sessions,
     isLoadingSessions,
@@ -66,6 +70,9 @@ export function ChatSidebar() {
 
     // Clear UI state - session will be created when user sends first message
     startNewChat();
+
+    // Close mobile sidebar after starting new chat
+    onClose?.();
 
     LogPrefix.log(
       LogPrefix.UI_SIDEBAR,
@@ -123,6 +130,9 @@ export function ChatSidebar() {
           LogPrefix.SESSION_LOAD,
           'Messages loaded into chat state from sidebar'
         );
+
+        // Close mobile sidebar after selecting a session
+        onClose?.();
 
         // Additional verification: Check if messages were actually loaded
         setTimeout(() => {
@@ -238,6 +248,7 @@ export function ChatSidebar() {
               data-testid="sidebar-close-button"
               type="button"
               aria-label="Chiudi sidebar"
+              onClick={onClose}
               className="p-1 hover:bg-[#F8F5F1] rounded lg:hidden"
             >
               <X className="w-5 h-5 text-[#2A5D67]" />

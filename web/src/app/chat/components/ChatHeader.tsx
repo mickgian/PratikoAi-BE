@@ -26,7 +26,11 @@ import { useExpertStatus } from '@/hooks/useExpertStatus';
  * - User menu with logout functionality
  * - Exact Figma color values
  */
-export function ChatHeader() {
+interface ChatHeaderProps {
+  onMobileMenuToggle?: () => void;
+}
+
+export function ChatHeader({ onMobileMenuToggle }: ChatHeaderProps = {}) {
   const router = useRouter();
   const { logout, isLoading } = useAuth();
   const { isSuperUser } = useExpertStatus();
@@ -100,6 +104,7 @@ export function ChatHeader() {
           data-testid="mobile-menu-button"
           type="button"
           aria-label="Apri menu"
+          onClick={onMobileMenuToggle}
           className="lg:hidden p-2 hover:bg-[#F8F5F1] rounded-lg"
         >
           <Menu className="w-5 h-5 text-[#2A5D67]" />

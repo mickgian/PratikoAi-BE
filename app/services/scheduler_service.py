@@ -1292,10 +1292,43 @@ async def start_scheduler() -> None:
     DEV-242: Immediate tasks now run in background (non-blocking).
     The scheduler.start() method handles this automatically.
     """
+    # Ensure canonical RSS feeds exist in feed_status before tasks run.
+    # Idempotent: inserts only missing feeds, preserves existing state.
+    await _seed_feeds_on_startup()
+
     setup_default_tasks()
     await scheduler_service.start()
     # DEV-242: Immediate tasks are now scheduled in background by start()
     # No blocking loop here - app startup completes immediately
+
+
+async def _seed_feeds_on_startup() -> None:
+    """Seed canonical RSS feeds into feed_status if missing.
+
+    Runs on every startup so QA/prod always have feeds,
+    regardless of Alembic migration state.
+    """
+    try:
+        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+        from sqlalchemy.orm import sessionmaker
+
+        from app.core.feed_registry import ensure_feeds_seeded
+
+        postgres_url = settings.POSTGRES_URL
+        if postgres_url.startswith("postgresql://"):
+            postgres_url = postgres_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        engine = create_async_engine(postgres_url, echo=False, pool_pre_ping=True)
+        async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session_maker() as session:
+            result = await ensure_feeds_seeded(session)
+            if result["seeded"] > 0:
+                logger.info("startup_feeds_seeded", seeded=result["seeded"])
+
+        await engine.dispose()
+    except Exception as e:
+        logger.error("startup_feed_seeding_failed", error=str(e), exc_info=True)
 
 
 async def stop_scheduler() -> None:

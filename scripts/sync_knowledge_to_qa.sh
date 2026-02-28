@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+# ──────────────────────────────────────────────────────────────────────
+# sync_knowledge_to_qa.sh — One-command dev DB → QA DB knowledge sync
+#
+# Dumps feed_status, knowledge_items, knowledge_chunks, and
+# regulatory_documents from the local dev database and restores them
+# to the QA database via SSH + docker exec.  Fully automated —
+# no manual SSH into QA required.
+#
+# Usage:
+#   export QA_HOST=<qa-server-ip>      # required (Hetzner QA IP)
+#   ./scripts/sync_knowledge_to_qa.sh
+#
+# Prerequisites:
+#   - Local dev DB running (docker compose up db)
+#   - SSH access to QA server as 'deploy' user
+#   - QA containers running (db service)
+#
+# Options (env vars):
+#   QA_HOST          QA server IP/hostname (REQUIRED)
+#   QA_SSH_USER      SSH user on QA (default: deploy)
+#   QA_SSH_KEY       Path to SSH key (default: ~/.ssh/id_rsa)
+#   DEV_DB_PORT      Local dev DB port (default: 5433)
+# ──────────────────────────────────────────────────────────────────────
+set -euo pipefail
+
+# ── Config ───────────────────────────────────────────────────────────
+QA_HOST="${QA_HOST:?ERROR: Set QA_HOST env var (e.g. export QA_HOST=1.2.3.4)}"
+QA_SSH_USER="${QA_SSH_USER:-deploy}"
+QA_SSH_KEY="${QA_SSH_KEY:-}"
+DEV_DB_PORT="${DEV_DB_PORT:-5433}"
+
+DEV_DB_USER="aifinance"
+DEV_DB_NAME="aifinance"
+QA_DB_USER="aifinance"
+QA_DB_NAME="aifinance"
+
+# Tables in dependency order (parents first)
+TABLES=(feed_status knowledge_items knowledge_chunks regulatory_documents)
+
+# SSH options
+SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+if [ -n "$QA_SSH_KEY" ]; then
+  SSH_OPTS="$SSH_OPTS -i $QA_SSH_KEY"
+fi
+SSH_CMD="ssh $SSH_OPTS ${QA_SSH_USER}@${QA_HOST}"
+
+# QA docker compose command
+QA_DC="cd /opt/pratikoai && docker compose --env-file .env.qa -f docker-compose.yml -f docker-compose.qa.yml"
+
+# ── Helpers ──────────────────────────────────────────────────────────
+info()  { echo "  $*"; }
+step()  { echo ""; echo "==> $*"; }
+abort() { echo "ERROR: $*" >&2; exit 1; }
+
+dev_psql() {
+  PGPASSWORD=devpass psql -h localhost -p "$DEV_DB_PORT" -U "$DEV_DB_USER" -d "$DEV_DB_NAME" "$@"
+}
+
+qa_psql() {
+  $SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME $*"
+}
+
+# ── Pre-flight checks ───────────────────────────────────────────────
+echo ""
+echo "================================================================"
+echo "  PratikoAI Knowledge Base Sync:  Dev DB  -->  QA DB"
+echo "================================================================"
+echo "  Dev:  localhost:${DEV_DB_PORT}/${DEV_DB_NAME}"
+echo "  QA:   ${QA_SSH_USER}@${QA_HOST} (docker db container)"
+echo ""
+
+step "Pre-flight checks..."
+
+# Check local dev DB connectivity
+if ! dev_psql -c "SELECT 1" > /dev/null 2>&1; then
+  abort "Cannot connect to dev DB at localhost:${DEV_DB_PORT}. Is 'docker compose up db' running?"
+fi
+info "Dev DB: OK"
+
+# Check SSH + QA DB connectivity
+if ! $SSH_CMD "$QA_DC exec -T db pg_isready -U $QA_DB_USER" > /dev/null 2>&1; then
+  abort "Cannot reach QA DB via SSH. Check QA_HOST, SSH key, and that QA containers are running."
+fi
+info "QA DB:  OK"
+
+# ── Gather counts before sync ───────────────────────────────────────
+step "Current row counts..."
+printf "  %-30s %10s %10s\n" "TABLE" "DEV" "QA"
+printf "  %-30s %10s %10s\n" "-----" "---" "--"
+for table in "${TABLES[@]}"; do
+  dev_count=$(dev_psql -tAc "SELECT COUNT(*) FROM $table" 2>/dev/null || echo "?")
+  qa_count=$($SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" 2>/dev/null || echo "?")
+  printf "  %-30s %10s %10s\n" "$table" "$(echo $dev_count | tr -d ' ')" "$(echo $qa_count | tr -d ' ')"
+done
+
+# ── Confirm ──────────────────────────────────────────────────────────
+echo ""
+echo "This will TRUNCATE the QA tables and replace with dev data."
+read -r -p "Continue? [y/N] " confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+  echo "Aborted."
+  exit 0
+fi
+
+# ── Step 1: Dump dev tables ──────────────────────────────────────────
+step "Step 1/3: Dumping dev tables..."
+
+DUMP_FILE=$(mktemp /tmp/pratiko_sync_XXXXXX.sql)
+trap 'rm -f "$DUMP_FILE"' EXIT
+
+# Header: disable triggers/FK checks during restore
+cat > "$DUMP_FILE" <<'SQL'
+-- Disable FK checks for self-referential tables (knowledge_items.parent_document_id)
+SET session_replication_role = 'replica';
+
+SQL
+
+for table in "${TABLES[@]}"; do
+  info "Dumping $table..."
+  PGPASSWORD=devpass pg_dump \
+    -h localhost -p "$DEV_DB_PORT" -U "$DEV_DB_USER" -d "$DEV_DB_NAME" \
+    --data-only --table="$table" --no-owner --no-privileges \
+    >> "$DUMP_FILE"
+done
+
+# Footer: re-enable triggers
+cat >> "$DUMP_FILE" <<'SQL'
+
+-- Re-enable FK checks and triggers
+SET session_replication_role = 'origin';
+SQL
+
+DUMP_SIZE=$(du -h "$DUMP_FILE" | cut -f1)
+info "Dump complete: $DUMP_SIZE"
+
+# ── Step 2: Truncate QA tables ───────────────────────────────────────
+step "Step 2/3: Truncating QA tables..."
+$SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -c \
+  'TRUNCATE TABLE regulatory_documents, knowledge_chunks, knowledge_items, feed_status CASCADE'"
+info "Tables truncated"
+
+# ── Step 3: Restore to QA ───────────────────────────────────────────
+step "Step 3/3: Restoring to QA..."
+cat "$DUMP_FILE" | $SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -q"
+info "Restore complete"
+
+# ── Verify ───────────────────────────────────────────────────────────
+step "Verification..."
+ALL_MATCH=true
+printf "  %-30s %10s %10s %s\n" "TABLE" "DEV" "QA" "STATUS"
+printf "  %-30s %10s %10s %s\n" "-----" "---" "--" "------"
+for table in "${TABLES[@]}"; do
+  dev_count=$(dev_psql -tAc "SELECT COUNT(*) FROM $table" | tr -d ' ')
+  qa_count=$($SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" | tr -d ' ')
+  if [ "$dev_count" = "$qa_count" ]; then
+    status="OK"
+  else
+    status="MISMATCH"
+    ALL_MATCH=false
+  fi
+  printf "  %-30s %10s %10s %s\n" "$table" "$dev_count" "$qa_count" "$status"
+done
+
+echo ""
+if $ALL_MATCH; then
+  echo "================================================================"
+  echo "  Sync complete! QA knowledge base matches dev."
+  echo "  Daily scheduled tasks will keep QA current from here."
+  echo "================================================================"
+else
+  echo "WARNING: Some counts don't match. Check for errors above."
+  exit 1
+fi

@@ -19,8 +19,7 @@
 # Options (env vars):
 #   QA_HOST          QA server IP/hostname (REQUIRED)
 #   QA_SSH_USER      SSH user on QA (default: deploy)
-#   QA_SSH_KEY       Path to SSH key (default: ~/.ssh/id_rsa)
-#   DEV_DB_PORT      Local dev DB port (default: 5433)
+#   QA_SSH_KEY       Path to SSH key (optional)
 # ──────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -28,12 +27,9 @@ set -euo pipefail
 QA_HOST="${QA_HOST:?ERROR: Set QA_HOST env var (e.g. export QA_HOST=1.2.3.4)}"
 QA_SSH_USER="${QA_SSH_USER:-deploy}"
 QA_SSH_KEY="${QA_SSH_KEY:-}"
-DEV_DB_PORT="${DEV_DB_PORT:-5433}"
 
-DEV_DB_USER="aifinance"
-DEV_DB_NAME="aifinance"
-QA_DB_USER="aifinance"
-QA_DB_NAME="aifinance"
+DB_USER="aifinance"
+DB_NAME="aifinance"
 
 # Tables in dependency order (parents first)
 TABLES=(feed_status knowledge_items knowledge_chunks regulatory_documents)
@@ -45,20 +41,25 @@ if [ -n "$QA_SSH_KEY" ]; then
 fi
 SSH_CMD="ssh $SSH_OPTS ${QA_SSH_USER}@${QA_HOST}"
 
-# QA docker compose command
+# Docker compose commands (local dev + remote QA)
+DEV_DC="docker compose"
 QA_DC="cd /opt/pratikoai && docker compose --env-file .env.qa -f docker-compose.yml -f docker-compose.qa.yml"
 
 # ── Helpers ──────────────────────────────────────────────────────────
 info()  { echo "  $*"; }
 step()  { echo ""; echo "==> $*"; }
-abort() { echo "ERROR: $*" >&2; exit 1; }
+abort() { echo ""; echo "ERROR: $*" >&2; exit 1; }
 
 dev_psql() {
-  PGPASSWORD=devpass psql -h localhost -p "$DEV_DB_PORT" -U "$DEV_DB_USER" -d "$DEV_DB_NAME" "$@"
+  $DEV_DC exec -T db psql -U "$DB_USER" -d "$DB_NAME" "$@"
 }
 
-qa_psql() {
-  $SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME $*"
+dev_pgdump() {
+  $DEV_DC exec -T db pg_dump -U "$DB_USER" -d "$DB_NAME" "$@"
+}
+
+qa_exec() {
+  $SSH_CMD "$QA_DC exec -T db $*"
 }
 
 # ── Pre-flight checks ───────────────────────────────────────────────
@@ -66,20 +67,20 @@ echo ""
 echo "================================================================"
 echo "  PratikoAI Knowledge Base Sync:  Dev DB  -->  QA DB"
 echo "================================================================"
-echo "  Dev:  localhost:${DEV_DB_PORT}/${DEV_DB_NAME}"
+echo "  Dev:  local docker compose (db service)"
 echo "  QA:   ${QA_SSH_USER}@${QA_HOST} (docker db container)"
 echo ""
 
 step "Pre-flight checks..."
 
-# Check local dev DB connectivity
-if ! dev_psql -c "SELECT 1" > /dev/null 2>&1; then
-  abort "Cannot connect to dev DB at localhost:${DEV_DB_PORT}. Is 'docker compose up db' running?"
+# Check local dev DB container is running
+if ! $DEV_DC exec -T db pg_isready -U "$DB_USER" > /dev/null 2>&1; then
+  abort "Dev DB container is not running. Start it with: docker compose up -d db"
 fi
 info "Dev DB: OK"
 
 # Check SSH + QA DB connectivity
-if ! $SSH_CMD "$QA_DC exec -T db pg_isready -U $QA_DB_USER" > /dev/null 2>&1; then
+if ! $SSH_CMD "$QA_DC exec -T db pg_isready -U $DB_USER" > /dev/null 2>&1; then
   abort "Cannot reach QA DB via SSH. Check QA_HOST, SSH key, and that QA containers are running."
 fi
 info "QA DB:  OK"
@@ -89,9 +90,9 @@ step "Current row counts..."
 printf "  %-30s %10s %10s\n" "TABLE" "DEV" "QA"
 printf "  %-30s %10s %10s\n" "-----" "---" "--"
 for table in "${TABLES[@]}"; do
-  dev_count=$(dev_psql -tAc "SELECT COUNT(*) FROM $table" 2>/dev/null || echo "?")
-  qa_count=$($SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" 2>/dev/null || echo "?")
-  printf "  %-30s %10s %10s\n" "$table" "$(echo $dev_count | tr -d ' ')" "$(echo $qa_count | tr -d ' ')"
+  dev_count=$(dev_psql -tAc "SELECT COUNT(*) FROM $table" 2>/dev/null | tr -d ' ' || echo "?")
+  qa_count=$(qa_exec "psql -U $DB_USER -d $DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" 2>/dev/null | tr -d ' ' || echo "?")
+  printf "  %-30s %10s %10s\n" "$table" "$dev_count" "$qa_count"
 done
 
 # ── Confirm ──────────────────────────────────────────────────────────
@@ -118,10 +119,7 @@ SQL
 
 for table in "${TABLES[@]}"; do
   info "Dumping $table..."
-  PGPASSWORD=devpass pg_dump \
-    -h localhost -p "$DEV_DB_PORT" -U "$DEV_DB_USER" -d "$DEV_DB_NAME" \
-    --data-only --table="$table" --no-owner --no-privileges \
-    >> "$DUMP_FILE"
+  dev_pgdump --data-only --table="$table" --no-owner --no-privileges >> "$DUMP_FILE"
 done
 
 # Footer: re-enable triggers
@@ -136,13 +134,13 @@ info "Dump complete: $DUMP_SIZE"
 
 # ── Step 2: Truncate QA tables ───────────────────────────────────────
 step "Step 2/3: Truncating QA tables..."
-$SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -c \
+qa_exec "psql -U $DB_USER -d $DB_NAME -c \
   'TRUNCATE TABLE regulatory_documents, knowledge_chunks, knowledge_items, feed_status CASCADE'"
 info "Tables truncated"
 
 # ── Step 3: Restore to QA ───────────────────────────────────────────
-step "Step 3/3: Restoring to QA..."
-cat "$DUMP_FILE" | $SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -q"
+step "Step 3/3: Restoring to QA (this may take a while for large datasets)..."
+cat "$DUMP_FILE" | $SSH_CMD "$QA_DC exec -T db psql -U $DB_USER -d $DB_NAME -q"
 info "Restore complete"
 
 # ── Verify ───────────────────────────────────────────────────────────
@@ -152,7 +150,7 @@ printf "  %-30s %10s %10s %s\n" "TABLE" "DEV" "QA" "STATUS"
 printf "  %-30s %10s %10s %s\n" "-----" "---" "--" "------"
 for table in "${TABLES[@]}"; do
   dev_count=$(dev_psql -tAc "SELECT COUNT(*) FROM $table" | tr -d ' ')
-  qa_count=$($SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" | tr -d ' ')
+  qa_count=$(qa_exec "psql -U $DB_USER -d $DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" | tr -d ' ')
   if [ "$dev_count" = "$qa_count" ]; then
     status="OK"
   else
@@ -166,7 +164,6 @@ echo ""
 if $ALL_MATCH; then
   echo "================================================================"
   echo "  Sync complete! QA knowledge base matches dev."
-  echo "  Daily scheduled tasks will keep QA current from here."
   echo "================================================================"
 else
   echo "WARNING: Some counts don't match. Check for errors above."

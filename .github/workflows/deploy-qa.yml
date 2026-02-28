@@ -236,6 +236,46 @@ jobs:
             # Clean up dangling images left after deploy
             docker image prune -f || true
 
+      - name: Populate knowledge base (one-time)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_QA_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_QA_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            set -e
+            cd /opt/pratikoai
+            DC="docker compose --env-file .env.qa -f docker-compose.yml -f docker-compose.qa.yml"
+
+            # Check if knowledge base needs initial population
+            ITEM_COUNT=$($DC exec -T db psql -U "${POSTGRES_USER:-aifinance}" -d aifinance -tAc \
+              "SELECT COUNT(*) FROM knowledge_items" 2>/dev/null || echo "0")
+            ITEM_COUNT=$(echo "$ITEM_COUNT" | tr -d ' ')
+
+            if [ "$ITEM_COUNT" -lt 10 ]; then
+              echo "Knowledge base nearly empty ($ITEM_COUNT items). Running initial ingestion..."
+              echo "This is a one-time operation — daily scheduled tasks keep QA current after this."
+
+              # Run full ingestion: RSS feeds + Gazzetta + Cassazione (last 90 days)
+              # Non-blocking: partial success (exit 2) is acceptable for initial population
+              $DC exec -T app python scripts/run_full_ingestion.py \
+                --source all --days 90 || {
+                EXIT_CODE=$?
+                if [ "$EXIT_CODE" -eq 2 ]; then
+                  echo "Initial ingestion completed with partial success (some sources had errors)"
+                else
+                  echo "WARNING: Initial ingestion failed (exit $EXIT_CODE). Daily tasks will retry."
+                fi
+              }
+
+              NEW_COUNT=$($DC exec -T db psql -U "${POSTGRES_USER:-aifinance}" -d aifinance -tAc \
+                "SELECT COUNT(*) FROM knowledge_items" 2>/dev/null || echo "?")
+              echo "Knowledge base now has $(echo $NEW_COUNT | tr -d ' ') items"
+            else
+              echo "Knowledge base already populated ($ITEM_COUNT items). Skipping initial ingestion."
+            fi
+
       - name: Smoke tests
         if: success()
         run: |

@@ -16,6 +16,10 @@ from app.api.v1.chatbot import router as chatbot_router
 # Wave 4: New API routers (DEV-311, DEV-312, DEV-332, DEV-342, DEV-373)
 from app.api.v1.clients import router as clients_router
 from app.api.v1.communications import router as communications_router
+
+# Wave 7: Dashboard, Compliance, WebSocket (DEV-356, DEV-369, DEV-378)
+from app.api.v1.compliance import router as compliance_router
+from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.data_rights import router as data_rights_router
 from app.api.v1.data_sources import router as data_sources_router
 from app.api.v1.deadlines import router as deadlines_router
@@ -59,6 +63,7 @@ from app.api.v1.success_criteria import router as success_criteria_router
 # Wave 6: Tracking and Unsubscribe (DEV-412, DEV-415)
 from app.api.v1.tracking import router as tracking_router
 from app.api.v1.unsubscribe import router as unsubscribe_router
+from app.api.v1.websocket import router as websocket_router
 from app.core.logging import logger
 
 api_router = APIRouter()
@@ -112,6 +117,11 @@ api_router.include_router(deadlines_router)  # Includes /deadlines prefix from r
 # Wave 6: Tracking and Unsubscribe (DEV-412, DEV-415)
 api_router.include_router(tracking_router)  # Includes /t prefix from router
 api_router.include_router(unsubscribe_router)  # Includes /unsubscribe prefix from router
+
+# Wave 7: Dashboard, Compliance, WebSocket (DEV-356, DEV-369, DEV-378)
+api_router.include_router(dashboard_router)  # Includes /dashboard prefix from router
+api_router.include_router(compliance_router)  # Includes /compliance prefix from router
+api_router.include_router(websocket_router)  # WebSocket endpoint (DEV-369)
 
 
 @api_router.get("/health")

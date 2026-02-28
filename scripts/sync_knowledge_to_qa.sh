@@ -105,42 +105,51 @@ if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
 fi
 
 # ── Step 1: Dump dev tables ──────────────────────────────────────────
-step "Step 1/3: Dumping dev tables..."
+step "Step 1/2: Dumping dev tables..."
 
 DUMP_FILE=$(mktemp /tmp/pratiko_sync_XXXXXX.sql)
 trap 'rm -f "$DUMP_FILE"' EXIT
 
-# Header: disable triggers/FK checks during restore
+# Header: wrap in transaction, disable triggers, truncate first
 cat > "$DUMP_FILE" <<'SQL'
--- Disable FK checks for self-referential tables (knowledge_items.parent_document_id)
+BEGIN;
+
+-- Disable FK/trigger checks for self-referential tables
 SET session_replication_role = 'replica';
+
+-- Truncate inside the same transaction to prevent race conditions
+-- with background workers that might insert rows between truncate and copy
+TRUNCATE TABLE regulatory_documents, knowledge_chunks, knowledge_items, feed_status CASCADE;
 
 SQL
 
 for table in "${TABLES[@]}"; do
   info "Dumping $table..."
-  dev_pgdump --data-only --table="$table" --no-owner --no-privileges >> "$DUMP_FILE"
+  if [ "$table" = "knowledge_items" ]; then
+    # knowledge_items has a circular self-referential FK (parent_document_id).
+    # pg_dump --data-only can emit duplicate rows for such tables.
+    # Use --inserts --on-conflict-do-nothing so duplicates are silently skipped.
+    dev_pgdump --data-only --table="$table" --inserts --on-conflict-do-nothing --no-owner --no-privileges >> "$DUMP_FILE"
+  else
+    dev_pgdump --data-only --table="$table" --no-owner --no-privileges >> "$DUMP_FILE"
+  fi
 done
 
-# Footer: re-enable triggers
+# Footer: re-enable triggers and commit
 cat >> "$DUMP_FILE" <<'SQL'
 
 -- Re-enable FK checks and triggers
 SET session_replication_role = 'origin';
+
+COMMIT;
 SQL
 
 DUMP_SIZE=$(du -h "$DUMP_FILE" | cut -f1)
 info "Dump complete: $DUMP_SIZE"
 
-# ── Step 2: Truncate QA tables ───────────────────────────────────────
-step "Step 2/3: Truncating QA tables..."
-qa_exec "psql -U $DB_USER -d $DB_NAME -c \
-  'TRUNCATE TABLE regulatory_documents, knowledge_chunks, knowledge_items, feed_status CASCADE'"
-info "Tables truncated"
-
-# ── Step 3: Restore to QA ───────────────────────────────────────────
-step "Step 3/3: Restoring to QA (this may take a while for large datasets)..."
-cat "$DUMP_FILE" | $SSH_CMD "$QA_DC exec -T db psql -U $DB_USER -d $DB_NAME -q"
+# ── Step 2: Restore to QA ───────────────────────────────────────────
+step "Step 2/2: Restoring to QA (truncate + load in single transaction)..."
+cat "$DUMP_FILE" | $SSH_CMD "$QA_DC exec -T db psql -U $DB_USER -d $DB_NAME --set ON_ERROR_STOP=on -q"
 info "Restore complete"
 
 # ── Verify ───────────────────────────────────────────────────────────

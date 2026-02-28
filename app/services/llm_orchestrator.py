@@ -163,6 +163,36 @@ class ModelConfig:
         }
         return configs[complexity]
 
+    @classmethod
+    def for_chitchat(cls) -> "ModelConfig":
+        """Get a cost-optimized config for chitchat queries.
+
+        Uses gpt-4o-mini with minimal tokens to reduce costs.
+        Chitchat queries (greetings, casual conversation) don't need
+        expensive models, large token budgets, or complex reasoning.
+
+        Cost rates are resolved from the centralized ModelRegistry (DEV-257)
+        to maintain a single source of truth for pricing.
+
+        Returns:
+            ModelConfig optimized for minimal cost
+        """
+        from app.core.llm.model_registry import get_model_registry
+
+        registry = get_model_registry()
+        entry = registry.resolve("gpt-4o-mini")
+
+        return cls(
+            model=entry.model_name,
+            temperature=0.5,
+            max_tokens=500,
+            cost_input_per_1k=entry.input_cost_per_1k,
+            cost_output_per_1k=entry.output_cost_per_1k,
+            prompt_template="unified_response_simple",
+            reasoning_type="cot",
+            timeout_seconds=15,
+        )
+
 
 # =============================================================================
 # Data Classes
@@ -375,6 +405,7 @@ class LLMOrchestrator:
         web_sources_metadata: list[dict] | None = None,
         domains: list[str] | None = None,
         is_followup: bool = False,
+        is_chitchat: bool = False,
     ) -> UnifiedResponse:
         """Generate response with appropriate model and reasoning strategy.
 
@@ -390,12 +421,24 @@ class LLMOrchestrator:
             web_sources_metadata: DEV-245: Web sources from Brave Search (Parallel Hybrid RAG)
             domains: DEV-251 fix: Domain list for Tree of Thoughts prompt
             is_followup: DEV-251 Part 3.1: Whether this is a follow-up question (triggers concise mode)
+            is_chitchat: Use cheap model (gpt-4o-mini) for chitchat to reduce costs
 
         Returns:
             UnifiedResponse with answer, reasoning, sources, actions, and metrics
         """
         start_time = time.perf_counter()
-        config = ModelConfig.for_complexity(complexity)
+
+        # Chitchat cost optimization: use gpt-4o-mini with minimal tokens
+        if is_chitchat:
+            config = ModelConfig.for_chitchat()
+            logger.info(
+                "chitchat_cost_optimization",
+                model=config.model,
+                max_tokens=config.max_tokens,
+                action="using_cheap_model",
+            )
+        else:
+            config = ModelConfig.for_complexity(complexity)
 
         try:
             # Build prompt based on complexity/reasoning type

@@ -3610,9 +3610,14 @@ class LangGraphAgent:
                         fonti_count=len(reasoning_trace.get("fonti_utilizzate", [])),
                     )
 
+                # Chitchat cost optimization: skip fonti/sources for chitchat
+                # Chitchat responses don't need normative source citations
+                _routing = state.get("routing_decision", {})
+                _is_chitchat_route = _routing.get("route") == "chitchat"
+
                 # DEV-242 Phase 12B: Yield structured sources for frontend SourcesIndex
                 structured_sources = state.get("structured_sources")
-                if structured_sources:
+                if structured_sources and not _is_chitchat_route:
                     import json as _json
 
                     sources_json = _json.dumps(structured_sources)
@@ -3626,6 +3631,9 @@ class LangGraphAgent:
                 # DEV-244: Yield KB source URLs (deterministic, independent of LLM output)
                 # This guarantees all KB sources appear in Fonti, regardless of what LLM outputs
                 kb_sources = state.get("kb_sources_metadata", [])
+                if _is_chitchat_route:
+                    kb_sources = []  # Suppress fonti for chitchat
+                    logger.info("chitchat_fonti_suppressed", session_id=session_id)
                 # DEBUG: Log kb_sources to diagnose missing Fonti
                 logger.info(
                     "DEBUG_kb_sources_metadata",
@@ -3695,8 +3703,9 @@ class LangGraphAgent:
                         )
 
                 # DEV-245: Yield web verification results (Brave Search sources)
+                # Chitchat: skip web verification output (already skipped in step_100)
                 web_verification = state.get("web_verification", {})
-                if web_verification.get("verification_performed"):
+                if web_verification.get("verification_performed") and not _is_chitchat_route:
                     import json as _json_web
 
                     web_verification_json = _json_web.dumps(web_verification)

@@ -36,12 +36,24 @@ async def node_step_64(state: RAGState) -> RAGState:
     with rag_step_timer(STEP):
         if "kb_was_empty" not in state:
             state["kb_was_empty"] = check_kb_empty_and_inject_warning(state)
-        cplx, ctx = await classify_query_complexity(state)
+
+        # Chitchat cost optimization: detect chitchat route early
+        routing_decision = state.get("routing_decision", {})
+        is_chitchat = routing_decision.get("route") == "chitchat"
+        is_followup = routing_decision.get("is_followup", False)
+
+        if is_chitchat:
+            # Force SIMPLE complexity, skip classification LLM call
+            cplx, ctx = "simple", {"complexity": "simple", "chitchat_override": True}
+            logger.info("step_064_chitchat_cost_optimization", action="skip_classification")
+        else:
+            cplx, ctx = await classify_query_complexity(state)
         state["query_complexity"], state["complexity_context"] = cplx, ctx
 
         tot_used = False
         tot_response = None  # DEV-251: Store ToT response for reuse
-        if cplx in ("complex", "multi_domain"):
+        # Chitchat: skip ToT reasoning entirely (saves expensive LLM calls)
+        if not is_chitchat and cplx in ("complex", "multi_domain"):
             try:
                 tot = await use_tree_of_thoughts(state, cplx)
                 state.update(
@@ -71,10 +83,6 @@ async def node_step_64(state: RAGState) -> RAGState:
         user_msg, kb_ctx = extract_user_message(state), state.get("context", "") or state.get("kb_context", "")
         cplx_enum = {"simple": QC.SIMPLE, "complex": QC.COMPLEX, "multi_domain": QC.MULTI_DOMAIN}.get(cplx, QC.SIMPLE)
 
-        # DEV-251 Part 3.2: Extract is_followup from routing_decision
-        routing_decision = state.get("routing_decision", {})
-        is_followup = routing_decision.get("is_followup", False)
-
         try:
             # DEV-251: Reuse ToT response if available, avoiding duplicate LLM call
             if tot_used and tot_response is not None:
@@ -90,6 +98,7 @@ async def node_step_64(state: RAGState) -> RAGState:
                     web_sources_metadata=state.get("web_sources_metadata", []),
                     domains=state.get("detected_domains", []),
                     is_followup=is_followup,  # DEV-251 Part 3.2: Pass follow-up flag
+                    is_chitchat=is_chitchat,  # Chitchat cost optimization
                 )
             res = {
                 "llm_call_successful": True,

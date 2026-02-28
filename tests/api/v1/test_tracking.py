@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # Guard the import — tracking module triggers DB engine creation at import time
+# when app.models.database is not already mocked in sys.modules.
 try:
     from app.api.v1.tracking import router
 
@@ -19,19 +20,35 @@ except Exception:
 pytestmark = pytest.mark.skipif(not _TRACKING_IMPORTABLE, reason="Cannot import tracking module (requires DB)")
 
 
+def _get_get_db_callable():
+    """Get the get_db callable that the tracking module imported.
+
+    When app.models.database is mocked (by conftest sys.modules injection),
+    get_db is a MagicMock attribute. We must use the *same* object that the
+    router captured at import time so that dependency_overrides can match it.
+    """
+    import app.api.v1.tracking as tracking_mod
+
+    return tracking_mod.get_db
+
+
 @pytest.fixture
 def tracking_client():
-    """TestClient with mocked DB dependency."""
-    from app.api.v1.tracking import get_db
+    """TestClient with mocked DB dependency.
 
-    app = FastAPI()
-    app.include_router(router)
+    Uses app.dependency_overrides on the *same* get_db callable the router
+    captured, so the override works regardless of whether app.models.database
+    is real or mocked.
+    """
+    get_db = _get_get_db_callable()
 
     mock_db = AsyncMock()
 
     async def override_get_db():
         yield mock_db
 
+    app = FastAPI()
+    app.include_router(router)
     app.dependency_overrides[get_db] = override_get_db
     client = TestClient(app)
     yield client

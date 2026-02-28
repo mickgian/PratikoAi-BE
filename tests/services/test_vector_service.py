@@ -2,11 +2,37 @@
 
 Validates that the VectorService stub correctly raises NotImplementedError
 on all methods and that the module-level singleton exists.
+
+NOTE: tests/services/conftest.py pre-populates sys.modules with mocks
+for app.services.database and app.core.embed. We must force-reload the
+real vector_service module for these tests.
 """
+
+import importlib
+import sys
 
 import pytest
 
-from app.services.vector_service import VectorService, vector_service
+
+def _get_real_vector_service_module():
+    """Force-load the real vector_service module, bypassing sys.modules mocks."""
+    # Remove any cached mock version
+    sys.modules.pop("app.services.vector_service", None)
+    # Ensure app.core.logging is real (vector_service imports it)
+    if "app.core.logging" not in sys.modules or hasattr(sys.modules["app.core.logging"], "_mock_name"):
+        import app.core.logging
+
+        importlib.reload(app.core.logging)
+    # Import and reload the real module
+    import app.services.vector_service
+
+    importlib.reload(app.services.vector_service)
+    return app.services.vector_service
+
+
+_mod = _get_real_vector_service_module()
+VectorService = _mod.VectorService
+vector_service = _mod.vector_service
 
 
 class TestVectorServiceInit:

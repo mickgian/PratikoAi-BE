@@ -985,6 +985,7 @@ async def step_11__convert_messages(
 
             return result
 
+
 async def _convert_single_message(raw_msg: Any, index: int) -> Optional["Message"]:
     """Convert a single message from any format to Message object.
 
@@ -2509,18 +2510,19 @@ async def _format_tool_results_for_caller(ctx: dict[str, Any]) -> dict[str, Any]
 
     except Exception as e:
         error_msg = f"Tool result formatting error: {str(e)}"
+        _ctx = ctx or {}
         return {
             "success": False,
             "error": error_msg,
             "formatted_content": f"Error formatting tool results: {str(e)}",
             "tool_message_data": {
                 "content": f"Error formatting tool results: {str(e)}",
-                "name": ctx.get("tool_name", "unknown"),
-                "tool_call_id": ctx.get("tool_call_id", "unknown"),
+                "name": _ctx.get("tool_name", "unknown"),
+                "tool_call_id": _ctx.get("tool_call_id", "unknown"),
             },
             "metadata": {
-                "tool_name": ctx.get("tool_name", "unknown"),
-                "tool_call_id": ctx.get("tool_call_id", "unknown"),
+                "tool_name": _ctx.get("tool_name", "unknown"),
+                "tool_call_id": _ctx.get("tool_call_id", "unknown"),
                 "result_type": "error",
                 "has_error": True,
                 "error": str(e),
@@ -2637,16 +2639,13 @@ def _format_content_by_tool_type(tool_name: str, tool_result: dict[str, Any]) ->
 
 def _determine_result_type(tool_name: str, tool_result: dict[str, Any]) -> str:
     """Determine result type based on tool name and result structure."""
-    if tool_name == "KnowledgeSearchTool":
-        return "knowledge_search"
-    elif tool_name == "FAQTool":
-        return "faq_query"
-    elif tool_name == "ccnl_query":
-        return "ccnl_calculation"
-    elif tool_name == "DocumentIngestTool":
-        return "document_processing"
-    else:
-        return "generic_tool"
+    _tool_type_map = {
+        "KnowledgeSearchTool": "knowledge_search",
+        "FAQTool": "faq_query",
+        "ccnl_query": "ccnl_calculation",
+        "DocumentIngestTool": "document_processing",
+    }
+    return _tool_type_map.get(tool_name, "generic_tool")
 
 
 async def _handle_tool_results_error(ctx: dict[str, Any], error_msg: str) -> dict[str, Any]:
@@ -2789,7 +2788,7 @@ async def step_103__log_complete(
     response_type = kwargs.get("response_type") or (ctx or {}).get("response_type", "unknown")
     processing_time = kwargs.get("processing_time") or (ctx or {}).get("processing_time")
     start_time = kwargs.get("start_time") or (ctx or {}).get("start_time")
-    success = kwargs.get("success") or (ctx or {}).get("success", True)
+    success = kwargs.get("success") if "success" in kwargs else (ctx or {}).get("success", True)
     error_message = kwargs.get("error_message") or (ctx or {}).get("error_message")
     user_query = kwargs.get("user_query") or (ctx or {}).get("user_query", "")
     classification = kwargs.get("classification") or (ctx or {}).get("classification")

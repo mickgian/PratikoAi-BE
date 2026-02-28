@@ -50,10 +50,10 @@ class TestMultiAttachmentContextIntegration:
 
         # Then: BOTH document facts MUST be in the context
         assert "PAYSLIP_8_UNIQUE_CONTENT_AGOSTO" in merged_context, (
-            f"Payslip 8 content missing from merged_context!\n" f"Got: {merged_context[:500]}..."
+            f"Payslip 8 content missing from merged_context!\nGot: {merged_context[:500]}..."
         )
         assert "PAYSLIP_9_UNIQUE_CONTENT_SETTEMBRE" in merged_context, (
-            f"Payslip 9 content missing from merged_context!\n" f"Got: {merged_context[:500]}..."
+            f"Payslip 9 content missing from merged_context!\nGot: {merged_context[:500]}..."
         )
 
     @pytest.mark.asyncio
@@ -68,9 +68,9 @@ class TestMultiAttachmentContextIntegration:
         weights = get_composition_priority_weights("pure_doc")
 
         # Then: document_facts should have high weight (at least 0.5)
-        assert (
-            weights["document_facts"] >= 0.5
-        ), f"pure_doc should prioritize document_facts! Got weight: {weights['document_facts']}"
+        assert weights["document_facts"] >= 0.5, (
+            f"pure_doc should prioritize document_facts! Got weight: {weights['document_facts']}"
+        )
 
     @pytest.mark.asyncio
     async def test_multiple_documents_get_adequate_token_budget(self):
@@ -96,12 +96,12 @@ class TestMultiAttachmentContextIntegration:
         merged_context = result.get("merged_context", "")
 
         # Then: BOTH documents should be present
-        assert (
-            "DOCUMENT_1_START" in merged_context and "DOCUMENT_1_END" in merged_context
-        ), "Document 1 should be fully included"
-        assert (
-            "DOCUMENT_2_START" in merged_context and "DOCUMENT_2_END" in merged_context
-        ), "Document 2 should be fully included"
+        assert "DOCUMENT_1_START" in merged_context and "DOCUMENT_1_END" in merged_context, (
+            "Document 1 should be fully included"
+        )
+        assert "DOCUMENT_2_START" in merged_context and "DOCUMENT_2_END" in merged_context, (
+            "Document 2 should be fully included"
+        )
 
 
 class TestContextBuilderBudgetScaling:
@@ -130,9 +130,9 @@ class TestContextBuilderBudgetScaling:
 
         # This test will FAIL before the fix is implemented
         # because calculate_optimal_budget doesn't consider document_facts count
-        assert (
-            builder.max_budget_limit >= expected_min_budget
-        ), f"Max budget {builder.max_budget_limit} should accommodate multiple documents"
+        assert builder.max_budget_limit >= expected_min_budget, (
+            f"Max budget {builder.max_budget_limit} should accommodate multiple documents"
+        )
 
 
 class TestStep40DocumentFactsIntegration:
@@ -170,12 +170,12 @@ class TestStep40DocumentFactsIntegration:
         # Verify both payslips are represented in doc_facts
         all_doc_facts_text = " ".join(doc_facts)
         # Note: The content may be anonymized, so check for filename presence
-        assert (
-            "Payslip 8" in all_doc_facts_text or "PAYSLIP_8" in all_doc_facts_text
-        ), "Payslip 8 should be in doc_facts"
-        assert (
-            "Payslip 9" in all_doc_facts_text or "PAYSLIP_9" in all_doc_facts_text
-        ), "Payslip 9 should be in doc_facts"
+        assert "Payslip 8" in all_doc_facts_text or "PAYSLIP_8" in all_doc_facts_text, (
+            "Payslip 8 should be in doc_facts"
+        )
+        assert "Payslip 9" in all_doc_facts_text or "PAYSLIP_9" in all_doc_facts_text, (
+            "Payslip 9 should be in doc_facts"
+        )
 
 
 class TestMultiAttachmentRegressionScenarios:

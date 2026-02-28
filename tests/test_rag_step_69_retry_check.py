@@ -220,9 +220,9 @@ class TestRAGStep69Parity:
             result = await step_69__retry_check(messages=[], ctx=ctx)
 
             # Verify parity
-            assert (
-                result["retry_allowed"] == original_would_retry
-            ), f"Parity failed at attempt {attempt_number}/{max_retries}"
+            assert result["retry_allowed"] == original_would_retry, (
+                f"Parity failed at attempt {attempt_number}/{max_retries}"
+            )
 
     @pytest.mark.asyncio
     @patch("app.orchestrators.platform.rag_step_log")

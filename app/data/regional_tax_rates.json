@@ -1,0 +1,291 @@
+{
+  "meta": {
+    "version": "2026.1",
+    "source": "MEF/IFEL/Agenzia delle Entrate",
+    "last_updated": "2026-02-27"
+  },
+  "regioni": {
+    "Piemonte": {"addizionale_regionale_irpef": 1.62},
+    "Valle d'Aosta": {"addizionale_regionale_irpef": 1.23},
+    "Lombardia": {"addizionale_regionale_irpef": 1.73},
+    "Trentino-Alto Adige": {"addizionale_regionale_irpef": 1.23},
+    "Veneto": {"addizionale_regionale_irpef": 1.23},
+    "Friuli-Venezia Giulia": {"addizionale_regionale_irpef": 1.23},
+    "Liguria": {"addizionale_regionale_irpef": 1.23},
+    "Emilia-Romagna": {"addizionale_regionale_irpef": 1.33},
+    "Toscana": {"addizionale_regionale_irpef": 1.42},
+    "Umbria": {"addizionale_regionale_irpef": 1.23},
+    "Marche": {"addizionale_regionale_irpef": 1.23},
+    "Lazio": {"addizionale_regionale_irpef": 1.73},
+    "Abruzzo": {"addizionale_regionale_irpef": 1.73},
+    "Molise": {"addizionale_regionale_irpef": 1.73},
+    "Campania": {"addizionale_regionale_irpef": 2.03},
+    "Puglia": {"addizionale_regionale_irpef": 1.33},
+    "Basilicata": {"addizionale_regionale_irpef": 1.23},
+    "Calabria": {"addizionale_regionale_irpef": 1.73},
+    "Sicilia": {"addizionale_regionale_irpef": 1.40},
+    "Sardegna": {"addizionale_regionale_irpef": 1.23}
+  },
+  "comuni": {
+    "Roma": {
+      "regione": "Lazio",
+      "provincia": "RM",
+      "cap": ["00100", "00118", "00121"],
+      "addizionale_comunale_irpef": 0.9,
+      "soglia_esenzione": 11000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Milano": {
+      "regione": "Lombardia",
+      "provincia": "MI",
+      "cap": ["20100", "20121", "20122"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 15000,
+      "imu": {
+        "aliquota_ordinaria": 1.04,
+        "aliquota_prima_casa": 0.6,
+        "esenzione_prima_casa": false,
+        "detrazione_prima_casa": 300
+      }
+    },
+    "Napoli": {
+      "regione": "Campania",
+      "provincia": "NA",
+      "cap": ["80100", "80121", "80122"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.14,
+        "aliquota_prima_casa": 0.6,
+        "esenzione_prima_casa": false,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Torino": {
+      "regione": "Piemonte",
+      "provincia": "TO",
+      "cap": ["10100", "10121", "10122"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 14000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.45,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Palermo": {
+      "regione": "Sicilia",
+      "provincia": "PA",
+      "cap": ["90100", "90121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 10000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Genova": {
+      "regione": "Liguria",
+      "provincia": "GE",
+      "cap": ["16100", "16121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Bologna": {
+      "regione": "Emilia-Romagna",
+      "provincia": "BO",
+      "cap": ["40100", "40121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 13000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.6,
+        "esenzione_prima_casa": false,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Firenze": {
+      "regione": "Toscana",
+      "provincia": "FI",
+      "cap": ["50100", "50121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Bari": {
+      "regione": "Puglia",
+      "provincia": "BA",
+      "cap": ["70100", "70121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 10000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Catania": {
+      "regione": "Sicilia",
+      "provincia": "CT",
+      "cap": ["95100", "95121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 10000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Venezia": {
+      "regione": "Veneto",
+      "provincia": "VE",
+      "cap": ["30100", "30121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Verona": {
+      "regione": "Veneto",
+      "provincia": "VR",
+      "cap": ["37100", "37121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Messina": {
+      "regione": "Sicilia",
+      "provincia": "ME",
+      "cap": ["98100", "98121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 10000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Padova": {
+      "regione": "Veneto",
+      "provincia": "PD",
+      "cap": ["35100", "35121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Trieste": {
+      "regione": "Friuli-Venezia Giulia",
+      "provincia": "TS",
+      "cap": ["34100", "34121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Brescia": {
+      "regione": "Lombardia",
+      "provincia": "BS",
+      "cap": ["25100", "25121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Parma": {
+      "regione": "Emilia-Romagna",
+      "provincia": "PR",
+      "cap": ["43100", "43121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Taranto": {
+      "regione": "Puglia",
+      "provincia": "TA",
+      "cap": ["74100", "74121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 10000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Modena": {
+      "regione": "Emilia-Romagna",
+      "provincia": "MO",
+      "cap": ["41100", "41121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 12000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    },
+    "Reggio Calabria": {
+      "regione": "Calabria",
+      "provincia": "RC",
+      "cap": ["89100", "89121"],
+      "addizionale_comunale_irpef": 0.8,
+      "soglia_esenzione": 10000,
+      "imu": {
+        "aliquota_ordinaria": 1.06,
+        "aliquota_prima_casa": 0.5,
+        "esenzione_prima_casa": true,
+        "detrazione_prima_casa": 200
+      }
+    }
+  }
+}

@@ -58,7 +58,7 @@ class TestMultiDocumentBudgetScaling:
         # Then: ALL 5 documents must appear in output
         for i in range(1, 6):
             assert f"Payslip_{i}" in merged_context, (
-                f"Payslip_{i} missing from merged context. " f"This is the exact bug we're preventing."
+                f"Payslip_{i} missing from merged context. This is the exact bug we're preventing."
             )
 
 
@@ -94,7 +94,7 @@ class TestDocumentCountInvariant:
 
         # With proper budget, all 5 should be included
         assert docs_included == 5, (
-            f"Expected 5 documents included, got {docs_included}. " f"Some documents were silently dropped."
+            f"Expected 5 documents included, got {docs_included}. Some documents were silently dropped."
         )
 
     def test_excluded_documents_are_logged_with_reason(self, caplog):
@@ -130,7 +130,7 @@ class TestDocumentCountInvariant:
         docs_included = result.get("source_distribution", {}).get("document_facts", 0)
         if docs_included < 5:
             assert len(exclusion_logs) > 0, (
-                f"Documents were excluded (only {docs_included}/5 included) " f"but no exclusion warning was logged!"
+                f"Documents were excluded (only {docs_included}/5 included) but no exclusion warning was logged!"
             )
 
 
@@ -226,7 +226,7 @@ class TestPayslip9Scenario:
         # Verify ALL payslips are present
         for month in [5, 6, 7, 8, 9]:
             assert f"Busta_Paga_{month}_2024" in merged, (
-                f"Payslip for month {month} missing! " f"This reproduces the Payslip 9 bug."
+                f"Payslip for month {month} missing! This reproduces the Payslip 9 bug."
             )
 
     def test_two_payslips_both_analyzed(self):

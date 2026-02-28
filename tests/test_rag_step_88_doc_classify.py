@@ -287,9 +287,9 @@ class TestRAGStep88Parity:
 
             result = await step_88__doc_classify(messages=[], ctx=ctx)
 
-            assert (
-                result["classified_docs"][0]["document_type"] == expected_type
-            ), f"Failed for potential_category={potential_category}"
+            assert result["classified_docs"][0]["document_type"] == expected_type, (
+                f"Failed for potential_category={potential_category}"
+            )
 
 
 class TestRAGStep88Integration:

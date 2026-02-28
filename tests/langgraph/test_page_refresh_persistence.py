@@ -128,9 +128,9 @@ class TestMergeMessagesRegressionScenarios:
 
         # Verify Turn 2's user message is preserved
         user_messages = [m["content"] for m in result if m["role"] == "user"]
-        assert (
-            "E queste?" in user_messages
-        ), f"Turn 2's user message 'E queste?' must be preserved! Got: {user_messages}"
+        assert "E queste?" in user_messages, (
+            f"Turn 2's user message 'E queste?' must be preserved! Got: {user_messages}"
+        )
 
     def test_turn2_assistant_response_preserved(self):
         """Turn 2's assistant response about Payslip 8+9 must be preserved."""
@@ -152,9 +152,9 @@ class TestMergeMessagesRegressionScenarios:
 
         # Verify Turn 2's assistant response is preserved
         assistant_messages = [m["content"] for m in result if m["role"] == "assistant"]
-        assert (
-            "Analysis of Payslip 8 and 9..." in assistant_messages
-        ), f"Turn 2's response must be preserved! Got: {assistant_messages}"
+        assert "Analysis of Payslip 8 and 9..." in assistant_messages, (
+            f"Turn 2's response must be preserved! Got: {assistant_messages}"
+        )
 
     def test_messages_not_replaced_entirely(self):
         """Existing messages must not be REPLACED by new messages."""
@@ -206,5 +206,5 @@ class TestRAGStateHasMergeMessagesReducer:
         annotations = args[1:]
 
         assert merge_messages in annotations, (
-            f"RAGState.messages must be annotated with merge_messages reducer. " f"Got annotations: {annotations}"
+            f"RAGState.messages must be annotated with merge_messages reducer. Got annotations: {annotations}"
         )

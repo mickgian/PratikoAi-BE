@@ -42,7 +42,9 @@ def upgrade():
     # Create index on query_signature for fast golden set lookups (IF NOT EXISTS)
     # This enables Step 24 (golden set match) to quickly find approved responses
     op.execute(
-        sa.text('CREATE INDEX IF NOT EXISTS ix_expert_faq_candidates_query_signature ON expert_faq_candidates (query_signature)')
+        sa.text(
+            "CREATE INDEX IF NOT EXISTS ix_expert_faq_candidates_query_signature ON expert_faq_candidates (query_signature)"
+        )
     )
 
 

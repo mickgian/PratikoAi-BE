@@ -27,15 +27,11 @@ depends_on = None
 def upgrade() -> None:
     op.execute(
         sa.text(
-            "UPDATE labeled_queries "
-            "SET predicted_intent = 'normative_reference' "
-            "WHERE predicted_intent = 'golden_set'"
+            "UPDATE labeled_queries SET predicted_intent = 'normative_reference' WHERE predicted_intent = 'golden_set'"
         )
     )
     op.execute(
-        sa.text(
-            "UPDATE labeled_queries " "SET expert_intent = 'normative_reference' " "WHERE expert_intent = 'golden_set'"
-        )
+        sa.text("UPDATE labeled_queries SET expert_intent = 'normative_reference' WHERE expert_intent = 'golden_set'")
     )
     # Rename JSON key in all_scores: move 'golden_set' value to 'normative_reference'
     # Column is json (not jsonb), so cast to jsonb for key operations, then back to json
@@ -54,15 +50,11 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.execute(
         sa.text(
-            "UPDATE labeled_queries "
-            "SET predicted_intent = 'golden_set' "
-            "WHERE predicted_intent = 'normative_reference'"
+            "UPDATE labeled_queries SET predicted_intent = 'golden_set' WHERE predicted_intent = 'normative_reference'"
         )
     )
     op.execute(
-        sa.text(
-            "UPDATE labeled_queries " "SET expert_intent = 'golden_set' " "WHERE expert_intent = 'normative_reference'"
-        )
+        sa.text("UPDATE labeled_queries SET expert_intent = 'golden_set' WHERE expert_intent = 'normative_reference'")
     )
     # Cast to jsonb for key operations, then back to json
     op.execute(

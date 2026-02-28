@@ -24,26 +24,24 @@ class TestCalculableIntents:
 
         for intent_name, intent_data in CALCULABLE_INTENTS.items():
             assert "required" in intent_data, f"Intent '{intent_name}' missing 'required' key"
-            assert isinstance(intent_data["required"], list), \
-                f"Intent '{intent_name}' 'required' must be a list"
+            assert isinstance(intent_data["required"], list), f"Intent '{intent_name}' 'required' must be a list"
 
     def test_calculable_intents_all_have_question_flow(self):
         """Each intent must have a 'question_flow' string."""
         from app.core.proactivity_constants import CALCULABLE_INTENTS
 
         for intent_name, intent_data in CALCULABLE_INTENTS.items():
-            assert "question_flow" in intent_data, \
-                f"Intent '{intent_name}' missing 'question_flow' key"
-            assert isinstance(intent_data["question_flow"], str), \
+            assert "question_flow" in intent_data, f"Intent '{intent_name}' missing 'question_flow' key"
+            assert isinstance(intent_data["question_flow"], str), (
                 f"Intent '{intent_name}' 'question_flow' must be a string"
+            )
 
     def test_no_empty_required_lists(self):
         """All intents must have non-empty required parameter lists."""
         from app.core.proactivity_constants import CALCULABLE_INTENTS
 
         for intent_name, intent_data in CALCULABLE_INTENTS.items():
-            assert len(intent_data["required"]) > 0, \
-                f"Intent '{intent_name}' has empty 'required' list"
+            assert len(intent_data["required"]) > 0, f"Intent '{intent_name}' has empty 'required' list"
 
     def test_no_duplicate_intent_keys(self):
         """Intent keys must be unique (implicitly true for dict, but verify content)."""
@@ -54,7 +52,7 @@ class TestCalculableIntents:
             "calcolo_iva",
             "calcolo_contributi_inps",
             "ravvedimento_operoso",
-            "calcolo_f24"
+            "calcolo_f24",
         }
         assert set(CALCULABLE_INTENTS.keys()) == expected_intents
 
@@ -63,9 +61,7 @@ class TestCalculableIntents:
         from app.core.proactivity_constants import CALCULABLE_INTENTS
 
         assert "calcolo_irpef" in CALCULABLE_INTENTS
-        assert set(CALCULABLE_INTENTS["calcolo_irpef"]["required"]) == {
-            "tipo_contribuente", "reddito"
-        }
+        assert set(CALCULABLE_INTENTS["calcolo_irpef"]["required"]) == {"tipo_contribuente", "reddito"}
 
     def test_calcolo_iva_has_correct_required_params(self):
         """calcolo_iva must require importo."""
@@ -79,27 +75,21 @@ class TestCalculableIntents:
         from app.core.proactivity_constants import CALCULABLE_INTENTS
 
         assert "calcolo_contributi_inps" in CALCULABLE_INTENTS
-        assert set(CALCULABLE_INTENTS["calcolo_contributi_inps"]["required"]) == {
-            "tipo_gestione", "reddito"
-        }
+        assert set(CALCULABLE_INTENTS["calcolo_contributi_inps"]["required"]) == {"tipo_gestione", "reddito"}
 
     def test_ravvedimento_operoso_has_correct_required_params(self):
         """ravvedimento_operoso must require importo_originale and data_scadenza."""
         from app.core.proactivity_constants import CALCULABLE_INTENTS
 
         assert "ravvedimento_operoso" in CALCULABLE_INTENTS
-        assert set(CALCULABLE_INTENTS["ravvedimento_operoso"]["required"]) == {
-            "importo_originale", "data_scadenza"
-        }
+        assert set(CALCULABLE_INTENTS["ravvedimento_operoso"]["required"]) == {"importo_originale", "data_scadenza"}
 
     def test_calcolo_f24_has_correct_required_params(self):
         """calcolo_f24 must require codice_tributo and importo."""
         from app.core.proactivity_constants import CALCULABLE_INTENTS
 
         assert "calcolo_f24" in CALCULABLE_INTENTS
-        assert set(CALCULABLE_INTENTS["calcolo_f24"]["required"]) == {
-            "codice_tributo", "importo"
-        }
+        assert set(CALCULABLE_INTENTS["calcolo_f24"]["required"]) == {"codice_tributo", "importo"}
 
 
 class TestDocumentActionTemplates:
@@ -127,8 +117,7 @@ class TestDocumentActionTemplates:
         for doc_type, actions in DOCUMENT_ACTION_TEMPLATES.items():
             for action in actions:
                 for field in required_fields:
-                    assert field in action, \
-                        f"Action in '{doc_type}' missing required field '{field}'"
+                    assert field in action, f"Action in '{doc_type}' missing required field '{field}'"
 
     def test_action_ids_unique_within_document_type(self):
         """Action IDs must be unique within each document type."""
@@ -136,8 +125,7 @@ class TestDocumentActionTemplates:
 
         for doc_type, actions in DOCUMENT_ACTION_TEMPLATES.items():
             action_ids = [a["id"] for a in actions]
-            assert len(action_ids) == len(set(action_ids)), \
-                f"Document type '{doc_type}' has duplicate action IDs"
+            assert len(action_ids) == len(set(action_ids)), f"Document type '{doc_type}' has duplicate action IDs"
 
     def test_icons_are_valid_emoji(self):
         """All icons must be non-empty strings (emoji)."""
@@ -146,8 +134,9 @@ class TestDocumentActionTemplates:
         for doc_type, actions in DOCUMENT_ACTION_TEMPLATES.items():
             for action in actions:
                 icon = action["icon"]
-                assert isinstance(icon, str) and len(icon) > 0, \
+                assert isinstance(icon, str) and len(icon) > 0, (
                     f"Icon in '{doc_type}' action '{action['id']}' must be non-empty string"
+                )
 
     def test_prompts_are_non_empty_strings(self):
         """All prompts must be non-empty strings."""
@@ -156,8 +145,9 @@ class TestDocumentActionTemplates:
         for doc_type, actions in DOCUMENT_ACTION_TEMPLATES.items():
             for action in actions:
                 prompt = action["prompt"]
-                assert isinstance(prompt, str) and len(prompt) > 0, \
+                assert isinstance(prompt, str) and len(prompt) > 0, (
                     f"Prompt in '{doc_type}' action '{action['id']}' must be non-empty string"
+                )
 
     def test_labels_are_non_empty_strings(self):
         """All labels must be non-empty strings."""
@@ -166,8 +156,9 @@ class TestDocumentActionTemplates:
         for doc_type, actions in DOCUMENT_ACTION_TEMPLATES.items():
             for action in actions:
                 label = action["label"]
-                assert isinstance(label, str) and len(label) > 0, \
+                assert isinstance(label, str) and len(label) > 0, (
                     f"Label in '{doc_type}' action '{action['id']}' must be non-empty string"
+                )
 
     def test_fattura_elettronica_has_four_actions(self):
         """fattura_elettronica must have exactly 4 actions."""

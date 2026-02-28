@@ -464,9 +464,9 @@ class TestQueryNormalizerKeywords:
             assert result is not None, f"Query '{query}' should not return None"
             assert "keywords" in result, f"Query '{query}' should have keywords"
             keywords = result["keywords"]
-            assert any(
-                "sicur" in k.lower() for k in keywords
-            ), f"Query '{query}' should have sicurezza-related keyword"
+            assert any("sicur" in k.lower() for k in keywords), (
+                f"Query '{query}' should have sicurezza-related keyword"
+            )
             assert any("lavor" in k.lower() for k in keywords), f"Query '{query}' should have lavoro-related keyword"
 
     @pytest.mark.asyncio

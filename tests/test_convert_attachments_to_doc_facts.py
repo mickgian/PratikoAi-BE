@@ -379,6 +379,6 @@ class TestStep40AttachmentIntegration:
         # Verify [DOCUMENTI ALLEGATI ORA] marker appears before [CONTESTO PRECEDENTE]
         pos_current_marker = merged_context.find("[DOCUMENTI ALLEGATI ORA]")
         pos_prior_marker = merged_context.find("[CONTESTO PRECEDENTE]")
-        assert (
-            pos_current_marker < pos_prior_marker
-        ), "Current attachment marker should appear before prior attachment marker"
+        assert pos_current_marker < pos_prior_marker, (
+            "Current attachment marker should appear before prior attachment marker"
+        )

@@ -161,13 +161,13 @@ class TestRisoluzione56QueryRegression:
         step_40_log = step_40_started_logs[0]["kwargs"]
 
         # Critical assertion: kb_results_count must be > 0
-        assert (
-            step_40_log.get("kb_results_count", 0) > 0
-        ), "Regression: kb_results_count is 0! Data lost between step 39 and 40"
+        assert step_40_log.get("kb_results_count", 0) > 0, (
+            "Regression: kb_results_count is 0! Data lost between step 39 and 40"
+        )
 
-        assert (
-            step_40_log["kb_results_count"] == 1
-        ), "kb_results_count should be 1 (matching total_results from step 39)"
+        assert step_40_log["kb_results_count"] == 1, (
+            "kb_results_count should be 1 (matching total_results from step 39)"
+        )
 
     @pytest.mark.integration
     def test_knowledge_items_key_exists_in_orchestrator_response(self):

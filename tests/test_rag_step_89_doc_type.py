@@ -217,9 +217,9 @@ class TestRAGStep89Parity:
 
             result = await step_89__doc_type(messages=[], ctx=ctx)
 
-            assert (
-                result["next_step"] == expected_route
-            ), f"Failed for document_type={doc_type}, expected {expected_route}, got {result['next_step']}"
+            assert result["next_step"] == expected_route, (
+                f"Failed for document_type={doc_type}, expected {expected_route}, got {result['next_step']}"
+            )
 
 
 class TestRAGStep89Integration:
@@ -295,7 +295,7 @@ class TestRAGStep89Integration:
             result = await step_89__doc_type(messages=[], ctx=ctx)
 
             # Verify routing
-            assert (
-                result["next_step"] == expected_next
-            ), f"Failed for {doc_type}: expected {expected_next}, got {result['next_step']}"
+            assert result["next_step"] == expected_next, (
+                f"Failed for {doc_type}: expected {expected_next}, got {result['next_step']}"
+            )
             assert result["document_type"] == doc_type

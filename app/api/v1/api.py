@@ -55,6 +55,10 @@ from app.api.v1.release_notes import router as release_notes_router
 from app.api.v1.scrapers import router as scrapers_router
 from app.api.v1.studio import router as studio_router
 from app.api.v1.success_criteria import router as success_criteria_router
+
+# Wave 6: Tracking and Unsubscribe (DEV-412, DEV-415)
+from app.api.v1.tracking import router as tracking_router
+from app.api.v1.unsubscribe import router as unsubscribe_router
 from app.core.logging import logger
 
 api_router = APIRouter()
@@ -104,6 +108,10 @@ api_router.include_router(dpa_router)  # Includes /dpa prefix from router
 api_router.include_router(matching_router)  # Includes /matching prefix from router (DEV-326)
 api_router.include_router(data_rights_router)  # Includes /data-rights prefix from router (DEV-377)
 api_router.include_router(deadlines_router)  # Includes /deadlines prefix from router (DEV-385)
+
+# Wave 6: Tracking and Unsubscribe (DEV-412, DEV-415)
+api_router.include_router(tracking_router)  # Includes /t prefix from router
+api_router.include_router(unsubscribe_router)  # Includes /unsubscribe prefix from router
 
 
 @api_router.get("/health")

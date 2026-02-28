@@ -1,8 +1,11 @@
-"""DEV-314: Client Export to Excel — GDPR data portability.
+"""DEV-314/DEV-420: Client Export — GDPR data portability.
 
 Exports all client data (decrypted for export) to structured format.
+Supports Excel rows and JSON export (DEV-420).
 """
 
+import json
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import and_, select
@@ -179,6 +182,41 @@ class ClientExportService:
         rows = [[record.get(h) for h in headers] for record in data]
 
         return headers, rows
+
+    async def export_to_json(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+    ) -> str:
+        """Export clients as GDPR-compliant JSON (DEV-420).
+
+        Returns a JSON string containing all client data, export metadata,
+        and timestamp for audit trail.
+
+        Args:
+            db: Database session.
+            studio_id: Studio whose clients to export.
+
+        Returns:
+            JSON string with clients data, studio_id, and export_date.
+        """
+        data = await self.export_clients(db, studio_id=studio_id)
+
+        export_payload = {
+            "studio_id": str(studio_id),
+            "export_date": datetime.now(UTC).isoformat(),
+            "format_version": "1.0",
+            "clients": data,
+        }
+
+        logger.info(
+            "client_json_export_completed",
+            studio_id=str(studio_id),
+            client_count=len(data),
+        )
+
+        return json.dumps(export_payload, default=str, ensure_ascii=False, indent=2)
 
 
 client_export_service = ClientExportService()

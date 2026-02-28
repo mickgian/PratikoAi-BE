@@ -190,9 +190,9 @@ async def test_step24_similarity_score_above_threshold(db_session: AsyncSession)
     assert len(matches) > 0, "Should find semantically similar FAQ"
     match = matches[0]
     assert match["faq"].id == faq_entry.id
-    assert (
-        match["similarity_score"] >= 0.85
-    ), f"Similarity should be >= 0.85 for similar questions, got: {match['similarity_score']}"
+    assert match["similarity_score"] >= 0.85, (
+        f"Similarity should be >= 0.85 for similar questions, got: {match['similarity_score']}"
+    )
 
     # Cleanup
     await db_session.delete(faq_entry)

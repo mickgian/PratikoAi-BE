@@ -54,7 +54,9 @@ def upgrade():
             sa.Column("language", sa.String(length=10), nullable=False, default="it", comment="Content language"),
             sa.Column("last_validated", sa.DateTime(timezone=True), nullable=True, comment="Last validation date"),
             sa.Column("needs_review", sa.Boolean(), nullable=False, default=False, comment="Whether FAQ needs review"),
-            sa.Column("regulatory_refs", postgresql.JSON(), nullable=True, comment="References to regulatory documents"),
+            sa.Column(
+                "regulatory_refs", postgresql.JSON(), nullable=True, comment="References to regulatory documents"
+            ),
             sa.Column(
                 "update_sensitivity",
                 sa.String(length=20),
@@ -62,7 +64,9 @@ def upgrade():
                 default="medium",
                 comment="How sensitive FAQ is to regulatory changes",
             ),
-            sa.Column("hit_count", sa.Integer(), nullable=False, default=0, comment="Total number of times FAQ was used"),
+            sa.Column(
+                "hit_count", sa.Integer(), nullable=False, default=0, comment="Total number of times FAQ was used"
+            ),
             sa.Column("last_used", sa.DateTime(timezone=True), nullable=True, comment="Last time FAQ was accessed"),
             sa.Column("avg_helpfulness", sa.Float(), nullable=True, comment="Average helpfulness score (0.0-1.0)"),
             sa.Column("version", sa.Integer(), nullable=False, default=1, comment="Current version number"),
@@ -148,7 +152,10 @@ def upgrade():
             sa.Column("followup_needed", sa.Boolean(), nullable=True, comment="User indicated need for followup"),
             sa.Column("comments", sa.Text(), nullable=True, comment="User comments/feedback"),
             sa.Column(
-                "feedback_submitted_at", sa.DateTime(timezone=True), nullable=True, comment="When feedback was submitted"
+                "feedback_submitted_at",
+                sa.DateTime(timezone=True),
+                nullable=True,
+                comment="When feedback was submitted",
             ),
         )
 
@@ -245,10 +252,16 @@ def upgrade():
                 comment="Action taken based on check (review_flagged, auto_updated, etc.)",
             ),
             sa.Column(
-                "reviewed_by", sa.String(length=100), nullable=True, comment="Admin who reviewed the obsolescence alert"
+                "reviewed_by",
+                sa.String(length=100),
+                nullable=True,
+                comment="Admin who reviewed the obsolescence alert",
             ),
             sa.Column(
-                "reviewed_at", sa.DateTime(timezone=True), nullable=True, comment="When obsolescence alert was reviewed"
+                "reviewed_at",
+                sa.DateTime(timezone=True),
+                nullable=True,
+                comment="When obsolescence alert was reviewed",
             ),
         )
 
@@ -316,7 +329,9 @@ def upgrade():
             "faq_variation_cache",
             sa.Column("id", sa.String(length=100), primary_key=True, comment="Variation cache UUID"),
             sa.Column("faq_id", sa.String(length=100), nullable=False, comment="FAQ entry this variation is for"),
-            sa.Column("user_id", sa.String(length=100), nullable=True, comment="User this variation was generated for"),
+            sa.Column(
+                "user_id", sa.String(length=100), nullable=True, comment="User this variation was generated for"
+            ),
             sa.Column(
                 "cache_key",
                 sa.String(length=200),
@@ -357,7 +372,10 @@ def upgrade():
                 comment="How many times this cached variation was used",
             ),
             sa.Column(
-                "last_used", sa.DateTime(timezone=True), nullable=True, comment="Last time cached variation was accessed"
+                "last_used",
+                sa.DateTime(timezone=True),
+                nullable=True,
+                comment="Last time cached variation was accessed",
             ),
         )
 
@@ -380,13 +398,19 @@ def upgrade():
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column("period_start", sa.DateTime(timezone=True), nullable=False, comment="Analytics period start"),
             sa.Column("period_end", sa.DateTime(timezone=True), nullable=False, comment="Analytics period end"),
-            sa.Column("period_type", sa.String(length=20), nullable=False, comment="Period type (daily, weekly, monthly)"),
+            sa.Column(
+                "period_type", sa.String(length=20), nullable=False, comment="Period type (daily, weekly, monthly)"
+            ),
             sa.Column("total_queries", sa.Integer(), nullable=False, default=0, comment="Total queries handled"),
             sa.Column("faq_responses", sa.Integer(), nullable=False, default=0, comment="Responses from FAQ system"),
-            sa.Column("full_llm_responses", sa.Integer(), nullable=False, default=0, comment="Responses from full LLM"),
+            sa.Column(
+                "full_llm_responses", sa.Integer(), nullable=False, default=0, comment="Responses from full LLM"
+            ),
             sa.Column("cache_hits", sa.Integer(), nullable=False, default=0, comment="Variation cache hits"),
             sa.Column("cache_misses", sa.Integer(), nullable=False, default=0, comment="Variation cache misses"),
-            sa.Column("avg_response_time_ms", sa.Float(), nullable=False, default=0.0, comment="Average response time"),
+            sa.Column(
+                "avg_response_time_ms", sa.Float(), nullable=False, default=0.0, comment="Average response time"
+            ),
             sa.Column("avg_search_time_ms", sa.Float(), nullable=False, default=0.0, comment="Average search time"),
             sa.Column("cache_hit_rate", sa.Float(), nullable=False, default=0.0, comment="Cache hit rate (0.0-1.0)"),
             sa.Column(
@@ -398,7 +422,9 @@ def upgrade():
             sa.Column(
                 "cost_savings_euros", sa.Float(), nullable=False, default=0.0, comment="Cost savings vs all full LLM"
             ),
-            sa.Column("cost_savings_percent", sa.Float(), nullable=False, default=0.0, comment="Cost savings percentage"),
+            sa.Column(
+                "cost_savings_percent", sa.Float(), nullable=False, default=0.0, comment="Cost savings percentage"
+            ),
             sa.Column("avg_helpfulness_score", sa.Float(), nullable=False, default=0.0, comment="Average helpfulness"),
             sa.Column("followup_rate", sa.Float(), nullable=False, default=0.0, comment="Rate of followup requests"),
             sa.Column(
@@ -435,7 +461,9 @@ def upgrade():
             sa.Column("normalized_query", sa.Text(), nullable=False, comment="Normalized query form"),
             sa.Column("query_hash", sa.String(length=64), nullable=False, comment="SHA256 hash of original query"),
             sa.Column("cache_key", sa.String(length=100), nullable=False, comment="Generated cache key"),
-            sa.Column("applied_rules", postgresql.JSON(), nullable=True, comment="List of applied normalization rules"),
+            sa.Column(
+                "applied_rules", postgresql.JSON(), nullable=True, comment="List of applied normalization rules"
+            ),
             sa.Column("processing_time_ms", sa.Float(), nullable=False, comment="Processing time in milliseconds"),
             sa.Column("cache_hit", sa.Boolean(), nullable=True, comment="Whether query resulted in cache hit"),
             sa.Column(
@@ -444,7 +472,11 @@ def upgrade():
             sa.Column("user_id", sa.String(length=100), nullable=True, comment="User who made the query"),
             sa.Column("session_id", sa.String(length=100), nullable=True, comment="Session ID"),
             sa.Column(
-                "detected_language", sa.String(length=10), nullable=False, default="it", comment="Detected query language"
+                "detected_language",
+                sa.String(length=10),
+                nullable=False,
+                default="it",
+                comment="Detected query language",
             ),
             sa.Column(
                 "confidence_score", sa.Float(), nullable=False, default=1.0, comment="Normalization confidence (0-1)"
@@ -474,7 +506,9 @@ def upgrade():
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column("period_start", sa.DateTime(timezone=True), nullable=False, comment="Statistics period start"),
             sa.Column("period_end", sa.DateTime(timezone=True), nullable=False, comment="Statistics period end"),
-            sa.Column("period_type", sa.String(length=20), nullable=False, comment="Period type (hourly, daily, weekly)"),
+            sa.Column(
+                "period_type", sa.String(length=20), nullable=False, comment="Period type (hourly, daily, weekly)"
+            ),
             sa.Column("total_queries", sa.Integer(), nullable=False, default=0, comment="Total queries processed"),
             sa.Column(
                 "normalized_queries", sa.Integer(), nullable=False, default=0, comment="Queries that were normalized"
@@ -495,11 +529,19 @@ def upgrade():
                 "cache_hits_after", sa.Integer(), nullable=False, default=0, comment="Cache hits after normalization"
             ),
             sa.Column(
-                "cache_hit_improvement", sa.Float(), nullable=False, default=0.0, comment="Cache hit rate improvement %"
+                "cache_hit_improvement",
+                sa.Float(),
+                nullable=False,
+                default=0.0,
+                comment="Cache hit rate improvement %",
             ),
-            sa.Column("rule_frequency", postgresql.JSON(), nullable=True, comment="Frequency of each normalization rule"),
+            sa.Column(
+                "rule_frequency", postgresql.JSON(), nullable=True, comment="Frequency of each normalization rule"
+            ),
             sa.Column("common_patterns", postgresql.JSON(), nullable=True, comment="Most common query patterns"),
-            sa.Column("avg_confidence_score", sa.Float(), nullable=False, default=1.0, comment="Average confidence score"),
+            sa.Column(
+                "avg_confidence_score", sa.Float(), nullable=False, default=1.0, comment="Average confidence score"
+            ),
             sa.Column(
                 "created_at",
                 sa.DateTime(timezone=True),
@@ -536,12 +578,17 @@ def upgrade():
             ),
             sa.Column("example_queries", postgresql.JSON(), nullable=True, comment="Example original queries"),
             sa.Column(
-                "avg_processing_time_ms", sa.Float(), nullable=False, comment="Average processing time for this pattern"
+                "avg_processing_time_ms",
+                sa.Float(),
+                nullable=False,
+                comment="Average processing time for this pattern",
             ),
             sa.Column(
                 "cache_hit_rate", sa.Float(), nullable=False, default=0.0, comment="Cache hit rate for this pattern"
             ),
-            sa.Column("category", sa.String(length=50), nullable=True, comment="Pattern category (tax, legal, general)"),
+            sa.Column(
+                "category", sa.String(length=50), nullable=True, comment="Pattern category (tax, legal, general)"
+            ),
             sa.Column(
                 "complexity",
                 sa.String(length=20),
@@ -550,7 +597,11 @@ def upgrade():
                 comment="Pattern complexity (simple, medium, complex)",
             ),
             sa.Column(
-                "faq_candidate", sa.Boolean(), nullable=False, default=False, comment="Whether pattern is FAQ candidate"
+                "faq_candidate",
+                sa.Boolean(),
+                nullable=False,
+                default=False,
+                comment="Whether pattern is FAQ candidate",
             ),
             sa.Column("faq_score", sa.Float(), nullable=False, default=0.0, comment="FAQ suitability score (0-1)"),
             sa.Column("first_seen", sa.DateTime(timezone=True), nullable=False, comment="First occurrence"),

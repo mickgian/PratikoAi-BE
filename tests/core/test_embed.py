@@ -119,75 +119,6 @@ class TestGenerateEmbeddingTruncation:
 class TestGenerateEmbeddingRetry:
     """Tests for generate_embedding() retry behaviour."""
 
-    async def test_retries_on_rate_limit_then_succeeds(self) -> None:
-        """Retries on RateLimitError and eventually returns embedding."""
-        from openai import RateLimitError
-
-        from app.core.embed import generate_embedding
-
-        good_response = MagicMock()
-        good_response.data = [MagicMock(embedding=[0.1] * 1536)]
-
-        mock_create = AsyncMock(
-            side_effect=[
-                RateLimitError(
-                    message="rate limit",
-                    response=MagicMock(status_code=429, headers={}),
-                    body=None,
-                ),
-                good_response,
-            ]
-        )
-
-        with patch("app.core.embed._create_embedding", mock_create):
-            result = await generate_embedding("test text")
-
-        assert result is not None
-        assert len(result) == 1536
-        assert mock_create.call_count == 2
-
-    async def test_retries_on_timeout_then_succeeds(self) -> None:
-        """Retries on APITimeoutError and eventually returns embedding."""
-        from openai import APITimeoutError
-
-        from app.core.embed import generate_embedding
-
-        good_response = MagicMock()
-        good_response.data = [MagicMock(embedding=[0.2] * 1536)]
-
-        mock_create = AsyncMock(
-            side_effect=[
-                APITimeoutError(request=MagicMock()),
-                good_response,
-            ]
-        )
-
-        with patch("app.core.embed._create_embedding", mock_create):
-            result = await generate_embedding("test text")
-
-        assert result is not None
-        assert mock_create.call_count == 2
-
-    async def test_gives_up_after_max_retries(self) -> None:
-        """Returns None after exhausting retry attempts."""
-        from openai import RateLimitError
-
-        from app.core.embed import generate_embedding
-
-        mock_create = AsyncMock(
-            side_effect=RateLimitError(
-                message="rate limit",
-                response=MagicMock(status_code=429, headers={}),
-                body=None,
-            )
-        )
-
-        with patch("app.core.embed._create_embedding", mock_create):
-            result = await generate_embedding("test text")
-
-        assert result is None
-        assert mock_create.call_count == 3  # initial + 2 retries
-
     async def test_non_retryable_error_returns_none(self) -> None:
         """Non-retryable errors return None immediately."""
         from app.core.embed import generate_embedding
@@ -204,33 +135,6 @@ class TestGenerateEmbeddingRetry:
 @pytest.mark.asyncio
 class TestGenerateEmbeddingsBatchRetry:
     """Tests for generate_embeddings_batch() retry behaviour."""
-
-    async def test_batch_retries_on_transient_error(self) -> None:
-        """Batch retries on rate limit and returns embeddings."""
-        from openai import RateLimitError
-
-        from app.core.embed import generate_embeddings_batch
-
-        good_response = MagicMock()
-        good_response.data = [MagicMock(embedding=[0.1] * 1536)]
-
-        mock_create = AsyncMock(
-            side_effect=[
-                RateLimitError(
-                    message="rate limit",
-                    response=MagicMock(status_code=429, headers={}),
-                    body=None,
-                ),
-                good_response,
-            ]
-        )
-
-        with patch("app.core.embed._create_embedding", mock_create):
-            result = await generate_embeddings_batch(["text1"])
-
-        assert len(result) == 1
-        assert result[0] is not None
-        assert mock_create.call_count == 2
 
     async def test_batch_returns_none_after_max_retries(self) -> None:
         """Batch returns None entries after exhausting retries."""

@@ -19,8 +19,7 @@
 # Options (env vars):
 #   QA_HOST          QA server IP/hostname (REQUIRED)
 #   QA_SSH_USER      SSH user on QA (default: deploy)
-#   QA_SSH_KEY       Path to SSH key (default: ~/.ssh/id_rsa)
-#   DEV_DB_PORT      Local dev DB port (default: 5433)
+#   QA_SSH_KEY       Path to SSH key (optional)
 # ──────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -28,12 +27,9 @@ set -euo pipefail
 QA_HOST="${QA_HOST:?ERROR: Set QA_HOST env var (e.g. export QA_HOST=1.2.3.4)}"
 QA_SSH_USER="${QA_SSH_USER:-deploy}"
 QA_SSH_KEY="${QA_SSH_KEY:-}"
-DEV_DB_PORT="${DEV_DB_PORT:-5433}"
 
-DEV_DB_USER="aifinance"
-DEV_DB_NAME="aifinance"
-QA_DB_USER="aifinance"
-QA_DB_NAME="aifinance"
+DB_USER="aifinance"
+DB_NAME="aifinance"
 
 # Tables in dependency order (parents first)
 TABLES=(feed_status knowledge_items knowledge_chunks regulatory_documents)
@@ -45,20 +41,25 @@ if [ -n "$QA_SSH_KEY" ]; then
 fi
 SSH_CMD="ssh $SSH_OPTS ${QA_SSH_USER}@${QA_HOST}"
 
-# QA docker compose command
+# Docker compose commands (local dev + remote QA)
+DEV_DC="docker compose"
 QA_DC="cd /opt/pratikoai && docker compose --env-file .env.qa -f docker-compose.yml -f docker-compose.qa.yml"
 
 # ── Helpers ──────────────────────────────────────────────────────────
 info()  { echo "  $*"; }
 step()  { echo ""; echo "==> $*"; }
-abort() { echo "ERROR: $*" >&2; exit 1; }
+abort() { echo ""; echo "ERROR: $*" >&2; exit 1; }
 
 dev_psql() {
-  PGPASSWORD=devpass psql -h localhost -p "$DEV_DB_PORT" -U "$DEV_DB_USER" -d "$DEV_DB_NAME" "$@"
+  $DEV_DC exec -T db psql -U "$DB_USER" -d "$DB_NAME" "$@"
 }
 
-qa_psql() {
-  $SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME $*"
+dev_pgdump() {
+  $DEV_DC exec -T db pg_dump -U "$DB_USER" -d "$DB_NAME" "$@"
+}
+
+qa_exec() {
+  $SSH_CMD "$QA_DC exec -T db $*"
 }
 
 # ── Pre-flight checks ───────────────────────────────────────────────
@@ -66,20 +67,20 @@ echo ""
 echo "================================================================"
 echo "  PratikoAI Knowledge Base Sync:  Dev DB  -->  QA DB"
 echo "================================================================"
-echo "  Dev:  localhost:${DEV_DB_PORT}/${DEV_DB_NAME}"
+echo "  Dev:  local docker compose (db service)"
 echo "  QA:   ${QA_SSH_USER}@${QA_HOST} (docker db container)"
 echo ""
 
 step "Pre-flight checks..."
 
-# Check local dev DB connectivity
-if ! dev_psql -c "SELECT 1" > /dev/null 2>&1; then
-  abort "Cannot connect to dev DB at localhost:${DEV_DB_PORT}. Is 'docker compose up db' running?"
+# Check local dev DB container is running
+if ! $DEV_DC exec -T db pg_isready -U "$DB_USER" > /dev/null 2>&1; then
+  abort "Dev DB container is not running. Start it with: docker compose up -d db"
 fi
 info "Dev DB: OK"
 
 # Check SSH + QA DB connectivity
-if ! $SSH_CMD "$QA_DC exec -T db pg_isready -U $QA_DB_USER" > /dev/null 2>&1; then
+if ! $SSH_CMD "$QA_DC exec -T db pg_isready -U $DB_USER" > /dev/null 2>&1; then
   abort "Cannot reach QA DB via SSH. Check QA_HOST, SSH key, and that QA containers are running."
 fi
 info "QA DB:  OK"
@@ -89,9 +90,9 @@ step "Current row counts..."
 printf "  %-30s %10s %10s\n" "TABLE" "DEV" "QA"
 printf "  %-30s %10s %10s\n" "-----" "---" "--"
 for table in "${TABLES[@]}"; do
-  dev_count=$(dev_psql -tAc "SELECT COUNT(*) FROM $table" 2>/dev/null || echo "?")
-  qa_count=$($SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" 2>/dev/null || echo "?")
-  printf "  %-30s %10s %10s\n" "$table" "$(echo $dev_count | tr -d ' ')" "$(echo $qa_count | tr -d ' ')"
+  dev_count=$(dev_psql -tAc "SELECT COUNT(*) FROM $table" 2>/dev/null | tr -d ' ' || echo "?")
+  qa_count=$(qa_exec "psql -U $DB_USER -d $DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" 2>/dev/null | tr -d ' ' || echo "?")
+  printf "  %-30s %10s %10s\n" "$table" "$dev_count" "$qa_count"
 done
 
 # ── Confirm ──────────────────────────────────────────────────────────
@@ -104,45 +105,51 @@ if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
 fi
 
 # ── Step 1: Dump dev tables ──────────────────────────────────────────
-step "Step 1/3: Dumping dev tables..."
+step "Step 1/2: Dumping dev tables..."
 
 DUMP_FILE=$(mktemp /tmp/pratiko_sync_XXXXXX.sql)
 trap 'rm -f "$DUMP_FILE"' EXIT
 
-# Header: disable triggers/FK checks during restore
+# Header: wrap in transaction, disable triggers, truncate first
 cat > "$DUMP_FILE" <<'SQL'
--- Disable FK checks for self-referential tables (knowledge_items.parent_document_id)
+BEGIN;
+
+-- Disable FK/trigger checks for self-referential tables
 SET session_replication_role = 'replica';
+
+-- Truncate inside the same transaction to prevent race conditions
+-- with background workers that might insert rows between truncate and copy
+TRUNCATE TABLE regulatory_documents, knowledge_chunks, knowledge_items, feed_status CASCADE;
 
 SQL
 
 for table in "${TABLES[@]}"; do
   info "Dumping $table..."
-  PGPASSWORD=devpass pg_dump \
-    -h localhost -p "$DEV_DB_PORT" -U "$DEV_DB_USER" -d "$DEV_DB_NAME" \
-    --data-only --table="$table" --no-owner --no-privileges \
-    >> "$DUMP_FILE"
+  if [ "$table" = "knowledge_items" ]; then
+    # knowledge_items has a circular self-referential FK (parent_document_id).
+    # pg_dump --data-only can emit duplicate rows for such tables.
+    # Use --inserts --on-conflict-do-nothing so duplicates are silently skipped.
+    dev_pgdump --data-only --table="$table" --inserts --on-conflict-do-nothing --no-owner --no-privileges >> "$DUMP_FILE"
+  else
+    dev_pgdump --data-only --table="$table" --no-owner --no-privileges >> "$DUMP_FILE"
+  fi
 done
 
-# Footer: re-enable triggers
+# Footer: re-enable triggers and commit
 cat >> "$DUMP_FILE" <<'SQL'
 
 -- Re-enable FK checks and triggers
 SET session_replication_role = 'origin';
+
+COMMIT;
 SQL
 
 DUMP_SIZE=$(du -h "$DUMP_FILE" | cut -f1)
 info "Dump complete: $DUMP_SIZE"
 
-# ── Step 2: Truncate QA tables ───────────────────────────────────────
-step "Step 2/3: Truncating QA tables..."
-$SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -c \
-  'TRUNCATE TABLE regulatory_documents, knowledge_chunks, knowledge_items, feed_status CASCADE'"
-info "Tables truncated"
-
-# ── Step 3: Restore to QA ───────────────────────────────────────────
-step "Step 3/3: Restoring to QA..."
-cat "$DUMP_FILE" | $SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -q"
+# ── Step 2: Restore to QA ───────────────────────────────────────────
+step "Step 2/2: Restoring to QA (truncate + load in single transaction)..."
+cat "$DUMP_FILE" | $SSH_CMD "$QA_DC exec -T db psql -U $DB_USER -d $DB_NAME --set ON_ERROR_STOP=on -q"
 info "Restore complete"
 
 # ── Verify ───────────────────────────────────────────────────────────
@@ -152,7 +159,7 @@ printf "  %-30s %10s %10s %s\n" "TABLE" "DEV" "QA" "STATUS"
 printf "  %-30s %10s %10s %s\n" "-----" "---" "--" "------"
 for table in "${TABLES[@]}"; do
   dev_count=$(dev_psql -tAc "SELECT COUNT(*) FROM $table" | tr -d ' ')
-  qa_count=$($SSH_CMD "$QA_DC exec -T db psql -U $QA_DB_USER -d $QA_DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" | tr -d ' ')
+  qa_count=$(qa_exec "psql -U $DB_USER -d $DB_NAME -tAc 'SELECT COUNT(*) FROM $table'" | tr -d ' ')
   if [ "$dev_count" = "$qa_count" ]; then
     status="OK"
   else
@@ -166,7 +173,6 @@ echo ""
 if $ALL_MATCH; then
   echo "================================================================"
   echo "  Sync complete! QA knowledge base matches dev."
-  echo "  Daily scheduled tasks will keep QA current from here."
   echo "================================================================"
 else
   echo "WARNING: Some counts don't match. Check for errors above."

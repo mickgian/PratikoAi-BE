@@ -201,7 +201,21 @@ export function ComparisonDashboard() {
               comparison: {
                 batch_id: session.batch_id,
                 query: session.query,
-                responses: session.responses,
+                responses: session.responses.map(r => ({
+                  model_id: r.model_id,
+                  provider:
+                    r.provider as import('@/types/modelComparison').ModelProvider,
+                  model_name: r.model_name,
+                  response_text: r.response_text,
+                  latency_ms: r.latency_ms,
+                  cost_eur: r.cost_eur,
+                  cost_usd: r.cost_usd,
+                  input_tokens: r.input_tokens,
+                  output_tokens: r.output_tokens,
+                  status: r.status,
+                  error_message: r.error_message,
+                  trace_id: r.trace_id,
+                })),
                 created_at: session.created_at,
               },
               voteResult: session.winner_model

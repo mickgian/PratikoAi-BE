@@ -32,9 +32,12 @@ from app.schemas.chat import Message
 from app.schemas.comparison import (
     AvailableModel,
     ComparisonResponse,
+    ComparisonSessionDetail,
     ComparisonStats,
     ExistingModelResponse,
+    ExpertEvaluationResponse,
     ModelRanking,
+    ModelResponseDetail,
     ModelResponseInfo,
     PendingComparisonData,
     VoteResponse,
@@ -1196,7 +1199,7 @@ class ComparisonService:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             trace_id=trace_id,
-            expires_at=datetime.utcnow() + timedelta(hours=1),
+            comparison_used=False,
         )
         db.add(pending)
         await db.commit()
@@ -1220,9 +1223,8 @@ class ComparisonService:
         user_id: int,
         db: AsyncSession,
     ) -> PendingComparisonData | None:
-        """Retrieve and delete a pending comparison.
+        """Retrieve a pending comparison (persistent, not deleted on read).
 
-        Retrieves the pending comparison data and deletes it (one-time use).
         Only the user who created the pending comparison can retrieve it.
 
         Args:
@@ -1257,7 +1259,6 @@ class ComparisonService:
             )
             return None
 
-        # Extract data before deletion
         data = PendingComparisonData(
             query=pending.query,
             response=pending.response,
@@ -1268,19 +1269,152 @@ class ComparisonService:
             input_tokens=pending.input_tokens,
             output_tokens=pending.output_tokens,
             trace_id=pending.trace_id,
+            comparison_used=pending.comparison_used,
+            batch_id=pending.batch_id,
         )
 
-        # Delete after retrieval (one-time use)
-        await db.delete(pending)
-        await db.commit()
-
         logger.info(
-            "pending_comparison_retrieved_and_deleted",
+            "pending_comparison_retrieved",
             pending_id=pending_id,
             user_id=user_id,
+            comparison_used=pending.comparison_used,
         )
 
         return data
+
+    async def mark_pending_comparison_used(
+        self,
+        pending_id: str,
+        batch_id: str,
+        db: AsyncSession,
+    ) -> None:
+        """Mark a pending comparison as used after comparison runs."""
+        from uuid import UUID
+
+        try:
+            uuid_id = UUID(pending_id)
+        except ValueError:
+            return
+
+        result = await db.execute(select(PendingComparison).where(PendingComparison.id == uuid_id))
+        pending = result.scalar_one_or_none()
+
+        if pending:
+            pending.comparison_used = True
+            pending.batch_id = batch_id
+            db.add(pending)
+            await db.commit()
+
+            logger.info(
+                "pending_comparison_marked_used",
+                pending_id=pending_id,
+                batch_id=batch_id,
+            )
+
+    async def get_comparison_session(
+        self,
+        batch_id: str,
+        user_id: int,
+        db: AsyncSession,
+    ) -> ComparisonSessionDetail | None:
+        """Retrieve a stored comparison session with all responses."""
+        result = await db.execute(
+            select(ModelComparisonSession).where(
+                ModelComparisonSession.batch_id == batch_id,
+                ModelComparisonSession.user_id == user_id,
+            )
+        )
+        session = result.scalar_one_or_none()
+
+        if not session:
+            return None
+
+        responses_result = await db.execute(
+            select(ModelComparisonResponse).where(
+                ModelComparisonResponse.session_id == session.id,
+            )
+        )
+        responses = responses_result.scalars().all()
+
+        response_details = [
+            ModelResponseDetail(
+                response_id=str(r.id),
+                model_id=f"{r.provider}:{r.model_name}",
+                provider=r.provider,
+                model_name=r.model_name,
+                response_text=r.response_text,
+                latency_ms=r.latency_ms,
+                cost_eur=r.cost_eur,
+                input_tokens=r.input_tokens,
+                output_tokens=r.output_tokens,
+                status=r.status,
+                error_message=r.error_message,
+                trace_id=r.trace_id,
+                expert_evaluation=r.expert_evaluation,
+                expert_evaluation_details=r.expert_evaluation_details,
+            )
+            for r in responses
+        ]
+
+        return ComparisonSessionDetail(
+            batch_id=session.batch_id,
+            query=session.query_text,
+            responses=response_details,
+            created_at=session.created_at,
+            winner_model=session.winner_model,
+            vote_comment=session.vote_comment,
+            vote_timestamp=session.vote_timestamp,
+        )
+
+    async def submit_expert_evaluation(
+        self,
+        response_id: str,
+        evaluation: str,
+        user_id: int,
+        db: AsyncSession,
+        details: str | None = None,
+    ) -> ExpertEvaluationResponse:
+        """Submit expert evaluation on a comparison response."""
+        from uuid import UUID
+
+        valid_evaluations = {"correct", "incomplete", "incorrect"}
+        if evaluation not in valid_evaluations:
+            raise ValueError(f"Valutazione non valida: {evaluation}")
+
+        try:
+            uuid_id = UUID(response_id)
+        except ValueError:
+            raise ValueError("ID risposta non valido")
+
+        result = await db.execute(
+            select(ModelComparisonResponse).where(
+                ModelComparisonResponse.id == uuid_id,
+            )
+        )
+        response = result.scalar_one_or_none()
+
+        if not response:
+            raise ValueError("Risposta non trovata")
+
+        response.expert_evaluation = evaluation
+        response.expert_evaluation_details = details
+        response.expert_evaluation_user_id = user_id
+        response.expert_evaluation_at = datetime.utcnow()
+        db.add(response)
+        await db.commit()
+
+        logger.info(
+            "expert_evaluation_submitted",
+            response_id=response_id,
+            evaluation=evaluation,
+            user_id=user_id,
+            has_details=details is not None,
+        )
+
+        return ExpertEvaluationResponse(
+            success=True,
+            message="Valutazione registrata con successo",
+        )
 
 
 # Global instance

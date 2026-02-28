@@ -215,4 +215,64 @@ export interface PendingComparisonData {
   output_tokens?: number;
   /** DEV-256: Langfuse trace ID */
   trace_id?: string;
+  /** Whether comparison has already been run */
+  comparison_used?: boolean;
+  /** Batch ID of the comparison session if used */
+  batch_id?: string;
+}
+
+/**
+ * Expert evaluation type for model comparison responses
+ */
+export type ExpertEvaluationType = 'correct' | 'incomplete' | 'incorrect';
+
+/**
+ * Detailed model response including expert evaluation
+ */
+export interface ModelResponseDetail {
+  response_id: string;
+  model_id: string;
+  provider: string;
+  model_name: string;
+  response_text: string;
+  latency_ms: number;
+  cost_eur: number | null;
+  cost_usd: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  status: ResponseStatus;
+  error_message?: string;
+  trace_id: string;
+  expert_evaluation: ExpertEvaluationType | null;
+  expert_evaluation_details: string | null;
+}
+
+/**
+ * Full detail of a persisted comparison session
+ */
+export interface ComparisonSessionDetail {
+  batch_id: string;
+  query: string;
+  responses: ModelResponseDetail[];
+  created_at: string;
+  winner_model: string | null;
+  vote_comment: string | null;
+  vote_timestamp: string | null;
+}
+
+/**
+ * Request to submit expert evaluation on a comparison response
+ */
+export interface ExpertEvaluationRequest {
+  response_id: string;
+  evaluation: ExpertEvaluationType;
+  details?: string;
+}
+
+/**
+ * Response after submitting an expert evaluation
+ */
+export interface ExpertEvaluationResponse {
+  success: boolean;
+  message: string;
 }

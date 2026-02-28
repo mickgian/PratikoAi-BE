@@ -5,9 +5,10 @@
  * role users to compare responses from multiple LLM models.
  */
 
-import {
+import type {
   ComparisonRequest,
   ComparisonResponse,
+  ComparisonSessionDetail,
   ComparisonWithExistingRequest,
   VoteRequest,
   VoteResponse,
@@ -18,6 +19,8 @@ import {
   CreatePendingComparisonRequest,
   PendingComparisonResponse,
   PendingComparisonData,
+  ExpertEvaluationRequest,
+  ExpertEvaluationResponse,
 } from '@/types/modelComparison';
 
 /**
@@ -383,9 +386,10 @@ export async function createPendingComparison(
 }
 
 /**
- * Get pending comparison data
+ * Get pending comparison data (persistent, not deleted on read)
  *
- * Retrieves the pending comparison data and deletes it (one-time use).
+ * Retrieves the pending comparison data. Records are permanent so
+ * SUPER_USERs can return to comparisons weeks later.
  * Requires SUPER_USER or ADMIN role.
  *
  * @param pendingId - UUID of the pending comparison
@@ -405,4 +409,53 @@ export async function getPendingComparison(
 
   console.log('✅ [Model Comparison] Pending comparison retrieved');
   return response;
+}
+
+/**
+ * Mark a pending comparison as used after comparison runs
+ *
+ * @param pendingId - UUID of the pending comparison
+ * @param batchId - Batch ID of the comparison session
+ */
+export async function markPendingUsed(
+  pendingId: string,
+  batchId: string
+): Promise<{ message: string }> {
+  return makeRequest<{ message: string }>(
+    `/api/v1/model-comparison/pending/${pendingId}/mark-used?batch_id=${encodeURIComponent(batchId)}`,
+    { method: 'POST' }
+  );
+}
+
+/**
+ * Get a stored comparison session with all responses and evaluations
+ *
+ * @param batchId - Batch ID of the comparison session
+ * @returns ComparisonSessionDetail with responses and expert evaluations
+ */
+export async function getComparisonSession(
+  batchId: string
+): Promise<ComparisonSessionDetail> {
+  return makeRequest<ComparisonSessionDetail>(
+    `/api/v1/model-comparison/session/${encodeURIComponent(batchId)}`,
+    { method: 'GET' }
+  );
+}
+
+/**
+ * Submit expert evaluation on a comparison response
+ *
+ * @param data - Evaluation request with response_id and evaluation type
+ * @returns ExpertEvaluationResponse with success status
+ */
+export async function submitExpertEvaluation(
+  data: ExpertEvaluationRequest
+): Promise<ExpertEvaluationResponse> {
+  return makeRequest<ExpertEvaluationResponse>(
+    '/api/v1/model-comparison/evaluate',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
 }

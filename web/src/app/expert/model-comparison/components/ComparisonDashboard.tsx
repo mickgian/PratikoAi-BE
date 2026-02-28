@@ -7,7 +7,12 @@ import { useComparison } from '../hooks/useComparison';
 import { useLeaderboard } from '../hooks/useLeaderboard';
 import { ComparisonGrid } from './ComparisonGrid';
 import { Leaderboard } from './Leaderboard';
-import { getPendingComparison } from '@/lib/api/modelComparison';
+import {
+  getPendingComparison,
+  markPendingUsed,
+  getComparisonSession,
+} from '@/lib/api/modelComparison';
+import type { ComparisonSessionDetail } from '@/types/modelComparison';
 
 // SSR guard - sessionStorage is only available in browser
 const isBrowser = typeof window !== 'undefined';
@@ -44,6 +49,10 @@ export function ComparisonDashboard() {
   );
   // Track the current model ID from URL params (for badge display)
   const [currentModelId, setCurrentModelId] = useState<string | null>(null);
+  // Stored session loaded from backend (for already-used comparisons)
+  const [storedSession, setStoredSession] =
+    useState<ComparisonSessionDetail | null>(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
 
   // Extract pendingId outside useEffect for stable dependency
   const pendingId = searchParams.get('pending');
@@ -170,13 +179,53 @@ export function ComparisonDashboard() {
         responseLength: data.response?.length,
         model_id: data.model_id,
         hasEnrichedPrompt: !!data.enriched_prompt,
-        latency_ms: data.latency_ms,
-        cost_eur: data.cost_eur,
-        output_tokens: data.output_tokens,
+        comparison_used: data.comparison_used,
+        batch_id: data.batch_id,
       });
 
       setQuery(data.query);
       setCurrentModelId(data.model_id);
+
+      // If comparison was already used, load stored session from backend
+      if (data.comparison_used && data.batch_id) {
+        console.log(
+          '📦 [ComparisonDashboard] Loading stored session:',
+          data.batch_id
+        );
+        setIsLoadingSession(true);
+        getComparisonSession(data.batch_id)
+          .then(session => {
+            setStoredSession(session);
+            // Also restore into the comparison state for vote display
+            restoreComparison({
+              comparison: {
+                batch_id: session.batch_id,
+                query: session.query,
+                responses: session.responses,
+                created_at: session.created_at,
+              },
+              voteResult: session.winner_model
+                ? {
+                    success: true,
+                    message: 'Voto registrato',
+                    winner_model_id: session.winner_model,
+                    elo_changes: {},
+                  }
+                : null,
+            });
+          })
+          .catch(err => {
+            console.error(
+              '❌ [ComparisonDashboard] Failed to load stored session:',
+              err
+            );
+            setError(
+              'Errore nel caricamento della sessione di confronto salvata.'
+            );
+          })
+          .finally(() => setIsLoadingSession(false));
+        return;
+      }
 
       // DEV-256: Use actual metrics from pending comparison data
       const existingResponse = {
@@ -196,8 +245,6 @@ export function ComparisonDashboard() {
         : undefined;
 
       // Run comparison with the existing response
-      // DEV-256: Pass enriched_prompt so comparison models get same context
-      // DEV-257: Pass model_ids if user selected models from chat
       console.log(
         '🚀 [ComparisonDashboard] Running comparison with existing response',
         {
@@ -211,11 +258,19 @@ export function ComparisonDashboard() {
         data.enriched_prompt,
         selectedModelIds
       )
-        .then(() => {
-          // FIX: Clear cache after comparison runs successfully
-          console.log(
-            '🧹 [ComparisonDashboard] Clearing cached pending data after successful comparison'
-          );
+        .then(result => {
+          // Mark pending as used and link to batch_id
+          if (result?.batch_id && pendingId) {
+            markPendingUsed(pendingId, result.batch_id).catch(err =>
+              console.warn('Failed to mark pending as used:', err)
+            );
+            // Load stored session to get response_ids for expert evaluations
+            getComparisonSession(result.batch_id)
+              .then(session => setStoredSession(session))
+              .catch(err =>
+                console.warn('Failed to load session for evaluations:', err)
+              );
+          }
           try {
             sessionStorage.removeItem(cacheKey);
           } catch {
@@ -309,14 +364,7 @@ export function ComparisonDashboard() {
           errorMessage.includes('not found')
         ) {
           setError(
-            'Il confronto richiesto non è più disponibile. Torna alla chat e clicca nuovamente su "Confronta Modelli".'
-          );
-        } else if (
-          errorMessage.includes('scaduto') ||
-          errorMessage.includes('expired')
-        ) {
-          setError(
-            'Il confronto è scaduto (validità 1 ora). Torna alla chat e clicca nuovamente su "Confronta Modelli".'
+            'Il confronto richiesto non è stato trovato. Torna alla chat e clicca nuovamente su "Confronta Modelli".'
           );
         } else {
           setError(errorMessage || 'Errore nel caricamento del confronto');
@@ -472,16 +520,15 @@ export function ComparisonDashboard() {
                   </p>
                   <ul className="list-disc list-inside space-y-0.5 text-blue-700">
                     <li>
-                      I confronti dalla chat scadono dopo <strong>1 ora</strong>{' '}
-                      se non utilizzati
+                      I confronti sono <strong>permanenti</strong>: puoi tornare
+                      quando vuoi
                     </li>
                     <li>
-                      Puoi ricaricare la pagina durante il confronto senza
-                      perdere i dati
+                      Valuta ogni risposta come <strong>Corretta</strong>,{' '}
+                      <strong>Incompleta</strong> o <strong>Errata</strong>
                     </li>
                     <li>
-                      I dati vengono eliminati automaticamente dopo aver
-                      completato il voto
+                      Vota il modello migliore per aggiornare la classifica Elo
                     </li>
                   </ul>
                 </div>
@@ -489,18 +536,22 @@ export function ComparisonDashboard() {
             </div>
 
             {/* Loading indicator when auto-running comparison from chat */}
-            {isRunning && !comparison && (
+            {(isRunning || isLoadingSession) && !comparison && (
               <div
                 className="bg-white rounded-lg border border-gray-200 p-8 text-center"
                 data-testid="comparison-loading"
               >
                 <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
-                <p className="text-gray-600">Confrontando i modelli...</p>
+                <p className="text-gray-600">
+                  {isLoadingSession
+                    ? 'Caricamento sessione salvata...'
+                    : 'Confrontando i modelli...'}
+                </p>
               </div>
             )}
 
             {/* Prompt to use chat - show when no comparison is active */}
-            {!comparison && !isRunning && (
+            {!comparison && !isRunning && !isLoadingSession && (
               <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
                 <svg
                   className="w-16 h-16 text-gray-300 mx-auto mb-4"
@@ -560,9 +611,9 @@ export function ComparisonDashboard() {
                   <div className="text-gray-900">{comparison.query}</div>
                 </div>
 
-                {/* Response grid */}
+                {/* Response grid - use stored session responses when available (has response_id for evaluations) */}
                 <ComparisonGrid
-                  responses={comparison.responses}
+                  responses={storedSession?.responses ?? comparison.responses}
                   selectedWinner={selectedWinner}
                   onSelectWinner={setSelectedWinner}
                   isVoting={isVoting}

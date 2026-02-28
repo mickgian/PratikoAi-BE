@@ -3,10 +3,22 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { ModelResponseInfo } from '@/types/modelComparison';
+import type {
+  ModelResponseInfo,
+  ModelResponseDetail,
+  ExpertEvaluationType,
+} from '@/types/modelComparison';
+import { submitExpertEvaluation } from '@/lib/api/modelComparison';
+
+/** Union type: responses can come from live comparison or stored session */
+type ResponseItem = ModelResponseInfo | ModelResponseDetail;
+
+function isDetailResponse(r: ResponseItem): r is ModelResponseDetail {
+  return 'response_id' in r;
+}
 
 interface ComparisonGridProps {
-  responses: ModelResponseInfo[];
+  responses: ResponseItem[];
   selectedWinner: string | null;
   onSelectWinner: (modelId: string) => void;
   isVoting: boolean;
@@ -53,6 +65,152 @@ function formatTokens(input: number | null, output: number | null): string {
   const inStr = input !== null ? input.toString() : '?';
   const outStr = output !== null ? output.toString() : '?';
   return `${inStr}→${outStr}`;
+}
+
+/** Expert evaluation buttons for a single model response */
+function EvaluationButtons({ response }: { response: ResponseItem }) {
+  const detail = isDetailResponse(response) ? response : null;
+  const responseId = detail?.response_id;
+
+  const [evaluation, setEvaluation] = useState<ExpertEvaluationType | null>(
+    (detail?.expert_evaluation as ExpertEvaluationType) ?? null
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [pendingEval, setPendingEval] = useState<ExpertEvaluationType | null>(
+    null
+  );
+  const [detailsText, setDetailsText] = useState(
+    detail?.expert_evaluation_details ?? ''
+  );
+
+  if (!responseId) return null;
+
+  const handleEval = async (
+    evalType: ExpertEvaluationType,
+    details?: string
+  ) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await submitExpertEvaluation({
+        response_id: responseId,
+        evaluation: evalType,
+        details,
+      });
+      setEvaluation(evalType);
+      setShowDetailsModal(false);
+    } catch (err) {
+      console.error('Evaluation failed:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onClickEval = (evalType: ExpertEvaluationType) => {
+    if (evalType === 'correct') {
+      handleEval(evalType);
+    } else {
+      setPendingEval(evalType);
+      setDetailsText('');
+      setShowDetailsModal(true);
+    }
+  };
+
+  const EVAL_CONFIG: Record<
+    ExpertEvaluationType,
+    { label: string; color: string; activeColor: string }
+  > = {
+    correct: {
+      label: 'Corretta',
+      color: 'text-green-600 border-green-300 hover:bg-green-50',
+      activeColor: 'bg-green-100 text-green-800 border-green-400',
+    },
+    incomplete: {
+      label: 'Incompleta',
+      color: 'text-yellow-600 border-yellow-300 hover:bg-yellow-50',
+      activeColor: 'bg-yellow-100 text-yellow-800 border-yellow-400',
+    },
+    incorrect: {
+      label: 'Errata',
+      color: 'text-red-600 border-red-300 hover:bg-red-50',
+      activeColor: 'bg-red-100 text-red-800 border-red-400',
+    },
+  };
+
+  return (
+    <div className="border-t border-gray-200 px-3 py-2">
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-gray-500 mr-1">Valutazione:</span>
+        {(
+          Object.entries(EVAL_CONFIG) as [
+            ExpertEvaluationType,
+            typeof EVAL_CONFIG.correct,
+          ][]
+        ).map(([type, cfg]) => (
+          <button
+            key={type}
+            onClick={e => {
+              e.stopPropagation();
+              onClickEval(type);
+            }}
+            disabled={isSubmitting}
+            className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+              evaluation === type ? cfg.activeColor : cfg.color
+            } ${isSubmitting ? 'opacity-50 cursor-wait' : ''}`}
+          >
+            {cfg.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Details modal for incomplete/incorrect */}
+      {showDetailsModal && pendingEval && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={e => {
+            e.stopPropagation();
+            setShowDetailsModal(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-lg p-4 w-full max-w-md mx-4 shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="font-medium text-gray-900 mb-2">
+              {pendingEval === 'incomplete'
+                ? 'Dettagli incompletezza'
+                : 'Dettagli errore'}
+            </h3>
+            <textarea
+              value={detailsText}
+              onChange={e => setDetailsText(e.target.value)}
+              placeholder="Descrivi il problema..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-24 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              maxLength={2000}
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() =>
+                  handleEval(pendingEval, detailsText || undefined)
+                }
+                disabled={isSubmitting}
+                className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Invio...' : 'Conferma'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ComparisonGrid({
@@ -210,6 +368,9 @@ export function ComparisonGrid({
                   </button>
                 )}
               </div>
+
+              {/* Expert evaluation buttons */}
+              <EvaluationButtons response={response} />
             </div>
           );
         })}

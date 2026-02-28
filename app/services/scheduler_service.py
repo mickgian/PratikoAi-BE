@@ -896,11 +896,16 @@ async def backfill_missing_embeddings_task() -> None:
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     from sqlalchemy.orm import sessionmaker
 
-    from app.core.embed import generate_embeddings_batch
+    from app.core.embed import embedding_to_pgvector, generate_embeddings_batch
 
     if not getattr(settings, "EMBEDDING_BACKFILL_ENABLED", True):
         logger.info("Embedding backfill is disabled via EMBEDDING_BACKFILL_ENABLED")
         return
+
+    items_fixed = 0
+    items_failed = 0
+    chunks_fixed = 0
+    chunks_failed = 0
 
     try:
         postgres_url = settings.POSTGRES_URL
@@ -924,18 +929,33 @@ async def backfill_missing_embeddings_task() -> None:
                 for i in range(0, len(item_rows), 20):
                     batch = item_rows[i : i + 20]
                     texts = [row[1] if row[1] else "" for row in batch]
-                    embeddings = await generate_embeddings_batch(texts, batch_size=20)
+                    try:
+                        embeddings = await generate_embeddings_batch(texts, batch_size=20)
+                    except Exception as e:
+                        logger.error(f"Embedding API failed for items batch {i // 20 + 1}: {e}")
+                        items_failed += len(batch)
+                        continue
 
+                    batch_fixed = 0
                     for (item_id, _), emb in zip(batch, embeddings, strict=False):
                         if emb is not None:
-                            await session.execute(
-                                text("UPDATE knowledge_items SET embedding = :emb WHERE id = :id"),
-                                {"emb": str(emb), "id": item_id},
-                            )
+                            emb_str = embedding_to_pgvector(emb)
+                            if emb_str:
+                                await session.execute(
+                                    text("UPDATE knowledge_items SET embedding = :emb::vector WHERE id = :id"),
+                                    {"emb": emb_str, "id": item_id},
+                                )
+                                batch_fixed += 1
+                            else:
+                                items_failed += 1
+                        else:
+                            items_failed += 1
 
                     await session.commit()
+                    items_fixed += batch_fixed
                     logger.info(
-                        f"Backfilled items batch {i // 20 + 1} ({min(i + 20, len(item_rows))}/{len(item_rows)})"
+                        f"Backfilled items batch {i // 20 + 1} "
+                        f"({min(i + 20, len(item_rows))}/{len(item_rows)}, {batch_fixed} fixed)"
                     )
 
             # --- Backfill chunks ---
@@ -949,22 +969,43 @@ async def backfill_missing_embeddings_task() -> None:
                 for i in range(0, len(chunk_rows), 20):
                     batch = chunk_rows[i : i + 20]
                     texts = [row[1] if row[1] else "" for row in batch]
-                    embeddings = await generate_embeddings_batch(texts, batch_size=20)
+                    try:
+                        embeddings = await generate_embeddings_batch(texts, batch_size=20)
+                    except Exception as e:
+                        logger.error(f"Embedding API failed for chunks batch {i // 20 + 1}: {e}")
+                        chunks_failed += len(batch)
+                        continue
 
+                    batch_fixed = 0
                     for (chunk_id, _), emb in zip(batch, embeddings, strict=False):
                         if emb is not None:
-                            await session.execute(
-                                text("UPDATE knowledge_chunks SET embedding = :emb WHERE id = :id"),
-                                {"emb": str(emb), "id": chunk_id},
-                            )
+                            emb_str = embedding_to_pgvector(emb)
+                            if emb_str:
+                                await session.execute(
+                                    text("UPDATE knowledge_chunks SET embedding = :emb::vector WHERE id = :id"),
+                                    {"emb": emb_str, "id": chunk_id},
+                                )
+                                batch_fixed += 1
+                            else:
+                                chunks_failed += 1
+                        else:
+                            chunks_failed += 1
 
                     await session.commit()
+                    chunks_fixed += batch_fixed
                     logger.info(
-                        f"Backfilled chunks batch {i // 20 + 1} ({min(i + 20, len(chunk_rows))}/{len(chunk_rows)})"
+                        f"Backfilled chunks batch {i // 20 + 1} "
+                        f"({min(i + 20, len(chunk_rows))}/{len(chunk_rows)}, {batch_fixed} fixed)"
                     )
 
             if not item_rows and not chunk_rows:
                 logger.info("No missing embeddings found, backfill not needed")
+            else:
+                logger.info(
+                    f"Embedding backfill complete: "
+                    f"items={items_fixed} fixed/{items_failed} failed, "
+                    f"chunks={chunks_fixed} fixed/{chunks_failed} failed"
+                )
 
         await engine.dispose()
 
@@ -1251,10 +1292,43 @@ async def start_scheduler() -> None:
     DEV-242: Immediate tasks now run in background (non-blocking).
     The scheduler.start() method handles this automatically.
     """
+    # Ensure canonical RSS feeds exist in feed_status before tasks run.
+    # Idempotent: inserts only missing feeds, preserves existing state.
+    await _seed_feeds_on_startup()
+
     setup_default_tasks()
     await scheduler_service.start()
     # DEV-242: Immediate tasks are now scheduled in background by start()
     # No blocking loop here - app startup completes immediately
+
+
+async def _seed_feeds_on_startup() -> None:
+    """Seed canonical RSS feeds into feed_status if missing.
+
+    Runs on every startup so QA/prod always have feeds,
+    regardless of Alembic migration state.
+    """
+    try:
+        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+        from sqlalchemy.orm import sessionmaker
+
+        from app.core.feed_registry import ensure_feeds_seeded
+
+        postgres_url = settings.POSTGRES_URL
+        if postgres_url.startswith("postgresql://"):
+            postgres_url = postgres_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        engine = create_async_engine(postgres_url, echo=False, pool_pre_ping=True)
+        async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session_maker() as session:
+            result = await ensure_feeds_seeded(session)
+            if result["seeded"] > 0:
+                logger.info("startup_feeds_seeded", seeded=result["seeded"])
+
+        await engine.dispose()
+    except Exception as e:
+        logger.error("startup_feed_seeding_failed", error=str(e), exc_info=True)
 
 
 async def stop_scheduler() -> None:

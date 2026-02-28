@@ -25,7 +25,9 @@ if "app.core.embed" not in sys.modules:
     _mock_embed = MagicMock()
     _mock_embed.generate_embedding = AsyncMock(return_value=None)
     _mock_embed.generate_embeddings_batch = AsyncMock(return_value=[])
-    _mock_embed.embedding_to_pgvector = MagicMock(return_value=None)
+    _mock_embed.embedding_to_pgvector = MagicMock(
+        side_effect=lambda emb: ("[" + ",".join(str(x) for x in emb) + "]") if emb else None
+    )
     _mock_embed.truncate_to_token_limit = MagicMock(side_effect=lambda text, **kw: text)
     _mock_embed.validate_embedding = MagicMock(return_value=True)
     _mock_embed.cosine_similarity = MagicMock(return_value=0.9)

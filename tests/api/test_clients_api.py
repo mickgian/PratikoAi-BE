@@ -59,6 +59,11 @@ def sample_client(studio_id: UUID) -> MagicMock:
     client.indirizzo = "Via Roma 1"
     client.cap = "00100"
     client.note_studio = None
+    client.inps_matricola = None
+    client.inps_status = None
+    client.inps_ultimo_pagamento = None
+    client.inail_pat = None
+    client.inail_status = None
     client.created_at = datetime.now(UTC)
     client.updated_at = None
     client.deleted_at = None
@@ -85,6 +90,11 @@ def sample_client_list(studio_id: UUID) -> list[MagicMock]:
         c.indirizzo = None
         c.cap = None
         c.note_studio = None
+        c.inps_matricola = None
+        c.inps_status = None
+        c.inps_ultimo_pagamento = None
+        c.inail_pat = None
+        c.inail_status = None
         c.created_at = datetime.now(UTC)
         clients.append(c)
     return clients

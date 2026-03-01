@@ -27,6 +27,9 @@ from app.api.v1.deadlines import router as deadlines_router
 from app.api.v1.demo import router as demo_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.dpa import router as dpa_router
+
+# Wave 11: Hybrid Email Sending (DEV-444, ADR-034)
+from app.api.v1.email_config import router as email_config_router
 from app.api.v1.expert_feedback import router as expert_feedback_router
 from app.api.v1.features import router as features_router
 from app.api.v1.feedback import router as feedback_router
@@ -136,6 +139,9 @@ api_router.include_router(notifications_router)  # /notifications prefix (DEV-42
 api_router.include_router(formulari_router)  # /formulari prefix (DEV-432)
 api_router.include_router(quick_actions_router)  # /quick-actions prefix (DEV-430)
 api_router.include_router(settings_router)  # /settings prefix (DEV-441)
+
+# Wave 11: Hybrid Email Sending (DEV-444, ADR-034)
+api_router.include_router(email_config_router)  # Includes /email-config prefix from router
 
 
 @api_router.get("/health")

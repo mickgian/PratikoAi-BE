@@ -200,6 +200,7 @@ class BillingPlanService:
                     existing.window_5h_cost_limit_eur = plan_data["window_5h_cost_limit_eur"]
                     existing.window_7d_cost_limit_eur = plan_data["window_7d_cost_limit_eur"]
                     existing.credit_markup_factor = plan_data.get("credit_markup_factor", 1.0)
+                    existing.custom_email_allowed = plan_data.get("custom_email_allowed", False)
                     existing.is_active = plan_data.get("is_active", True)
                 else:
                     new_plan = BillingPlan(
@@ -210,6 +211,7 @@ class BillingPlanService:
                         window_5h_cost_limit_eur=plan_data["window_5h_cost_limit_eur"],
                         window_7d_cost_limit_eur=plan_data["window_7d_cost_limit_eur"],
                         credit_markup_factor=plan_data.get("credit_markup_factor", 1.0),
+                        custom_email_allowed=plan_data.get("custom_email_allowed", False),
                         is_active=plan_data.get("is_active", True),
                     )
                     db.add(new_plan)
@@ -250,6 +252,7 @@ def _get_default_plans() -> dict[str, Any]:
             "window_5h_cost_limit_eur": 2.50,
             "window_7d_cost_limit_eur": 7.50,
             "credit_markup_factor": 1.50,
+            "custom_email_allowed": False,
             "is_active": True,
         },
         "pro": {
@@ -259,6 +262,7 @@ def _get_default_plans() -> dict[str, Any]:
             "window_5h_cost_limit_eur": 5.00,
             "window_7d_cost_limit_eur": 22.50,
             "credit_markup_factor": 1.30,
+            "custom_email_allowed": True,
             "is_active": True,
         },
         "premium": {
@@ -268,6 +272,7 @@ def _get_default_plans() -> dict[str, Any]:
             "window_5h_cost_limit_eur": 10.00,
             "window_7d_cost_limit_eur": 45.00,
             "credit_markup_factor": 1.20,
+            "custom_email_allowed": True,
             "is_active": True,
         },
     }

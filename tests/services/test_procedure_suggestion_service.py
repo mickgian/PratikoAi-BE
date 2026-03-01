@@ -214,3 +214,139 @@ class TestCacheHit:
             )
 
         assert result == cached
+
+
+class TestCessatoSuggestions:
+    """Cessato clients get chiusura procedures."""
+
+    @pytest.mark.asyncio
+    async def test_cessato_gets_chiusura(self, svc, studio_id) -> None:
+        """Cessato client → chiusura procedure suggested."""
+        from app.models.client import StatoCliente
+
+        procedures = [_make_procedure("CHIUSURA_PIVA", "Cessazione Partita IVA")]
+        client = _make_client(StatoCliente.CESSATO)
+
+        with (
+            patch.object(svc, "_get_from_cache", return_value=None),
+            patch.object(svc, "_set_cache", return_value=None),
+            patch.object(svc, "_get_client", return_value=client),
+            patch.object(svc, "_get_client_profile", return_value=None),
+            patch.object(svc, "_get_active_procedures", return_value=procedures),
+        ):
+            result = await svc.suggest_procedures(
+                AsyncMock(),
+                client_id=1,
+                studio_id=studio_id,
+            )
+
+        assert len(result) == 1
+        assert result[0]["code"] == "CHIUSURA_PIVA"
+        assert "cessato" in result[0]["reason"].lower()
+
+
+class TestSemplificatoSuggestions:
+    """Semplificato clients get passaggio ordinario suggestions."""
+
+    @pytest.mark.asyncio
+    async def test_semplificato_gets_passaggio(self, svc, studio_id) -> None:
+        """Semplificato regime → passaggio a ordinario suggested."""
+        from app.models.client import StatoCliente
+        from app.models.client_profile import RegimeFiscale
+
+        procedures = [_make_procedure("PASSAGGIO_ORDINARIO", "Passaggio a Regime Ordinario")]
+        client = _make_client(StatoCliente.ATTIVO)
+        profile = _make_profile(RegimeFiscale.SEMPLIFICATO)
+
+        with (
+            patch.object(svc, "_get_from_cache", return_value=None),
+            patch.object(svc, "_set_cache", return_value=None),
+            patch.object(svc, "_get_client", return_value=client),
+            patch.object(svc, "_get_client_profile", return_value=profile),
+            patch.object(svc, "_get_active_procedures", return_value=procedures),
+        ):
+            result = await svc.suggest_procedures(
+                AsyncMock(),
+                client_id=1,
+                studio_id=studio_id,
+            )
+
+        assert len(result) == 1
+        assert result[0]["code"] == "PASSAGGIO_ORDINARIO"
+        assert "semplificato" in result[0]["reason"].lower()
+
+
+class TestAtecoConstructionSuggestions:
+    """Construction sector clients get sicurezza procedures."""
+
+    @pytest.mark.asyncio
+    async def test_construction_ateco_gets_sicurezza(self, svc, studio_id) -> None:
+        """Construction ATECO code (41.x) → sicurezza procedure suggested."""
+        from app.models.client import StatoCliente
+        from app.models.client_profile import RegimeFiscale
+
+        procedures = [_make_procedure("CANTIERE_SIC", "Sicurezza Cantiere")]
+        client = _make_client(StatoCliente.ATTIVO)
+        profile = _make_profile(RegimeFiscale.ORDINARIO, ateco="41.20.00")
+
+        with (
+            patch.object(svc, "_get_from_cache", return_value=None),
+            patch.object(svc, "_set_cache", return_value=None),
+            patch.object(svc, "_get_client", return_value=client),
+            patch.object(svc, "_get_client_profile", return_value=profile),
+            patch.object(svc, "_get_active_procedures", return_value=procedures),
+        ):
+            result = await svc.suggest_procedures(
+                AsyncMock(),
+                client_id=1,
+                studio_id=studio_id,
+            )
+
+        assert len(result) == 1
+        assert result[0]["code"] == "CANTIERE_SIC"
+        assert "edile" in result[0]["reason"].lower()
+
+    @pytest.mark.asyncio
+    async def test_no_ateco_skips_ateco_matching(self, svc) -> None:
+        """Profile without ATECO code skips ATECO matching."""
+        from app.models.client_profile import RegimeFiscale
+
+        procedures = [_make_procedure("CANTIERE_SIC", "Sicurezza Cantiere")]
+        profile = _make_profile(RegimeFiscale.ORDINARIO, ateco="")
+
+        result = svc._match_by_ateco(profile, procedures)
+        assert result == []
+
+
+class TestCacheHelpers:
+    """Tests for cache get/set methods."""
+
+    @pytest.mark.asyncio
+    async def test_get_from_cache_returns_none_on_error(self, svc) -> None:
+        """Cache get failure returns None."""
+        with patch("app.services.cache.cache_service") as mock_cache:
+            mock_cache._get_redis = AsyncMock(side_effect=Exception("Redis down"))
+            result = await svc._get_from_cache("test_key")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_from_cache_returns_none_when_no_redis(self, svc) -> None:
+        """Cache get returns None when Redis not available."""
+        with patch("app.services.cache.cache_service") as mock_cache:
+            mock_cache._get_redis = AsyncMock(return_value=None)
+            result = await svc._get_from_cache("test_key")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_set_cache_swallows_errors(self, svc) -> None:
+        """Cache set failure is silently swallowed."""
+        with patch("app.services.cache.cache_service") as mock_cache:
+            mock_cache._get_redis = AsyncMock(side_effect=Exception("Redis down"))
+            await svc._set_cache("test_key", [{"code": "X"}])
+
+    @pytest.mark.asyncio
+    async def test_set_cache_noop_when_no_redis(self, svc) -> None:
+        """Cache set is noop when Redis not available."""
+        with patch("app.services.cache.cache_service") as mock_cache:
+            mock_cache._get_redis = AsyncMock(return_value=None)
+            await svc._set_cache("test_key", [{"code": "X"}])

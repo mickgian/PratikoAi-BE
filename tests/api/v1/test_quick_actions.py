@@ -102,3 +102,105 @@ class TestQuickActionCountsService:
 
         assert result == cached
         mock_db.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_count_formulari_success(self) -> None:
+        """_count_formulari returns count on success."""
+        from unittest.mock import MagicMock
+
+        from app.services.quick_action_counts_service import QuickActionCountsService
+
+        svc = QuickActionCountsService()
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = 12
+        mock_db.execute.return_value = mock_result
+
+        result = await svc._count_formulari(mock_db)
+        assert result == 12
+
+    @pytest.mark.asyncio
+    async def test_count_deadlines_success(self) -> None:
+        """_count_deadlines returns count on success."""
+        from unittest.mock import MagicMock
+
+        from app.services.quick_action_counts_service import QuickActionCountsService
+
+        svc = QuickActionCountsService()
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = 5
+        mock_db.execute.return_value = mock_result
+
+        result = await svc._count_deadlines(mock_db, uuid4())
+        assert result == 5
+
+    @pytest.mark.asyncio
+    async def test_count_urgent_notifications_success(self) -> None:
+        """_count_urgent_notifications returns count on success."""
+        from unittest.mock import MagicMock
+
+        from app.services.quick_action_counts_service import QuickActionCountsService
+
+        svc = QuickActionCountsService()
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = 3
+        mock_db.execute.return_value = mock_result
+
+        result = await svc._count_urgent_notifications(mock_db, uuid4())
+        assert result == 3
+
+    @pytest.mark.asyncio
+    async def test_count_recent_normative_success(self) -> None:
+        """_count_recent_normative returns count on success."""
+        from unittest.mock import MagicMock
+
+        from app.services.quick_action_counts_service import QuickActionCountsService
+
+        svc = QuickActionCountsService()
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = 20
+        mock_db.execute.return_value = mock_result
+
+        result = await svc._count_recent_normative(mock_db)
+        assert result == 20
+
+    @pytest.mark.asyncio
+    async def test_count_ready_questions_success(self) -> None:
+        """_count_ready_questions returns count on success."""
+        from unittest.mock import MagicMock
+
+        from app.services.quick_action_counts_service import QuickActionCountsService
+
+        svc = QuickActionCountsService()
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = 8
+        mock_db.execute.return_value = mock_result
+
+        result = await svc._count_ready_questions(mock_db, uuid4())
+        assert result == 8
+
+    @pytest.mark.asyncio
+    async def test_count_faq_success(self) -> None:
+        """_count_faq returns count on success."""
+        from unittest.mock import MagicMock
+
+        from app.services.quick_action_counts_service import QuickActionCountsService
+
+        svc = QuickActionCountsService()
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = 42
+        mock_db.execute.return_value = mock_result
+
+        mock_faq = MagicMock()
+        mock_faq.id = MagicMock()
+        mock_faq.is_active = MagicMock()
+        mock_faq.is_active.is_ = MagicMock(return_value=True)
+
+        with patch("app.models.faq.FAQEntry", mock_faq):
+            result = await svc._count_faq(mock_db)
+        assert result == 42

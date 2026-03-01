@@ -1,17 +1,40 @@
-"""DEV-355 + DEV-358: Dashboard Data Aggregation with Redis Caching.
+"""DEV-355 + DEV-358 + DEV-434/435/436: Dashboard Data Aggregation with Redis Caching.
 
 Aggregates data from multiple sources: client count, active procedures,
-pending communications, recent matches, and ROI metrics.
+pending communications, recent matches, ROI metrics, client distributions,
+and matching statistics. Supports period filtering (WEEK/MONTH/YEAR).
 """
 
 import json
+from datetime import date, timedelta
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import logger
+
+
+class DashboardPeriod(StrEnum):
+    """Period for dashboard date filtering."""
+
+    WEEK = "week"
+    MONTH = "month"
+    YEAR = "year"
+
+
+def _period_start(period: DashboardPeriod) -> date:
+    """Calculate start date for a given period."""
+    today = date.today()
+    if period == DashboardPeriod.WEEK:
+        return today - timedelta(days=7)
+    elif period == DashboardPeriod.MONTH:
+        return today - timedelta(days=30)
+    else:  # YEAR
+        return today - timedelta(days=365)
+
 
 DASHBOARD_CACHE_TTL = 300  # 5 minutes
 DASHBOARD_CACHE_PREFIX = "dashboard:"
@@ -134,6 +157,150 @@ class DashboardService:
         except Exception as e:
             logger.warning("dashboard_roi_failed", error=str(e))
             return {"hours_saved": 0, "breakdown": {}}
+
+    # ---------------------------------------------------------------
+    # DEV-434: Client distribution charts
+    # ---------------------------------------------------------------
+
+    async def get_client_distribution_by_regime(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+    ) -> list[dict[str, Any]]:
+        """Client count grouped by regime fiscale (pie chart)."""
+        try:
+            from app.models.client import Client
+            from app.models.client_profile import ClientProfile
+
+            result = await db.execute(
+                select(ClientProfile.regime_fiscale, func.count(ClientProfile.id))
+                .join(Client, Client.id == ClientProfile.client_id)
+                .where(Client.studio_id == studio_id, Client.deleted_at.is_(None))
+                .group_by(ClientProfile.regime_fiscale)
+            )
+            return [{"regime": row[0], "count": row[1]} for row in result.all()]
+        except Exception as e:
+            logger.warning("dashboard_regime_distribution_failed", error=str(e))
+            return []
+
+    async def get_client_distribution_by_ateco(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+    ) -> list[dict[str, Any]]:
+        """Client count grouped by ATECO code (bar chart)."""
+        try:
+            from app.models.client import Client
+            from app.models.client_profile import ClientProfile
+
+            result = await db.execute(
+                select(ClientProfile.codice_ateco_principale, func.count(ClientProfile.id))
+                .join(Client, Client.id == ClientProfile.client_id)
+                .where(Client.studio_id == studio_id, Client.deleted_at.is_(None))
+                .group_by(ClientProfile.codice_ateco_principale)
+            )
+            return [{"ateco": row[0], "count": row[1]} for row in result.all()]
+        except Exception as e:
+            logger.warning("dashboard_ateco_distribution_failed", error=str(e))
+            return []
+
+    async def get_client_distribution_by_status(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+    ) -> list[dict[str, Any]]:
+        """Client count grouped by stato_cliente (donut chart)."""
+        try:
+            from app.models.client import Client
+
+            result = await db.execute(
+                select(Client.stato_cliente, func.count(Client.id))
+                .where(Client.studio_id == studio_id, Client.deleted_at.is_(None))
+                .group_by(Client.stato_cliente)
+            )
+            return [{"status": row[0], "count": row[1]} for row in result.all()]
+        except Exception as e:
+            logger.warning("dashboard_status_distribution_failed", error=str(e))
+            return []
+
+    # ---------------------------------------------------------------
+    # DEV-435: Matching statistics
+    # ---------------------------------------------------------------
+
+    async def get_matching_statistics(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+    ) -> dict[str, Any]:
+        """Matching statistics: total, conversion rate, pending reviews."""
+        try:
+            from app.models.notification import Notification, NotificationType
+
+            total_result = await db.execute(
+                select(func.count(Notification.id)).where(
+                    Notification.studio_id == studio_id,
+                    Notification.notification_type == NotificationType.MATCH,
+                )
+            )
+            total = total_result.scalar_one_or_none() or 0
+
+            actioned_result = await db.execute(
+                select(func.count(Notification.id)).where(
+                    Notification.studio_id == studio_id,
+                    Notification.notification_type == NotificationType.MATCH,
+                    Notification.is_read.is_(True),
+                )
+            )
+            actioned = actioned_result.scalar_one_or_none() or 0
+
+            pending_result = await db.execute(
+                select(func.count(Notification.id)).where(
+                    Notification.studio_id == studio_id,
+                    Notification.notification_type == NotificationType.MATCH,
+                    Notification.is_read.is_(False),
+                    Notification.dismissed.is_(False),
+                )
+            )
+            pending = pending_result.scalar_one_or_none() or 0
+
+            conversion_rate = (actioned / total * 100) if total > 0 else 0.0
+
+            return {
+                "total_matches": total,
+                "conversion_rate": round(conversion_rate, 1),
+                "pending_reviews": pending,
+            }
+        except Exception as e:
+            logger.warning("dashboard_matching_stats_failed", error=str(e))
+            return {"total_matches": 0, "conversion_rate": 0.0, "pending_reviews": 0}
+
+    # ---------------------------------------------------------------
+    # DEV-436: Period-filtered dashboard data
+    # ---------------------------------------------------------------
+
+    async def get_dashboard_data_with_period(
+        self,
+        db: AsyncSession,
+        *,
+        studio_id: UUID,
+        period: DashboardPeriod = DashboardPeriod.MONTH,
+    ) -> dict[str, Any]:
+        """Aggregate dashboard data filtered by time period."""
+        base = await self.get_dashboard_data(db, studio_id=studio_id)
+
+        base["distributions"] = {
+            "by_regime": await self.get_client_distribution_by_regime(db, studio_id=studio_id),
+            "by_ateco": await self.get_client_distribution_by_ateco(db, studio_id=studio_id),
+            "by_status": await self.get_client_distribution_by_status(db, studio_id=studio_id),
+        }
+        base["matching"] = await self.get_matching_statistics(db, studio_id=studio_id)
+        base["period"] = period.value
+
+        return base
 
     # ---------------------------------------------------------------
     # Cache helpers (DEV-358)

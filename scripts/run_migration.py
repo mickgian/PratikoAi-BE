@@ -13,9 +13,8 @@ sys.path.insert(0, str(project_root))
 os.environ.setdefault("APP_ENV", "development")
 
 # Import alembic and configuration
-from alembic.config import Config
-
 from alembic import command
+from alembic.config import Config
 
 
 def run_migration():

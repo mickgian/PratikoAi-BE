@@ -92,7 +92,7 @@ export function ChatHeader({ onMobileMenuToggle }: ChatHeaderProps = {}) {
   return (
     <header
       data-testid="chat-header"
-      className="bg-white shadow-sm border-b border-[#C4BDB4]/20 p-4 flex items-center justify-between"
+      className="bg-white shadow-sm border-b border-[#C4BDB4]/20 px-3 py-2 sm:p-4 flex items-center justify-between"
     >
       {/* Left side: Mobile menu + Logo + Title */}
       <div

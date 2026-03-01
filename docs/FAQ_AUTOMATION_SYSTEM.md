@@ -6,7 +6,7 @@ The Automated FAQ Generation System for PratikoAI analyzes user query patterns, 
 
 ### Key Benefits
 
-- **Cost Reduction**: From €2/user to ~€1.70/user (15% savings)
+- **Cost Reduction**: ~15% savings on per-query LLM costs via FAQ caching
 - **Quality Assurance**: Multi-criteria validation ensuring professional standards
 - **Regulatory Compliance**: Automatic updates when Italian tax regulations change
 - **ROI-Driven**: Prioritizes FAQ candidates based on usage frequency and cost savings

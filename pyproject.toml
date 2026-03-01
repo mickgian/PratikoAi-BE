@@ -74,6 +74,9 @@ dependencies = [
     "pgvector>=0.2.0",
     # Feature flags / runtime config (ADR-031)
     "flagsmith>=5.1.0",
+    # TOTP 2FA support
+    "pyotp>=2.9.0",
+    "qrcode[pil]>=7.4.0",
 ]
 
 [project.optional-dependencies]

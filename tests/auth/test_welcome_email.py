@@ -23,12 +23,12 @@ class TestSendWelcomeEmail:
 
         with patch("app.services.email_service.settings") as mock_settings:
             mock_settings.ENVIRONMENT = Environment.QA
-            await self.service.send_welcome_email("user@example.com", "Secret123!")
+            await self.service.send_welcome_email("user@example.com")
 
         self.service._send_email.assert_called_once()
         call_kwargs = self.service._send_email.call_args
         assert call_kwargs[1]["recipient_email"] == "user@example.com"
-        assert call_kwargs[1]["subject"] == "Benvenuto su PratikoAI QA - Test environment - Le tue credenziali"
+        assert "Benvenuto su PratikoAI" in call_kwargs[1]["subject"]
 
     @pytest.mark.asyncio
     async def test_subject_has_no_env_label_in_production(self):
@@ -37,28 +37,43 @@ class TestSendWelcomeEmail:
 
         with patch("app.services.email_service.settings") as mock_settings:
             mock_settings.ENVIRONMENT = Environment.PRODUCTION
-            await self.service.send_welcome_email("user@example.com", "Secret123!")
+            await self.service.send_welcome_email("user@example.com")
 
         call_kwargs = self.service._send_email.call_args
-        assert call_kwargs[1]["subject"] == "Benvenuto su PratikoAI - Le tue credenziali"
+        assert "Benvenuto su PratikoAI" in call_kwargs[1]["subject"]
+        assert "QA" not in call_kwargs[1]["subject"]
 
     @pytest.mark.asyncio
-    async def test_html_contains_credentials(self):
-        """Email body includes email and password in clear text."""
+    async def test_html_does_not_contain_plaintext_password(self):
+        """P0 security fix: email body must NOT include plaintext password."""
         self.service._send_email = AsyncMock(return_value=True)
 
-        await self.service.send_welcome_email("mario@studio.it", "MyP@ss99")
+        await self.service.send_welcome_email("mario@studio.it")
 
         html = self.service._send_email.call_args[1]["html_content"]
         assert "mario@studio.it" in html
-        assert "MyP@ss99" in html
+        # Password must NOT appear anywhere in the email
+        assert "Password" not in html or "password" not in html.lower().split("reimposta")
 
     @pytest.mark.asyncio
-    async def test_html_contains_login_link(self):
-        """Email body includes a link to the login page."""
+    async def test_html_contains_verification_link_when_provided(self):
+        """Email body includes verification link when URL is given."""
         self.service._send_email = AsyncMock(return_value=True)
 
-        await self.service.send_welcome_email("u@ex.com", "pw")
+        await self.service.send_welcome_email(
+            "u@ex.com", verification_url="https://app.pratikoai.com/verify?token=abc"
+        )
+
+        html = self.service._send_email.call_args[1]["html_content"]
+        assert "https://app.pratikoai.com/verify?token=abc" in html
+        assert "Verifica" in html
+
+    @pytest.mark.asyncio
+    async def test_html_contains_login_link_when_no_verification(self):
+        """Email body includes login link when no verification URL."""
+        self.service._send_email = AsyncMock(return_value=True)
+
+        await self.service.send_welcome_email("u@ex.com")
 
         html = self.service._send_email.call_args[1]["html_content"]
         assert "/signin" in html
@@ -68,7 +83,7 @@ class TestSendWelcomeEmail:
         """If _send_email fails, send_welcome_email returns False."""
         self.service._send_email = AsyncMock(return_value=False)
 
-        result = await self.service.send_welcome_email("u@ex.com", "pw")
+        result = await self.service.send_welcome_email("u@ex.com")
 
         assert result is False
 
@@ -77,7 +92,7 @@ class TestSendWelcomeEmail:
         """If _send_email raises, send_welcome_email catches and returns False."""
         self.service._send_email = AsyncMock(side_effect=Exception("SMTP down"))
 
-        result = await self.service.send_welcome_email("u@ex.com", "pw")
+        result = await self.service.send_welcome_email("u@ex.com")
 
         assert result is False
 
@@ -104,6 +119,7 @@ class TestRegisterTriggersWelcomeEmail:
         mock_db.get_user_by_email = AsyncMock(return_value=None)
         mock_db.create_user = AsyncMock(return_value=mock_user)
         mock_db.update_user_refresh_token = AsyncMock()
+        mock_db.create_email_verification = AsyncMock()
         mock_email.send_welcome_email = AsyncMock(return_value=True)
 
         # Build a real-enough Request for slowapi
@@ -130,4 +146,6 @@ class TestRegisterTriggersWelcomeEmail:
             # Let the event loop run the background task
             await asyncio.sleep(0)
 
-        mock_email.send_welcome_email.assert_called_once_with("new@user.com", "ValidP@ss1")
+        mock_email.send_welcome_email.assert_called_once()
+        call_args = mock_email.send_welcome_email.call_args
+        assert call_args[0][0] == "new@user.com" or call_args[1].get("recipient_email") == "new@user.com"

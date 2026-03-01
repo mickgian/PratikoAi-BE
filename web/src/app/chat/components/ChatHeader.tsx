@@ -10,6 +10,13 @@ import {
   GitCompare,
   CreditCard,
   Sliders,
+  CalendarClock,
+  Newspaper,
+  FileText,
+  BookOpen,
+  HelpCircle,
+  Bell,
+  ClipboardList,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -153,7 +160,7 @@ export function ChatHeader({ onMobileMenuToggle }: ChatHeaderProps = {}) {
           {isUserMenuOpen && (
             <div
               data-testid="user-menu-dropdown"
-              className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-[#C4BDB4]/20 py-1 z-50"
+              className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-[#C4BDB4]/20 py-1 z-50 max-h-[80vh] overflow-y-auto"
             >
               <button
                 data-testid="account-menu-item"
@@ -198,9 +205,72 @@ export function ChatHeader({ onMobileMenuToggle }: ChatHeaderProps = {}) {
                     <Sliders className="w-4 h-4" />
                     <span>Configurazione</span>
                   </a>
-                  <div className="border-t border-[#C4BDB4]/20 my-1" />
                 </>
               )}
+              {/* Strumenti section */}
+              <div className="border-t border-[#C4BDB4]/20 my-1" />
+              <p className="px-4 py-1.5 text-xs font-semibold text-[#C4BDB4] uppercase tracking-wider">
+                Strumenti
+              </p>
+              {[
+                {
+                  href: '/scadenze-fiscali',
+                  icon: CalendarClock,
+                  label: 'Scadenze Fiscali',
+                  testId: 'menu-scadenze-fiscali',
+                },
+                {
+                  href: '/normative-recenti',
+                  icon: Newspaper,
+                  label: 'Normative Recenti',
+                  testId: 'menu-normative-recenti',
+                },
+                {
+                  href: '/modelli-formulari',
+                  icon: FileText,
+                  label: 'Modelli e Formulari',
+                  testId: 'menu-modelli-formulari',
+                },
+                {
+                  href: '/fonte-normativa',
+                  icon: BookOpen,
+                  label: 'Fonte Normativa',
+                  testId: 'menu-fonte-normativa',
+                },
+                {
+                  href: '/domande-pronte',
+                  icon: HelpCircle,
+                  label: 'Domande Pronte',
+                  testId: 'menu-domande-pronte',
+                },
+                {
+                  href: '/aggiornamenti-fiscali',
+                  icon: Bell,
+                  label: 'Aggiornamenti Fiscali',
+                  testId: 'menu-aggiornamenti-fiscali',
+                },
+                {
+                  href: '/normative-faq',
+                  icon: ClipboardList,
+                  label: 'FAQ Normative',
+                  testId: 'menu-normative-faq',
+                },
+              ].map(item => (
+                <button
+                  key={item.href}
+                  data-testid={item.testId}
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    router.push(item.href);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-[#2A5D67] hover:bg-[#F8F5F1] flex items-center space-x-2"
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+              <div className="border-t border-[#C4BDB4]/20 my-1" />
               {/* Logout button */}
               <button
                 data-testid="logout-button"

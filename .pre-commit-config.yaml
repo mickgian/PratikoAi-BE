@@ -114,6 +114,17 @@ repos:
         files: ^web/.*\.(js|jsx|ts|tsx)$
         stages: [pre-push]
 
+  # Coverage check for staged app/ files (new files: 70%, average: 50%)
+  - repo: local
+    hooks:
+      - id: coverage-check
+        name: Check test coverage for staged files
+        entry: uv run python scripts/check_coverage.py --threshold-avg=50 --threshold-new=70
+        language: system
+        pass_filenames: false
+        files: ^app/.*\.py$
+        stages: [pre-commit]
+
   # Run critical streaming tests before commit (only when SSE-related files change)
   - repo: local
     hooks:

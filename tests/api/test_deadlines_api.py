@@ -61,6 +61,8 @@ def sample_deadline(deadline_id: UUID) -> MagicMock:
     dl.source = DeadlineSource.TAX
     dl.due_date = date.today() + timedelta(days=7)
     dl.recurrence_rule = None
+    dl.importo = None
+    dl.sanzioni = None
     dl.is_active = True
     dl.created_at = datetime.now(UTC)
     dl.updated_at = None
@@ -78,6 +80,8 @@ def sample_deadline_30(deadline_id: UUID) -> MagicMock:
     dl.source = DeadlineSource.REGULATORY
     dl.due_date = date.today() + timedelta(days=30)
     dl.recurrence_rule = None
+    dl.importo = None
+    dl.sanzioni = None
     dl.is_active = True
     dl.created_at = datetime.now(UTC)
     dl.updated_at = None

@@ -1,11 +1,12 @@
 """DEV-312: Client API schemas."""
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from app.models.client import StatoCliente, TipoCliente
+from app.models.client_profile import PosizionePrevidenziale
 
 
 class ClientCreate(BaseModel):
@@ -39,6 +40,12 @@ class ClientUpdate(BaseModel):
     cap: str | None = None
     stato_cliente: StatoCliente | None = None
     note_studio: str | None = None
+    # INPS/INAIL fields (DEV-428)
+    inps_matricola: str | None = Field(default=None, max_length=20)
+    inps_status: PosizionePrevidenziale | None = None
+    inps_ultimo_pagamento: date | None = None
+    inail_pat: str | None = Field(default=None, max_length=20)
+    inail_status: PosizionePrevidenziale | None = None
 
 
 class ClientResponse(BaseModel):
@@ -58,6 +65,12 @@ class ClientResponse(BaseModel):
     indirizzo: str | None = None
     cap: str | None = None
     note_studio: str | None = None
+    # INPS/INAIL fields (DEV-428)
+    inps_matricola: str | None = None
+    inps_status: PosizionePrevidenziale | None = None
+    inps_ultimo_pagamento: date | None = None
+    inail_pat: str | None = None
+    inail_status: PosizionePrevidenziale | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

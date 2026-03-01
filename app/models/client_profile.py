@@ -36,6 +36,15 @@ class PosizioneAgenziaEntrate(StrEnum):
     IN_VERIFICA = "in_verifica"
 
 
+class PosizionePrevidenziale(StrEnum):
+    """Status with INPS/INAIL social security authorities."""
+
+    REGOLARE = "regolare"
+    IRREGOLARE = "irregolare"
+    NON_ISCRITTO = "non_iscritto"
+    SOSPESO = "sospeso"
+
+
 class ClientProfile(SQLModel, table=True):  # type: ignore[call-arg]
     """Business/fiscal metadata for a Client (1:1 relationship).
 
@@ -51,6 +60,11 @@ class ClientProfile(SQLModel, table=True):  # type: ignore[call-arg]
         data_cessazione_attivita: Business end date (nullable).
         immobili: JSONB array of property objects for IMU/TASI.
         posizione_agenzia_entrate: Tax authority status (nullable).
+        inps_matricola: INPS registration number (nullable).
+        inps_status: INPS position status (nullable).
+        inps_ultimo_pagamento: Date of last INPS payment (nullable).
+        inail_pat: INAIL PAT number (nullable).
+        inail_status: INAIL position status (nullable).
         profile_vector: 1536-dim vector for semantic matching.
     """
 
@@ -112,6 +126,33 @@ class ClientProfile(SQLModel, table=True):  # type: ignore[call-arg]
 
     # Tax authority status
     posizione_agenzia_entrate: PosizioneAgenziaEntrate | None = Field(
+        default=None,
+        sa_column=Column(String(15), nullable=True),
+    )
+
+    # INPS (social security) fields
+    inps_matricola: str | None = Field(
+        default=None,
+        max_length=20,
+        description="INPS registration number",
+    )
+    inps_status: PosizionePrevidenziale | None = Field(
+        default=None,
+        sa_column=Column(String(15), nullable=True),
+    )
+    inps_ultimo_pagamento: date | None = Field(
+        default=None,
+        sa_column=Column(Date, nullable=True),
+        description="Date of last INPS payment",
+    )
+
+    # INAIL (workplace insurance) fields
+    inail_pat: str | None = Field(
+        default=None,
+        max_length=20,
+        description="INAIL PAT (Posizione Assicurativa Territoriale) number",
+    )
+    inail_status: PosizionePrevidenziale | None = Field(
         default=None,
         sa_column=Column(String(15), nullable=True),
     )

@@ -20,9 +20,12 @@ from app.schemas.comparison import (
     AvailableModelsResponse,
     ComparisonRequest,
     ComparisonResponse,
+    ComparisonSessionDetail,
     ComparisonStatsResponse,
     ComparisonWithExistingRequest,
     CreatePendingComparisonRequest,
+    ExpertEvaluationRequest,
+    ExpertEvaluationResponse,
     LeaderboardResponse,
     ModelPreferencesRequest,
     PendingComparisonData,
@@ -388,21 +391,9 @@ async def get_pending_comparison(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PendingComparisonData:
-    """Retrieve and delete pending comparison data.
+    """Retrieve pending comparison data (persistent, not deleted on read).
 
-    Retrieves the pending comparison data and deletes it (one-time use).
-    Only the user who created the pending comparison can retrieve it.
-
-    Args:
-        pending_id: UUID of the pending comparison
-        current_user: Authenticated user
-        db: Database session
-
-    Returns:
-        PendingComparisonData with query, response, and model_id
-
-    Raises:
-        HTTPException: 403 if not SUPER_USER, 404 if not found or wrong user
+    Records are permanent so SUPER_USERs can return weeks later.
     """
     _require_super_user(current_user)
 
@@ -419,10 +410,82 @@ async def get_pending_comparison(
             detail="Confronto pendente non trovato",
         )
 
-    logger.info(
-        "pending_comparison_retrieved",
-        user_id=current_user.id,
+    return data
+
+
+@router.post("/pending/{pending_id}/mark-used")
+async def mark_pending_used(
+    pending_id: str,
+    batch_id: str = Query(..., description="Batch ID of the comparison session"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Mark a pending comparison as used after comparison runs."""
+    _require_super_user(current_user)
+
+    service = get_comparison_service()
+    await service.mark_pending_comparison_used(
         pending_id=pending_id,
+        batch_id=batch_id,
+        db=db,
     )
 
-    return data
+    return {"message": "Confronto contrassegnato come utilizzato"}
+
+
+@router.get("/session/{batch_id}", response_model=ComparisonSessionDetail)
+async def get_comparison_session(
+    batch_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ComparisonSessionDetail:
+    """Retrieve a stored comparison session with all responses and evaluations."""
+    _require_super_user(current_user)
+
+    service = get_comparison_service()
+    result = await service.get_comparison_session(
+        batch_id=batch_id,
+        user_id=current_user.id,
+        db=db,
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sessione di confronto non trovata",
+        )
+
+    return result
+
+
+@router.post("/evaluate", response_model=ExpertEvaluationResponse)
+async def submit_expert_evaluation(
+    request: ExpertEvaluationRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ExpertEvaluationResponse:
+    """Submit expert evaluation (corretta/incompleta/errata) on a comparison response."""
+    _require_super_user(current_user)
+
+    service = get_comparison_service()
+
+    try:
+        result = await service.submit_expert_evaluation(
+            response_id=request.response_id,
+            evaluation=request.evaluation,
+            user_id=current_user.id,
+            db=db,
+            details=request.details,
+        )
+        return result
+    except ValueError as e:
+        error_msg = str(e)
+        if "non trovata" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_msg,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg,
+        )

@@ -734,6 +734,8 @@ class TestPendingComparisonMetrics:
         mock_pending.input_tokens = 500
         mock_pending.output_tokens = 250
         mock_pending.trace_id = "trace-abc123"
+        mock_pending.comparison_used = False
+        mock_pending.batch_id = None
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_pending
@@ -768,6 +770,8 @@ class TestPendingComparisonMetrics:
         mock_pending.input_tokens = None
         mock_pending.output_tokens = None
         mock_pending.trace_id = None
+        mock_pending.comparison_used = False
+        mock_pending.batch_id = None
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_pending

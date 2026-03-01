@@ -147,32 +147,30 @@ describe('ComparisonDashboard', () => {
       // Component maps "not found" errors to Italian user-friendly message
       await waitFor(() => {
         expect(mockSetError).toHaveBeenCalledWith(
-          'Il confronto richiesto non è più disponibile. Torna alla chat e clicca nuovamente su "Confronta Modelli".'
+          'Il confronto richiesto non è stato trovato. Torna alla chat e clicca nuovamente su "Confronta Modelli".'
         );
       });
     });
 
-    it('should call setError when pending comparison is expired', async () => {
+    it('should call setError with generic message for unknown errors', async () => {
       // Setup: URL has pending param
       (useSearchParams as jest.Mock).mockReturnValue({
         get: jest.fn().mockImplementation((key: string) => {
-          if (key === 'pending') return 'expired-uuid';
+          if (key === 'pending') return 'some-uuid';
           return null;
         }),
       });
 
-      // Setup: getPendingComparison rejects with expiry error
+      // Setup: getPendingComparison rejects with a generic error
       (getPendingComparison as jest.Mock).mockRejectedValueOnce(
-        new Error('Pending comparison expired')
+        new Error('Unexpected server error')
       );
 
       render(<ComparisonDashboard />);
 
-      // Component maps "expired" errors to Italian user-friendly message
+      // Unknown errors fall through to generic handler
       await waitFor(() => {
-        expect(mockSetError).toHaveBeenCalledWith(
-          'Il confronto è scaduto (validità 1 ora). Torna alla chat e clicca nuovamente su "Confronta Modelli".'
-        );
+        expect(mockSetError).toHaveBeenCalledWith('Unexpected server error');
       });
     });
 

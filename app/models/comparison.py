@@ -85,6 +85,10 @@ class ModelComparisonResponse(BaseModel, table=True):  # type: ignore[call-arg]
     output_tokens: int | None = Field(default=None)
     status: str = Field(default=ComparisonStatus.SUCCESS.value, max_length=20)
     error_message: str | None = Field(default=None, max_length=1000)
+    expert_evaluation: str | None = Field(default=None, max_length=20)
+    expert_evaluation_details: str | None = Field(default=None, max_length=2000)
+    expert_evaluation_user_id: int | None = Field(default=None)
+    expert_evaluation_at: datetime | None = Field(default=None)
 
     # Relationships
     session: ModelComparisonSession = Relationship(back_populates="responses")
@@ -152,10 +156,11 @@ class UserModelPreference(BaseModel, table=True):  # type: ignore[call-arg]
 
 
 class PendingComparison(BaseModel, table=True):  # type: ignore[call-arg]
-    """Temporary storage for pending comparison data from main chat.
+    """Persistent storage for comparison data from main chat.
 
     Stores the query and response from main chat so the comparison page
-    can retrieve it. Auto-expires after 1 hour for cleanup.
+    can retrieve it. Records are permanent - SUPER_USERs can return
+    to comparisons weeks later.
 
     Attributes:
         id: Primary key (UUID)
@@ -169,8 +174,10 @@ class PendingComparison(BaseModel, table=True):  # type: ignore[call-arg]
         input_tokens: DEV-256: Number of input tokens
         output_tokens: DEV-256: Number of output tokens
         trace_id: DEV-256: Langfuse trace ID for the original response
+        comparison_used: Whether comparison has been run (disables Confronta button)
+        batch_id: Links to ModelComparisonSession.batch_id after comparison runs
         created_at: When the pending comparison was created
-        expires_at: When this record should be deleted (for cleanup job)
+        expires_at: Legacy field, kept for migration compatibility
     """
 
     __tablename__ = "pending_comparison"
@@ -186,4 +193,6 @@ class PendingComparison(BaseModel, table=True):  # type: ignore[call-arg]
     input_tokens: int | None = Field(default=None)  # DEV-256: Input token count
     output_tokens: int | None = Field(default=None)  # DEV-256: Output token count
     trace_id: str | None = Field(default=None, max_length=64)  # DEV-256: Langfuse trace ID
-    expires_at: datetime
+    comparison_used: bool = Field(default=False, index=True)
+    batch_id: str | None = Field(default=None, max_length=64, index=True)
+    expires_at: datetime | None = Field(default=None)  # Legacy, nullable now

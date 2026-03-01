@@ -59,6 +59,8 @@ export function AIMessageV2({
   const [visibleMarkdown, setVisibleMarkdown] = useState<string>('');
   // DEV-257: State for selected models in comparison
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+  // Track if comparison has been initiated for this message
+  const [comparisonUsed, setComparisonUsed] = useState(false);
 
   const router = useRouter();
 
@@ -469,6 +471,9 @@ export function AIMessageV2({
 
       console.log('✅ [AIMessageV2] Pending comparison created:', pending_id);
 
+      // Mark as used so the button gets disabled
+      setComparisonUsed(true);
+
       // DEV-257: Navigate with pending_id and selected models in URL
       const modelsParam =
         selectedModelIds.length > 0
@@ -555,32 +560,46 @@ export function AIMessageV2({
       {/* DEV-257: Added model selector dropdown next to Confronta button */}
       {isSuperUser && !isStreaming && !isLoadingExpertStatus && (
         <div className="mt-2 flex items-center gap-2">
-          <ChatModelSelector
-            selectedModelIds={selectedModelIds}
-            onSelectionChange={setSelectedModelIds}
-            disabled={isStreaming}
-          />
+          {!comparisonUsed && !message.metadata?.comparison_pending_id && (
+            <ChatModelSelector
+              selectedModelIds={selectedModelIds}
+              onSelectionChange={setSelectedModelIds}
+              disabled={isStreaming}
+            />
+          )}
           <button
             data-testid="compare-button"
             onClick={handleCompare}
-            disabled={selectedModelIds.length < 2}
+            disabled={
+              comparisonUsed ||
+              !!message.metadata?.comparison_pending_id ||
+              selectedModelIds.length < 2
+            }
             className={`
               text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-md border
               font-medium transition-all duration-200
               ${
-                selectedModelIds.length < 2
-                  ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed'
-                  : 'text-[#2A5D67] border-[#2A5D67]/30 bg-[#2A5D67]/5 hover:bg-[#2A5D67]/10 hover:border-[#2A5D67]/50 cursor-pointer'
+                comparisonUsed || message.metadata?.comparison_pending_id
+                  ? 'text-gray-400 border-gray-200 bg-gray-100 cursor-not-allowed'
+                  : selectedModelIds.length < 2
+                    ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed'
+                    : 'text-[#2A5D67] border-[#2A5D67]/30 bg-[#2A5D67]/5 hover:bg-[#2A5D67]/10 hover:border-[#2A5D67]/50 cursor-pointer'
               }
             `}
             title={
-              selectedModelIds.length < 2
-                ? 'Seleziona almeno 2 modelli'
-                : 'Confronta questa risposta con altri modelli'
+              comparisonUsed || message.metadata?.comparison_pending_id
+                ? 'Confronto già avviato per questa risposta'
+                : selectedModelIds.length < 2
+                  ? 'Seleziona almeno 2 modelli'
+                  : 'Confronta questa risposta con altri modelli'
             }
           >
             <GitCompare className="w-4 h-4" />
-            <span>Confronta</span>
+            <span>
+              {comparisonUsed || message.metadata?.comparison_pending_id
+                ? 'Confronto avviato'
+                : 'Confronta'}
+            </span>
           </button>
         </div>
       )}

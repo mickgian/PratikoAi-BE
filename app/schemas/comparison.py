@@ -119,6 +119,8 @@ class PendingComparisonData(BaseModel):
     input_tokens: int | None = Field(default=None, description="Number of input tokens")
     output_tokens: int | None = Field(default=None, description="Number of output tokens")
     trace_id: str | None = Field(default=None, description="Langfuse trace ID")
+    comparison_used: bool = Field(default=False, description="Whether comparison has already been run")
+    batch_id: str | None = Field(default=None, description="Batch ID of the comparison session if used")
 
 
 # Response schemas
@@ -237,3 +239,66 @@ class ComparisonHistoryResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+# --- Persisted comparison session detail ---
+
+
+class ModelResponseDetail(BaseModel):
+    """Detailed model response including expert evaluation."""
+
+    response_id: str = Field(..., description="UUID of the response record")
+    model_id: str
+    provider: str
+    model_name: str
+    response_text: str
+    latency_ms: int
+    cost_eur: float | None = None
+    cost_usd: float | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    status: str
+    error_message: str | None = None
+    trace_id: str
+    expert_evaluation: str | None = Field(
+        default=None, description="Expert evaluation: correct, incomplete, incorrect"
+    )
+    expert_evaluation_details: str | None = Field(
+        default=None, description="Details for incomplete/incorrect evaluations"
+    )
+
+
+class ComparisonSessionDetail(BaseModel):
+    """Full detail of a persisted comparison session."""
+
+    batch_id: str
+    query: str
+    responses: list[ModelResponseDetail]
+    created_at: datetime
+    winner_model: str | None = None
+    vote_comment: str | None = None
+    vote_timestamp: datetime | None = None
+
+
+class ExpertEvaluationRequest(BaseModel):
+    """Request to submit expert evaluation on a comparison response."""
+
+    model_config = {"extra": "ignore"}
+
+    response_id: str = Field(..., description="UUID of the ModelComparisonResponse to evaluate")
+    evaluation: str = Field(
+        ...,
+        description="Evaluation type: 'correct', 'incomplete', 'incorrect'",
+    )
+    details: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Details for incomplete/incorrect evaluations",
+    )
+
+
+class ExpertEvaluationResponse(BaseModel):
+    """Response after submitting an expert evaluation."""
+
+    success: bool
+    message: str

@@ -1,7 +1,7 @@
-"""Email Service for Automated Reporting
+"""Email Service for Automated Reporting and Hybrid Sending (DEV-445, ADR-034).
 
-This service handles automated email reporting for system metrics across all environments.
-Supports HTML email templates, scheduled reports, and multi-environment monitoring.
+This service handles automated email reporting and hybrid email sending.
+Hybrid sending: (1) custom SMTP if configured → (2) PratikoAI default → (3) log error.
 """
 
 import asyncio
@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from app.core.config import Environment, settings
 from app.services.metrics_service import MetricsReport, MetricsService, MetricStatus
+from app.services.studio_email_config_service import studio_email_config_service
 
 logger = logging.getLogger(__name__)
 
@@ -330,38 +331,140 @@ class EmailService:
             return False
 
     async def _send_email(self, recipient_email: str, subject: str, html_content: str) -> bool:
-        """Send HTML email using SMTP."""
+        """Send HTML email using default PratikoAI SMTP."""
+        return await self._send_via_smtp(
+            recipient_email=recipient_email,
+            subject=subject,
+            html_content=html_content,
+            smtp_host=self.smtp_server,
+            smtp_port=self.smtp_port,
+            smtp_username=self.smtp_username,
+            smtp_password=self.smtp_password,
+            use_tls=True,
+            from_email=self.from_email,
+            from_name="PratikoAI",
+        )
+
+    async def _send_via_smtp(
+        self,
+        *,
+        recipient_email: str,
+        subject: str,
+        html_content: str,
+        smtp_host: str,
+        smtp_port: int,
+        smtp_username: str | None,
+        smtp_password: str | None,
+        use_tls: bool = True,
+        from_email: str,
+        from_name: str = "",
+        reply_to: str | None = None,
+    ) -> bool:
+        """Send HTML email via a specific SMTP server."""
         try:
-            # Check if email configuration is available
-            if not self.smtp_username or not self.smtp_password:
+            if not smtp_username or not smtp_password:
                 self.logger.warning("SMTP credentials not configured, email not sent")
-                # In development, log the email content instead
                 self.logger.info(f"EMAIL CONTENT (would be sent to {recipient_email}):")
                 self.logger.info(f"Subject: {subject}")
-                # Don't log full HTML content to avoid log spam
                 return True
 
-            # Create message
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
-            msg["From"] = self.from_email
+            if from_name:
+                msg["From"] = f"{from_name} <{from_email}>"
+            else:
+                msg["From"] = from_email
             msg["To"] = recipient_email
+            if reply_to:
+                msg["Reply-To"] = reply_to
 
-            # Create HTML part
             html_part = MIMEText(html_content, "html")
             msg.attach(html_part)
 
-            # Send email
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()
-                server.login(self.smtp_username, self.smtp_password)
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                if use_tls:
+                    server.starttls()
+                server.login(smtp_username, smtp_password)
                 server.send_message(msg)
 
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to send email: {e}")
+            self.logger.error(
+                "smtp_send_failed host=%s error=%s",
+                smtp_host,
+                str(e),
+            )
             return False
+
+    async def send_hybrid_email(
+        self,
+        *,
+        user_id: int,
+        recipient_email: str,
+        subject: str,
+        html_content: str,
+        studio_name: str | None = None,
+    ) -> bool:
+        """Send email using the hybrid fallback chain (ADR-034).
+
+        Chain: (1) verified custom SMTP → (2) PratikoAI default → (3) log error.
+        """
+        # Step 1: Check for verified custom SMTP config
+        custom_config = await studio_email_config_service.get_raw_config(user_id)
+
+        if custom_config is not None:
+            try:
+                password = studio_email_config_service._decrypt_password(custom_config.smtp_password_encrypted)
+            except Exception:
+                password = None
+
+            if password:
+                success = await self._send_via_smtp(
+                    recipient_email=recipient_email,
+                    subject=subject,
+                    html_content=html_content,
+                    smtp_host=custom_config.smtp_host,
+                    smtp_port=custom_config.smtp_port,
+                    smtp_username=custom_config.smtp_username,
+                    smtp_password=password,
+                    use_tls=custom_config.use_tls,
+                    from_email=custom_config.from_email,
+                    from_name=custom_config.from_name,
+                    reply_to=custom_config.reply_to_email,
+                )
+                if success:
+                    return True
+                self.logger.warning(
+                    "custom_smtp_failed_falling_back user_id=%s smtp_host=%s",
+                    user_id,
+                    custom_config.smtp_host,
+                )
+
+        # Step 2: Fall back to PratikoAI default SMTP
+        default_from_name = studio_name or "PratikoAI"
+        success = await self._send_via_smtp(
+            recipient_email=recipient_email,
+            subject=subject,
+            html_content=html_content,
+            smtp_host=self.smtp_server,
+            smtp_port=self.smtp_port,
+            smtp_username=self.smtp_username,
+            smtp_password=self.smtp_password,
+            use_tls=True,
+            from_email=self.from_email,
+            from_name=default_from_name,
+        )
+
+        if not success:
+            # Step 3: Log error (do not silently drop)
+            self.logger.error(
+                "hybrid_email_all_failed user_id=%s recipient=%s",
+                user_id,
+                recipient_email,
+            )
+
+        return success
 
 
 # Global email service instance

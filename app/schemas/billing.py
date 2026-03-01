@@ -80,6 +80,9 @@ class BillingPlanSchema(BaseModel):
     window_7d_cost_limit_eur: float
     credit_markup_factor: float
     markup_percentage: int = Field(description="Markup as percentage (e.g., 50 for 1.5x)")
+    custom_email_allowed: bool = Field(
+        default=False, description="Se il piano permette configurazione SMTP personalizzata"
+    )
 
     @classmethod
     def from_plan(cls, plan) -> "BillingPlanSchema":
@@ -92,6 +95,7 @@ class BillingPlanSchema(BaseModel):
             window_7d_cost_limit_eur=plan.window_7d_cost_limit_eur,
             credit_markup_factor=plan.credit_markup_factor,
             markup_percentage=int((plan.credit_markup_factor - 1) * 100),
+            custom_email_allowed=getattr(plan, "custom_email_allowed", False),
         )
 
 

@@ -491,6 +491,7 @@ export function ChatSidebar({ onClose }: ChatSidebarProps = {}) {
             </div>
           )}
         </div>
+
       </div>
     </aside>
   );

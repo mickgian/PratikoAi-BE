@@ -423,8 +423,9 @@ async def request_password_reset(request: Request, data: PasswordResetRequest):
     if user:
         reset_token = secrets.token_urlsafe(32)
         token_hash = User.hash_password(reset_token)
+        token_prefix = PasswordReset.compute_prefix(reset_token)
         expires_at = datetime.now(UTC) + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES)
-        await db_service.create_password_reset_token(user.id, token_hash, expires_at)
+        await db_service.create_password_reset_token(user.id, token_hash, expires_at, token_prefix=token_prefix)
 
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
         reset_url = f"{frontend_url}/reset-password?token={reset_token}"
@@ -471,9 +472,12 @@ async def setup_2fa(user: User = Depends(get_current_user)):
     secret = totp_service.generate_secret()
     provisioning_uri = totp_service.get_provisioning_uri(secret, user.email)
     backup_codes = totp_service.generate_backup_codes()
-    backup_codes_json = totp_service.hash_backup_codes(backup_codes)
+    backup_codes_json = totp_service.serialize_backup_codes(backup_codes)
 
-    await db_service.create_totp_device(user_id=user.id, secret_encrypted=secret, backup_codes_hash=backup_codes_json)
+    encrypted_secret = totp_service.encrypt_secret(secret, settings.TOTP_ENCRYPTION_KEY)
+    await db_service.create_totp_device(
+        user_id=user.id, secret_encrypted=encrypted_secret, backup_codes_json=backup_codes_json
+    )
 
     logger.info("2fa_setup_initiated", user_id=user.id)
     return TOTPSetupResponse(secret=secret, provisioning_uri=provisioning_uri, backup_codes=backup_codes)
@@ -486,7 +490,8 @@ async def confirm_2fa(data: TOTPVerifyRequest, user: User = Depends(get_current_
     if not device:
         raise HTTPException(status_code=400, detail="Nessun dispositivo 2FA trovato. Esegui prima il setup.")
 
-    if not totp_service.verify_code(device.secret_encrypted, data.code):
+    plaintext_secret = totp_service.decrypt_secret(device.secret_encrypted, settings.TOTP_ENCRYPTION_KEY)
+    if not totp_service.verify_code(plaintext_secret, data.code):
         raise HTTPException(status_code=400, detail="Codice non valido. Riprova.")
 
     await db_service.confirm_totp_device(device.id, user.id)
@@ -511,7 +516,8 @@ async def verify_2fa(request: Request, data: TwoFactorVerifyRequest):
     if not device:
         raise HTTPException(status_code=400, detail="Dispositivo 2FA non configurato")
 
-    if not totp_service.verify_code(device.secret_encrypted, data.code):
+    plaintext_secret = totp_service.decrypt_secret(device.secret_encrypted, settings.TOTP_ENCRYPTION_KEY)
+    if not totp_service.verify_code(plaintext_secret, data.code):
         raise HTTPException(status_code=401, detail="Codice 2FA non valido")
 
     access_token = create_access_token(str(user_id))
@@ -605,13 +611,13 @@ async def use_backup_code(request: Request, data: TwoFactorBackupRequest):
 
     user_id = int(str(subject).split(":", 1)[1])
     device = await db_service.get_totp_device(user_id)
-    if not device or not device.backup_codes_hash:
+    if not device or not device.backup_codes_json:
         raise HTTPException(status_code=400, detail="Nessun codice di backup disponibile")
 
-    if not totp_service.verify_backup_code(data.backup_code, device.backup_codes_hash):
+    if not totp_service.verify_backup_code(data.backup_code, device.backup_codes_json):
         raise HTTPException(status_code=401, detail="Codice di backup non valido")
 
-    updated_codes = totp_service.consume_backup_code(data.backup_code, device.backup_codes_hash)
+    updated_codes = totp_service.consume_backup_code(data.backup_code, device.backup_codes_json)
     if updated_codes is not None:
         await db_service.update_totp_backup_codes(device.id, updated_codes)
 
@@ -640,7 +646,8 @@ async def disable_2fa(data: TOTPVerifyRequest, user: User = Depends(get_current_
     if not device:
         raise HTTPException(status_code=400, detail="2FA non è attivo")
 
-    if not totp_service.verify_code(device.secret_encrypted, data.code):
+    plaintext_secret = totp_service.decrypt_secret(device.secret_encrypted, settings.TOTP_ENCRYPTION_KEY)
+    if not totp_service.verify_code(plaintext_secret, data.code):
         raise HTTPException(status_code=401, detail="Codice non valido")
 
     await db_service.delete_totp_device(user.id)

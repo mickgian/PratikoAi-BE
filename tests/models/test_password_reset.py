@@ -47,6 +47,17 @@ class TestPasswordResetModel:
             expires_at=datetime.now(UTC),
         )
         assert reset.used is False
+        assert reset.token_prefix == ""
+
+    def test_compute_prefix(self):
+        """Test SHA-256 prefix computation is deterministic and 8 chars."""
+        prefix = PasswordReset.compute_prefix("test-token-123")
+        assert isinstance(prefix, str)
+        assert len(prefix) == 8
+        # Deterministic: same input gives same output
+        assert PasswordReset.compute_prefix("test-token-123") == prefix
+        # Different input gives different output
+        assert PasswordReset.compute_prefix("other-token") != prefix
 
     def test_table_name(self):
         """Test table name."""

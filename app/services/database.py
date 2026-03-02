@@ -387,35 +387,40 @@ class DatabaseService:
 
     # --- P0: Password Reset ---
 
-    async def create_password_reset_token(self, user_id: int, token_hash: str, expires_at) -> PasswordReset:
-        """Create a password reset token."""
+    async def create_password_reset_token(
+        self, user_id: int, token_hash: str, expires_at, *, token_prefix: str = ""
+    ) -> PasswordReset:
+        """Create a password reset token with an indexed prefix for fast lookup."""
         with Session(self.engine) as session:
-            reset = PasswordReset(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
+            reset = PasswordReset(
+                user_id=user_id, token_hash=token_hash, expires_at=expires_at, token_prefix=token_prefix
+            )
             session.add(reset)
             session.commit()
             session.refresh(reset)
             return reset
 
     async def get_password_reset_by_token(self, token: str) -> PasswordReset | None:
-        """Get password reset by comparing token against stored hashes.
+        """Get password reset by prefix lookup + bcrypt verification.
 
-        Since we store bcrypt hashes, we need to check all recent unused tokens.
+        Uses a SHA-256 prefix (indexed) to narrow candidates to O(1),
+        then verifies the full bcrypt hash against the raw token.
         """
+        import bcrypt as bcrypt_lib
+
+        prefix = PasswordReset.compute_prefix(token)
         with Session(self.engine) as session:
             stmt = select(PasswordReset).where(
                 PasswordReset.used == False,  # noqa: E712
+                PasswordReset.token_prefix == prefix,
             )
-            resets = session.exec(stmt).all()
-            for reset in resets:
-                if User.hash_password.__func__ is not None:
-                    # Compare the raw token against the bcrypt hash
-                    import bcrypt as bcrypt_lib
-
-                    try:
-                        if bcrypt_lib.checkpw(token.encode("utf-8")[:72], reset.token_hash.encode("utf-8")):
-                            return cast(PasswordReset, reset)
-                    except (ValueError, TypeError):
-                        continue
+            candidates = session.exec(stmt).all()
+            for reset in candidates:
+                try:
+                    if bcrypt_lib.checkpw(token.encode("utf-8")[:72], reset.token_hash.encode("utf-8")):
+                        return cast(PasswordReset, reset)
+                except (ValueError, TypeError):
+                    continue
             return None
 
     async def mark_password_reset_used(self, reset_id: int) -> None:
@@ -475,13 +480,13 @@ class DatabaseService:
 
     # --- P2: TOTP 2FA ---
 
-    async def create_totp_device(self, *, user_id: int, secret_encrypted: str, backup_codes_hash: str) -> TOTPDevice:
+    async def create_totp_device(self, *, user_id: int, secret_encrypted: str, backup_codes_json: str) -> TOTPDevice:
         """Create a TOTP device for a user."""
         with Session(self.engine) as session:
             device = TOTPDevice(
                 user_id=user_id,
                 secret_encrypted=secret_encrypted,
-                backup_codes_hash=backup_codes_hash,
+                backup_codes_json=backup_codes_json,
             )
             session.add(device)
             session.commit()
@@ -514,7 +519,7 @@ class DatabaseService:
         with Session(self.engine) as session:
             device = session.get(TOTPDevice, device_id)
             if device:
-                device.backup_codes_hash = backup_codes_json
+                device.backup_codes_json = backup_codes_json
                 session.add(device)
                 session.commit()
 

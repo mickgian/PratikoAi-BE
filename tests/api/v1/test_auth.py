@@ -196,10 +196,14 @@ class TestTOTPSetup:
 
     @pytest.mark.asyncio
     @patch("app.api.v1.auth.db_service")
-    async def test_setup_2fa_returns_secret_and_qr(self, mock_db):
+    @patch("app.api.v1.auth.settings")
+    async def test_setup_2fa_returns_secret_and_qr(self, mock_settings, mock_db):
         """Setup returns TOTP secret, provisioning URI, and backup codes."""
+        from cryptography.fernet import Fernet
+
         from app.api.v1.auth import setup_2fa
 
+        mock_settings.TOTP_ENCRYPTION_KEY = Fernet.generate_key().decode()
         mock_user = MagicMock(id=1, email="test@example.com", totp_enabled=False)
         mock_db.create_totp_device = AsyncMock()
 

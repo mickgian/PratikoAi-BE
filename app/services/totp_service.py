@@ -1,10 +1,10 @@
 """TOTP 2FA service for generating and verifying authenticator codes (P2)."""
 
-import hashlib
 import json
 import secrets
 
 import pyotp
+from cryptography.fernet import Fernet, InvalidToken
 
 from app.core.logging import logger
 
@@ -18,6 +18,43 @@ class TOTPService:
     def generate_secret(self) -> str:
         """Generate a new TOTP secret (base32-encoded, 32 chars)."""
         return pyotp.random_base32()
+
+    def encrypt_secret(self, secret: str, encryption_key: str) -> str:
+        """Encrypt a TOTP secret using Fernet symmetric encryption.
+
+        Args:
+            secret: The plaintext TOTP secret (base32)
+            encryption_key: Fernet key (32 url-safe base64-encoded bytes)
+
+        Returns:
+            Fernet-encrypted string (base64-encoded)
+
+        Raises:
+            ValueError: If encryption_key is empty or not configured
+        """
+        if not encryption_key:
+            raise ValueError("TOTP_ENCRYPTION_KEY non configurata. Genera una chiave con Fernet.generate_key().")
+        f = Fernet(encryption_key.encode())
+        return f.encrypt(secret.encode()).decode()
+
+    def decrypt_secret(self, encrypted_secret: str, encryption_key: str) -> str:
+        """Decrypt a Fernet-encrypted TOTP secret.
+
+        Args:
+            encrypted_secret: The Fernet-encrypted secret string
+            encryption_key: Fernet key (same key used for encryption)
+
+        Returns:
+            The plaintext TOTP secret (base32)
+
+        Raises:
+            ValueError: If encryption_key is empty or not configured
+            cryptography.fernet.InvalidToken: If the key is wrong or data is corrupt
+        """
+        if not encryption_key:
+            raise ValueError("TOTP_ENCRYPTION_KEY non configurata. Genera una chiave con Fernet.generate_key().")
+        f = Fernet(encryption_key.encode())
+        return f.decrypt(encrypted_secret.encode()).decode()
 
     def get_provisioning_uri(self, secret: str, email: str) -> str:
         """Generate a provisioning URI for QR code scanning.
@@ -68,7 +105,7 @@ class TOTPService:
         """Generate a 6-digit OTP code for email-based fallback 2FA."""
         return f"{secrets.randbelow(1000000):06d}"
 
-    def hash_backup_codes(self, codes: list[str]) -> str:
+    def serialize_backup_codes(self, codes: list[str]) -> str:
         """Serialize backup codes for storage.
 
         Stores as JSON so individual codes can be verified and consumed.

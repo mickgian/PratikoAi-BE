@@ -29,7 +29,7 @@ class TestTOTPDeviceModel:
         )
         assert device.confirmed is False
         assert device.name == "Autenticatore"
-        assert device.backup_codes_hash is None
+        assert device.backup_codes_json is None
 
     def test_table_name(self):
         """Test table name."""

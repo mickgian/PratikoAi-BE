@@ -223,6 +223,10 @@ class Settings:
         self.PASSWORD_RESET_EXPIRE_MINUTES = int(os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "60"))
         self.EMAIL_OTP_EXPIRE_MINUTES = int(os.getenv("EMAIL_OTP_EXPIRE_MINUTES", "10"))
 
+        # TOTP Fernet encryption key (must be 32 url-safe base64-encoded bytes)
+        # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+        self.TOTP_ENCRYPTION_KEY = os.getenv("TOTP_ENCRYPTION_KEY", "")
+
         # Logging Configuration
         self.LOG_DIR = Path(os.getenv("LOG_DIR", "logs"))
         self.LOG_LEVEL = get_config("LOG_LEVEL", "INFO")

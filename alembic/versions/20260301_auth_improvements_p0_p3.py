@@ -4,7 +4,7 @@ Adds new tables: email_verification, password_reset, login_attempt, totp_device.
 Adds new columns to user: email_verified, failed_login_attempts, account_locked_until, totp_enabled.
 
 Revision ID: auth_improvements_20260301
-Revises: persist_comparison_20260228
+Revises: add_custom_email_20260301
 Create Date: 2026-03-01 12:00:00.000000
 
 """
@@ -17,7 +17,7 @@ from alembic import op  # type: ignore[attr-defined]
 
 # revision identifiers, used by Alembic.
 revision: str = "auth_improvements_20260301"  # pragma: allowlist secret
-down_revision: str | Sequence[str] | None = "persist_comparison_20260228"  # pragma: allowlist secret
+down_revision: str | Sequence[str] | None = "add_custom_email_20260301"  # pragma: allowlist secret
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

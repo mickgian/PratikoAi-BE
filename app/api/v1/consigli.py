@@ -1,6 +1,7 @@
 """API endpoint for /consigli insight report (ADR-038)."""
 
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
 from app.core.limiter import limiter
@@ -18,7 +19,7 @@ router = APIRouter()
 async def generate_consigli_report(
     request: Request,
     user: User = Depends(get_current_user),
-    db=Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> ConsigliReportResponse:
     """Generate on-demand insight report for the authenticated user.
 

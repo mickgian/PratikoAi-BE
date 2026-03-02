@@ -2,7 +2,7 @@
 
 TDD RED phase: Tests written before implementation.
 Tests: data sufficiency gate, stats collection, report generation,
-       concurrency guard, GDPR consent, PII anonymization.
+       concurrency guard, PII anonymization, rendering helpers.
 """
 
 from datetime import datetime, timedelta
@@ -21,6 +21,21 @@ def mock_db():
 @pytest.fixture
 def user_id():
     return 42
+
+
+@pytest.fixture
+def sample_stats():
+    """Standard stats dict for rendering tests."""
+    return {
+        "total_queries": 50,
+        "domain_distribution": {"tax_calculation": 20, "general": 30},
+        "hourly_distribution": {"9": 10, "14": 8, "16": 6, "11": 4},
+        "session_count": 10,
+        "cache_hit_rate": 0.2,
+        "kb_sources_used": ["ccnl", "normativa"],
+        "history_days": 30,
+        "active_days": 20,
+    }
 
 
 def _make_history_rows(count: int, days_span: int = 30):
@@ -68,7 +83,6 @@ class TestCanGenerate:
         """Refuses when history span <7 days."""
         from app.services.consigli_service import consigli_service
 
-        # First call returns count >= 20, second returns date range < 7 days
         mock_count_result = MagicMock()
         mock_count_result.scalar_one.return_value = 25
 
@@ -102,6 +116,24 @@ class TestCanGenerate:
         assert result["can_generate"] is True
         assert result["query_count"] == 50
         assert result["history_days"] >= 7
+
+    @pytest.mark.asyncio
+    async def test_null_date_range(self, mock_db, user_id):
+        """Handles null date range (all timestamps null)."""
+        from app.services.consigli_service import consigli_service
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar_one.return_value = 25
+
+        mock_dates_result = MagicMock()
+        mock_dates_result.one_or_none.return_value = MagicMock(min_ts=None, max_ts=None)
+
+        mock_db.execute.side_effect = [mock_count_result, mock_dates_result]
+
+        result = await consigli_service.can_generate(user_id, mock_db)
+
+        assert result["can_generate"] is False
+        assert result["history_days"] == 0
 
 
 class TestCollectStats:
@@ -171,6 +203,23 @@ class TestCollectStats:
         assert "price" not in stats_str
         assert "euro" not in stats_str
         assert "€" not in stats_str
+
+    @pytest.mark.asyncio
+    async def test_empty_rows_returns_zero_stats(self, mock_db, user_id):
+        """Returns zero values when no query history rows exist."""
+        from app.services.consigli_service import consigli_service
+
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        mock_db.execute.return_value = mock_result
+
+        stats = await consigli_service.collect_stats(user_id, mock_db)
+
+        assert stats["total_queries"] == 0
+        assert stats["session_count"] == 0
+        assert stats["cache_hit_rate"] == 0
+        assert stats["history_days"] == 0
+        assert stats["active_days"] == 0
 
 
 class TestGenerateReport:
@@ -327,6 +376,81 @@ class TestGenerateReport:
         mock_anon.assert_called_once()
         assert "mario.rossi@email.com" not in result["html_report"]
 
+    @pytest.mark.asyncio
+    async def test_stats_summary_in_response(self, mock_db, user_id):
+        """Successful report includes stats_summary."""
+        from app.services.consigli_service import consigli_service
+
+        with (
+            patch.object(
+                consigli_service,
+                "can_generate",
+                return_value={"can_generate": True, "query_count": 50, "history_days": 30, "message_it": "OK"},
+            ),
+            patch.object(
+                consigli_service,
+                "collect_stats",
+                return_value={
+                    "total_queries": 50,
+                    "domain_distribution": {"general": 50},
+                    "hourly_distribution": {},
+                    "session_count": 10,
+                    "cache_hit_rate": 0.1,
+                    "kb_sources_used": [],
+                    "history_days": 30,
+                    "active_days": 20,
+                },
+            ),
+            patch.object(consigli_service, "_call_llm_analysis", return_value="Analisi."),
+        ):
+            result = await consigli_service.generate_report(user_id, mock_db)
+
+        assert result["stats_summary"] is not None
+        assert result["stats_summary"]["total_queries"] == 50
+        assert result["stats_summary"]["active_days"] == 20
+        assert result["stats_summary"]["session_count"] == 10
+
+    @pytest.mark.asyncio
+    async def test_error_returns_error_status(self, mock_db, user_id):
+        """Returns error status when exception occurs during generation."""
+        from app.services.consigli_service import consigli_service
+
+        with (
+            patch.object(
+                consigli_service,
+                "can_generate",
+                return_value={"can_generate": True, "query_count": 50, "history_days": 30, "message_it": "OK"},
+            ),
+            patch.object(consigli_service, "collect_stats", side_effect=RuntimeError("DB connection lost")),
+        ):
+            result = await consigli_service.generate_report(user_id, mock_db)
+
+        assert result["status"] == "error"
+        assert result["html_report"] is None
+        assert "errore" in result["message_it"].lower()
+
+    @pytest.mark.asyncio
+    async def test_lock_released_on_error(self, mock_db, user_id):
+        """Redis lock is released even when generation fails."""
+        from app.services.consigli_service import consigli_service
+
+        with (
+            patch("app.services.consigli_service.get_redis_client") as mock_get_redis,
+            patch.object(
+                consigli_service,
+                "can_generate",
+                return_value={"can_generate": True, "query_count": 50, "history_days": 30, "message_it": "OK"},
+            ),
+            patch.object(consigli_service, "collect_stats", side_effect=RuntimeError("fail")),
+        ):
+            mock_redis = AsyncMock()
+            mock_redis.get.return_value = None
+            mock_get_redis.return_value = mock_redis
+
+            await consigli_service.generate_report(user_id, mock_db)
+
+        mock_redis.delete.assert_called_once_with(f"consigli:generating:{user_id}")
+
 
 class TestConcurrencyGuard:
     """Tests for Redis concurrency guard (RC-4)."""
@@ -392,3 +516,426 @@ class TestConcurrencyGuard:
         mock_redis.setex.assert_called_once()
         call_args = mock_redis.setex.call_args
         assert f"consigli:generating:{user_id}" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_no_redis_proceeds_without_lock(self, mock_db, user_id):
+        """When Redis is unavailable, generation proceeds without locking."""
+        from app.services.consigli_service import consigli_service
+
+        with (
+            patch("app.services.consigli_service.get_redis_client", return_value=None),
+            patch.object(
+                consigli_service,
+                "can_generate",
+                return_value={"can_generate": True, "query_count": 50, "history_days": 30, "message_it": "OK"},
+            ),
+            patch.object(
+                consigli_service,
+                "collect_stats",
+                return_value={
+                    "total_queries": 50,
+                    "domain_distribution": {"general": 50},
+                    "hourly_distribution": {},
+                    "session_count": 5,
+                    "cache_hit_rate": 0.1,
+                    "kb_sources_used": [],
+                    "history_days": 30,
+                    "active_days": 15,
+                },
+            ),
+            patch.object(consigli_service, "_call_llm_analysis", return_value="Analisi."),
+        ):
+            result = await consigli_service.generate_report(user_id, mock_db)
+
+        assert result["status"] == "success"
+
+
+class TestCallLlmAnalysis:
+    """Tests for _call_llm_analysis (LLM provider interactions)."""
+
+    @pytest.mark.asyncio
+    async def test_mistral_provider_returns_content(self):
+        """Calls Mistral provider and returns content."""
+        from app.services.consigli_service import consigli_service
+
+        stats = {
+            "total_queries": 50,
+            "domain_distribution": {"general": 50},
+            "hourly_distribution": {"9": 10},
+            "session_count": 5,
+            "cache_hit_rate": 0.1,
+            "kb_sources_used": ["ccnl"],
+            "history_days": 30,
+            "active_days": 20,
+        }
+
+        mock_entry = MagicMock()
+        mock_entry.provider = "mistral"
+        mock_entry.model_name = "mistral-large-latest"
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Analisi generata dal LLM."
+
+        with (
+            patch("app.core.llm.model_registry.get_model_registry") as mock_get_reg,
+            patch("mistralai.Mistral") as MockMistral,
+            patch("app.core.config.settings") as mock_settings,
+        ):
+            mock_get_reg.return_value.resolve_production_model.return_value = mock_entry
+            mock_settings.MISTRAL_API_KEY = "test-key"
+            mock_client = MagicMock()
+            mock_client.chat.complete_async = AsyncMock(return_value=mock_response)
+            MockMistral.return_value = mock_client
+
+            result = await consigli_service._call_llm_analysis(stats)
+
+        assert result == "Analisi generata dal LLM."
+
+    @pytest.mark.asyncio
+    async def test_non_mistral_provider_uses_fallback(self):
+        """Non-Mistral providers fall back to basic analysis."""
+        from app.services.consigli_service import consigli_service
+
+        stats = {
+            "total_queries": 50,
+            "domain_distribution": {"general": 50},
+            "hourly_distribution": {},
+            "session_count": 5,
+            "cache_hit_rate": 0.1,
+            "kb_sources_used": [],
+            "history_days": 30,
+            "active_days": 20,
+        }
+
+        mock_entry = MagicMock()
+        mock_entry.provider = "openai"
+        mock_entry.model_name = "gpt-4"
+
+        with patch("app.core.llm.model_registry.get_model_registry") as mock_get_reg:
+            mock_get_reg.return_value.resolve_production_model.return_value = mock_entry
+            result = await consigli_service._call_llm_analysis(stats)
+
+        assert "50" in result  # fallback contains total_queries
+
+    @pytest.mark.asyncio
+    async def test_llm_exception_uses_fallback(self):
+        """LLM call exceptions fall back to basic analysis."""
+        from app.services.consigli_service import consigli_service
+
+        stats = {
+            "total_queries": 50,
+            "domain_distribution": {"general": 50},
+            "hourly_distribution": {},
+            "session_count": 5,
+            "cache_hit_rate": 0.1,
+            "kb_sources_used": [],
+            "history_days": 30,
+            "active_days": 20,
+        }
+
+        mock_entry = MagicMock()
+        mock_entry.provider = "mistral"
+        mock_entry.model_name = "mistral-large-latest"
+
+        with (
+            patch("app.core.llm.model_registry.get_model_registry") as mock_get_reg,
+            patch("mistralai.Mistral") as MockMistral,
+            patch("app.core.config.settings") as mock_settings,
+        ):
+            mock_get_reg.return_value.resolve_production_model.return_value = mock_entry
+            mock_settings.MISTRAL_API_KEY = "test-key"
+            mock_client = MagicMock()
+            mock_client.chat.complete_async = AsyncMock(side_effect=RuntimeError("API down"))
+            MockMistral.return_value = mock_client
+
+            result = await consigli_service._call_llm_analysis(stats)
+
+        assert "50" in result  # fallback text
+
+    @pytest.mark.asyncio
+    async def test_null_registry_entry_defaults_to_mistral(self):
+        """None registry entry defaults to Mistral provider."""
+        from app.services.consigli_service import consigli_service
+
+        stats = {
+            "total_queries": 30,
+            "domain_distribution": {"general": 30},
+            "hourly_distribution": {},
+            "session_count": 3,
+            "cache_hit_rate": 0.0,
+            "kb_sources_used": [],
+            "history_days": 15,
+            "active_days": 10,
+        }
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Analisi."
+
+        with (
+            patch("app.core.llm.model_registry.get_model_registry") as mock_get_reg,
+            patch("mistralai.Mistral") as MockMistral,
+            patch("app.core.config.settings") as mock_settings,
+        ):
+            mock_get_reg.return_value.resolve_production_model.return_value = None
+            mock_settings.MISTRAL_API_KEY = "test-key"
+            mock_client = MagicMock()
+            mock_client.chat.complete_async = AsyncMock(return_value=mock_response)
+            MockMistral.return_value = mock_client
+
+            result = await consigli_service._call_llm_analysis(stats)
+
+        assert result == "Analisi."
+        MockMistral.assert_called_once_with(api_key="test-key")
+
+
+class TestCollectStatsEdgeCases:
+    """Tests for collect_stats edge cases and branch coverage."""
+
+    @pytest.mark.asyncio
+    async def test_rows_with_null_fields(self, mock_db, user_id):
+        """Handles rows with null timestamp, session_id, kb_sources."""
+        from app.services.consigli_service import consigli_service
+
+        rows = [
+            MagicMock(
+                query_type=None,
+                timestamp=None,
+                session_id=None,
+                response_cached=False,
+                kb_sources_metadata=None,
+            ),
+            MagicMock(
+                query_type="general",
+                timestamp=datetime.utcnow(),
+                session_id="s1",
+                response_cached=True,
+                kb_sources_metadata=[{"source": "ccnl"}],
+            ),
+        ]
+        mock_result = MagicMock()
+        mock_result.all.return_value = rows
+        mock_db.execute.return_value = mock_result
+
+        stats = await consigli_service.collect_stats(user_id, mock_db)
+
+        assert stats["total_queries"] == 2
+        assert "general" in stats["domain_distribution"]
+
+    @pytest.mark.asyncio
+    async def test_kb_sources_with_invalid_entries(self, mock_db, user_id):
+        """Handles non-dict entries in kb_sources_metadata."""
+        from app.services.consigli_service import consigli_service
+
+        rows = [
+            MagicMock(
+                query_type="general",
+                timestamp=datetime.utcnow(),
+                session_id="s1",
+                response_cached=False,
+                kb_sources_metadata=["not-a-dict", {"no-source-key": True}, {"source": "ccnl"}],
+            ),
+        ]
+        mock_result = MagicMock()
+        mock_result.all.return_value = rows
+        mock_db.execute.return_value = mock_result
+
+        stats = await consigli_service.collect_stats(user_id, mock_db)
+
+        assert stats["kb_sources_used"] == ["ccnl"]
+
+
+class TestFallbackAnalysis:
+    """Tests for _generate_fallback_analysis."""
+
+    def test_generates_italian_text(self):
+        from app.services.consigli_service import consigli_service
+
+        stats = {
+            "total_queries": 50,
+            "domain_distribution": {"tax_calculation": 30, "general": 20},
+            "history_days": 30,
+            "active_days": 20,
+            "cache_hit_rate": 0.25,
+        }
+        result = consigli_service._generate_fallback_analysis(stats)
+
+        assert "50" in result
+        assert "30 giorni" in result
+        assert "20 giorni attivi" in result
+        assert "25%" in result
+
+    def test_picks_top_domain(self):
+        from app.services.consigli_service import consigli_service
+
+        stats = {
+            "total_queries": 100,
+            "domain_distribution": {"tax_calculation": 60, "general": 40},
+            "history_days": 30,
+            "active_days": 15,
+            "cache_hit_rate": 0.1,
+        }
+        result = consigli_service._generate_fallback_analysis(stats)
+
+        assert "tax_calculation" in result
+
+
+class TestRenderHelpers:
+    """Tests for module-level rendering helper functions."""
+
+    def test_domain_label_known_key(self):
+        from app.services.consigli_service import _domain_label
+
+        assert _domain_label("tax_calculation") == "Calcolo fiscale"
+        assert _domain_label("general") == "Domande generali"
+        assert _domain_label("ccnl") == "CCNL"
+
+    def test_domain_label_unknown_key(self):
+        from app.services.consigli_service import _domain_label
+
+        assert _domain_label("custom_category") == "Custom Category"
+
+    def test_escape_html_chars(self):
+        from app.services.consigli_service import _escape
+
+        assert _escape("<script>alert('xss')</script>") == "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;"
+        assert _escape("safe text") == "safe text"
+        assert _escape('a & b "c"') == "a &amp; b &quot;c&quot;"
+
+    def test_text_to_html_escapes_xss(self):
+        """XSS payloads in LLM output are escaped."""
+        from app.services.consigli_service import _text_to_html
+
+        result = _text_to_html("<script>alert('xss')</script>")
+        assert "<script>" not in result
+        assert "&lt;script&gt;" in result
+
+    def test_text_to_html_markdown_headers(self):
+        from app.services.consigli_service import _text_to_html
+
+        result = _text_to_html("# Titolo\n## Sottotitolo\n### Sezione")
+        assert "<h3>" in result
+        assert "<h4>" in result
+
+    def test_text_to_html_bold(self):
+        from app.services.consigli_service import _text_to_html
+
+        result = _text_to_html("Testo **importante** qui")
+        assert "<strong>importante</strong>" in result
+
+    def test_text_to_html_list_items(self):
+        from app.services.consigli_service import _text_to_html
+
+        result = _text_to_html("- Primo\n- Secondo\n* Terzo")
+        assert "&bull;" in result
+        assert "Primo" in result
+        assert "Terzo" in result
+
+    def test_text_to_html_empty_lines_skipped(self):
+        from app.services.consigli_service import _text_to_html
+
+        result = _text_to_html("Primo\n\n\nSecondo")
+        assert result.count("<p>") == 2
+
+    def test_prepare_domain_rows(self, sample_stats):
+        from app.services.consigli_service import _prepare_domain_rows
+
+        rows = _prepare_domain_rows(sample_stats)
+        assert "<tr>" in rows
+        assert "Domande generali" in rows
+        assert "Calcolo fiscale" in rows
+
+    def test_prepare_peak_hours(self, sample_stats):
+        from app.services.consigli_service import _prepare_peak_hours
+
+        peak = _prepare_peak_hours(sample_stats)
+        assert "9:00" in peak  # Highest count
+
+    def test_prepare_peak_hours_empty(self):
+        from app.services.consigli_service import _prepare_peak_hours
+
+        peak = _prepare_peak_hours({"hourly_distribution": {}})
+        assert peak == "N/D"
+
+    def test_render_report_html_structure(self, sample_stats):
+        from app.services.consigli_service import render_report_html
+
+        html = render_report_html(sample_stats, "Analisi di test.")
+        assert "<!DOCTYPE html>" in html
+        assert '<html lang="it">' in html
+        assert "PratikoAI" in html
+        assert "Analisi di test." in html
+        assert "50" in html  # total_queries
+        assert "20" in html  # active_days
+
+    def test_render_report_html_no_cost_data(self, sample_stats):
+        """Template itself must not introduce cost/pricing words."""
+        from app.services.consigli_service import render_report_html
+
+        html = render_report_html(sample_stats, "Analisi personalizzata.")
+        html_lower = html.lower()
+        assert "€" not in html_lower
+        assert "costo" not in html_lower
+        assert "prezzo" not in html_lower
+
+    def test_render_report_html_kb_sources(self, sample_stats):
+        from app.services.consigli_service import render_report_html
+
+        html = render_report_html(sample_stats, "Test.")
+        assert "ccnl" in html
+        assert "normativa" in html
+
+    def test_render_report_html_no_kb_sources(self):
+        from app.services.consigli_service import render_report_html
+
+        stats = {
+            "total_queries": 10,
+            "domain_distribution": {"general": 10},
+            "hourly_distribution": {},
+            "session_count": 2,
+            "cache_hit_rate": 0.0,
+            "kb_sources_used": [],
+            "history_days": 10,
+            "active_days": 5,
+        }
+        html = render_report_html(stats, "Test.")
+        assert "Nessuna specifica" in html
+
+
+class TestSchemas:
+    """Tests for consigli schemas."""
+
+    def test_report_response_success(self):
+        from app.schemas.consigli import ConsigliReportResponse
+
+        resp = ConsigliReportResponse(
+            status="success",
+            message_it="Report generato.",
+            html_report="<html></html>",
+            stats_summary={"total_queries": 50, "active_days": 20, "session_count": 10},
+        )
+        assert resp.status == "success"
+        assert resp.html_report is not None
+
+    def test_report_response_minimal(self):
+        from app.schemas.consigli import ConsigliReportResponse
+
+        resp = ConsigliReportResponse(
+            status="insufficient_data",
+            message_it="Dati non sufficienti.",
+        )
+        assert resp.html_report is None
+        assert resp.stats_summary is None
+
+    def test_sufficiency_response(self):
+        from app.schemas.consigli import ConsigliSufficiencyResponse
+
+        resp = ConsigliSufficiencyResponse(
+            can_generate=True,
+            message_it="OK",
+            query_count=50,
+            history_days=30,
+        )
+        assert resp.can_generate is True
+        assert resp.query_count == 50

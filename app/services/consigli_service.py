@@ -4,10 +4,12 @@ Generates a self-contained HTML report analyzing user interaction
 patterns across 5 facet dimensions. No cost/pricing data exposed.
 """
 
+import html as html_mod
+import re
 from collections import Counter
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import logger
@@ -81,7 +83,6 @@ class ConsigliService:
         result = await db.execute(q)
         rows = result.all()
 
-        # Domain distribution (from query_type)
         domain_counter: Counter = Counter()
         hourly_counter: Counter = Counter()
         sessions: set = set()
@@ -124,9 +125,10 @@ class ConsigliService:
 
         Only aggregated stats are sent — no PII, no cost data.
         """
-        from app.core.llm.model_registry import model_registry
+        from app.core.llm.model_registry import get_model_registry
 
-        entry = model_registry.resolve_production_model()
+        registry = get_model_registry()
+        entry = registry.resolve_production_model()
         provider = entry.provider if entry else "mistral"
         model_name = entry.model_name if entry else "mistral-large-latest"
 
@@ -176,7 +178,6 @@ class ConsigliService:
                 )
                 return response.choices[0].message.content or ""
             else:
-                # Fallback for non-Mistral providers
                 logger.warning(
                     "consigli_unsupported_provider",
                     provider=provider,
@@ -217,11 +218,10 @@ class ConsigliService:
             if existing:
                 return {
                     "status": "generating",
-                    "message_it": ("Un report è in fase di generazione. Attendere il completamento."),
+                    "message_it": "Un report è in fase di generazione. Attendere il completamento.",
                     "html_report": None,
                 }
 
-        # Data sufficiency gate
         sufficiency = await self.can_generate(user_id, db)
         if not sufficiency["can_generate"]:
             return {
@@ -230,23 +230,18 @@ class ConsigliService:
                 "html_report": None,
             }
 
-        # Set lock
         if redis:
             await redis.setex(lock_key, LOCK_TTL_SECONDS, "1")
 
         try:
-            # Collect stats (no cost data)
             stats = await self.collect_stats(user_id, db)
-
-            # LLM analysis
             llm_text = await self._call_llm_analysis(stats)
 
             # R-4: Anonymize LLM output as safety net
             anon_result = anonymizer.anonymize_text(llm_text)
             safe_text = anon_result.anonymized_text
 
-            # Render HTML
-            html = self._render_html(stats, safe_text)
+            html = render_report_html(stats, safe_text)
 
             logger.info(
                 "consigli_report_generated",
@@ -274,41 +269,95 @@ class ConsigliService:
             )
             return {
                 "status": "error",
-                "message_it": ("Errore nella generazione del report. Riprova più tardi."),
+                "message_it": "Errore nella generazione del report. Riprova più tardi.",
                 "html_report": None,
             }
         finally:
-            # Release lock
             if redis:
                 await redis.delete(lock_key)
 
-    def _render_html(self, stats: dict, llm_analysis: str) -> str:
-        """Render self-contained HTML report."""
-        now = datetime.utcnow().strftime("%d/%m/%Y %H:%M")
 
-        # Build domain chart rows
-        domain_rows = ""
-        total_q = stats["total_queries"] or 1
-        for domain, count in sorted(
-            stats["domain_distribution"].items(),
-            key=lambda x: x[1],
-            reverse=True,
-        ):
-            pct = count / total_q * 100
-            domain_rows += f"<tr><td>{_domain_label(domain)}</td><td>{count}</td><td>{pct:.0f}%</td></tr>\n"
+# --- Module-level rendering helpers (extracted for code size compliance) ---
 
-        # Build peak hours
-        peak_hours = sorted(
-            stats["hourly_distribution"].items(),
-            key=lambda x: int(x[1]),
-            reverse=True,
-        )[:3]
-        peak_str = ", ".join(f"{h}:00" for h, _ in peak_hours) or "N/D"
 
-        # Convert LLM markdown-like text to basic HTML paragraphs
-        analysis_html = _text_to_html(llm_analysis)
+def _domain_label(domain: str) -> str:
+    """Map internal domain keys to Italian labels."""
+    labels = {
+        "tax_calculation": "Calcolo fiscale",
+        "document_analysis": "Analisi documenti",
+        "labor_question": "Diritto del lavoro",
+        "general": "Domande generali",
+        "ccnl": "CCNL",
+        "deadline": "Scadenze",
+        "procedura": "Procedure",
+    }
+    return labels.get(domain, domain.replace("_", " ").title())
 
-        return f"""<!DOCTYPE html>
+
+def _escape(text: str) -> str:
+    """HTML-escape text to prevent XSS from LLM output."""
+    return html_mod.escape(text, quote=True)
+
+
+def _text_to_html(text: str) -> str:
+    """Convert plain/markdown text to HTML paragraphs with XSS protection."""
+    lines = text.strip().split("\n")
+    html_parts = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        # Escape first, then apply safe markdown transformations
+        safe_line = _escape(line)
+        # Bold **text** (applied on escaped text — safe)
+        safe_line = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", safe_line)
+        if safe_line.startswith("### "):
+            html_parts.append(f"<h4>{safe_line[4:]}</h4>")
+        elif safe_line.startswith("## "):
+            html_parts.append(f"<h3>{safe_line[3:]}</h3>")
+        elif safe_line.startswith("# "):
+            html_parts.append(f"<h3>{safe_line[2:]}</h3>")
+        elif safe_line.startswith("- ") or safe_line.startswith("* "):
+            html_parts.append(f"<p>&bull; {safe_line[2:]}</p>")
+        else:
+            html_parts.append(f"<p>{safe_line}</p>")
+    return "\n".join(html_parts)
+
+
+def _prepare_domain_rows(stats: dict) -> str:
+    """Build HTML table rows for domain distribution."""
+    total_q = stats["total_queries"] or 1
+    rows = ""
+    for domain, count in sorted(
+        stats["domain_distribution"].items(),
+        key=lambda x: x[1],
+        reverse=True,
+    ):
+        pct = count / total_q * 100
+        label = _escape(_domain_label(domain))
+        rows += f"<tr><td>{label}</td><td>{count}</td><td>{pct:.0f}%</td></tr>\n"
+    return rows
+
+
+def _prepare_peak_hours(stats: dict) -> str:
+    """Extract top 3 peak hours as a display string."""
+    peak_hours = sorted(
+        stats["hourly_distribution"].items(),
+        key=lambda x: int(x[1]),
+        reverse=True,
+    )[:3]
+    return ", ".join(f"{h}:00" for h, _ in peak_hours) or "N/D"
+
+
+def render_report_html(stats: dict, llm_analysis: str) -> str:
+    """Render self-contained HTML report from stats and LLM analysis."""
+    now = datetime.utcnow().strftime("%d/%m/%Y %H:%M")
+    domain_rows = _prepare_domain_rows(stats)
+    peak_str = _prepare_peak_hours(stats)
+    analysis_html = _text_to_html(llm_analysis)
+    kb_str = _escape(", ".join(stats["kb_sources_used"]) or "Nessuna specifica")
+
+    return f"""<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
@@ -380,7 +429,7 @@ border-top:1px solid #E8E2DB;margin-top:2rem}}
 <section>
 <h2>Orari di Maggiore Attivit&agrave;</h2>
 <p>Le tue ore pi&ugrave; attive: <strong>{peak_str}</strong></p>
-<p>Fonti di conoscenza utilizzate: <strong>{", ".join(stats["kb_sources_used"]) or "Nessuna specifica"}</strong></p>
+<p>Fonti di conoscenza utilizzate: <strong>{kb_str}</strong></p>
 </section>
 
 <section>
@@ -395,46 +444,6 @@ PratikoAI &copy; 2026
 </div>
 </body>
 </html>"""
-
-
-def _domain_label(domain: str) -> str:
-    """Map internal domain keys to Italian labels."""
-    labels = {
-        "tax_calculation": "Calcolo fiscale",
-        "document_analysis": "Analisi documenti",
-        "labor_question": "Diritto del lavoro",
-        "general": "Domande generali",
-        "ccnl": "CCNL",
-        "deadline": "Scadenze",
-        "procedura": "Procedure",
-    }
-    return labels.get(domain, domain.replace("_", " ").title())
-
-
-def _text_to_html(text: str) -> str:
-    """Convert plain/markdown text to basic HTML paragraphs."""
-    import re
-
-    lines = text.strip().split("\n")
-    html_parts = []
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        # Bold **text**
-        line = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line)
-        # Headers (## or ###)
-        if line.startswith("### "):
-            html_parts.append(f"<h4>{line[4:]}</h4>")
-        elif line.startswith("## "):
-            html_parts.append(f"<h3>{line[3:]}</h3>")
-        elif line.startswith("# "):
-            html_parts.append(f"<h3>{line[2:]}</h3>")
-        elif line.startswith("- ") or line.startswith("* "):
-            html_parts.append(f"<p>• {line[2:]}</p>")
-        else:
-            html_parts.append(f"<p>{line}</p>")
-    return "\n".join(html_parts)
 
 
 consigli_service = ConsigliService()

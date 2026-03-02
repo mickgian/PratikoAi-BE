@@ -172,17 +172,17 @@ topk(5, histogram_quantile(0.95,
 | Metric | Target | Critical | Description |
 |---|---|---|---|
 | Cost Per Query | < EUR 0.05 | > EUR 0.10 | Average LLM cost per user query |
-| User Monthly Cost | < EUR 2.00 | > EUR 2.50 | Total infrastructure cost per user per month |
+| User Monthly LLM Cost | < EUR 10.00 (Base plan cap) | > EUR 15.00 | LLM cost per user per month (ADR-027) |
 | Cache Hit Ratio | > 80% | < 70% | Percentage of queries served from cache |
 | Model Routing to BASIC tier | > 50% | < 30% | Queries routed to cheaper models (ADR-025) |
 
 **Current infrastructure:**
 - `llm_cost_total_eur` counter with `[provider, model, user_id]` labels
-- `user_monthly_cost_eur` gauge with `[user_id, plan_type]` labels (target < EUR 2.00)
+- `user_monthly_cost_eur` gauge with `[user_id, plan_type]` labels (target varies by plan: Base €10, Pro €30, Premium €60)
 - `cache_hit_ratio` gauge with `[cache_type]` labels (target > 0.80)
 - `api_calls_total` counter with `[provider, model, status]` labels
 - `ccnl_cache_hits_total` counter
-- Prometheus alerts: `HighUserCost` (> EUR 2.50), `HighLLMCosts`, `LowCacheHitRatio`
+- Prometheus alerts: `HighUserCost` (> plan LLM cost cap), `HighLLMCosts`, `LowCacheHitRatio`
 
 **What's missing:**
 - Cost per query calculation (need to divide cost by query count over time)

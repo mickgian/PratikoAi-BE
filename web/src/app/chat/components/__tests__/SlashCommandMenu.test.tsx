@@ -59,8 +59,8 @@ describe('SlashCommandMenu', () => {
     );
     const handled = ref.current!.handleKey('Enter');
     expect(handled).toBe(true);
-    // /novita is alphabetically first, so it's the default selection
-    expect(onSelect).toHaveBeenCalledWith('/novita');
+    // /consigli is alphabetically first, so it's the default selection
+    expect(onSelect).toHaveBeenCalledWith('/consigli');
   });
 
   it('Escape calls onDismiss', () => {
@@ -87,12 +87,15 @@ describe('SlashCommandMenu', () => {
         onDismiss={onDismiss}
       />
     );
-    // With 2 commands (/novita, /utilizzo), ArrowDown from 0 -> 1 -> wrap to 0
-    ref.current!.handleKey('ArrowDown'); // index 1 = /utilizzo
-    ref.current!.handleKey('ArrowDown'); // wrap to index 0 = /novita
+    // With 4 commands (/consigli, /novita, /procedura, /utilizzo),
+    // ArrowDown from 0 -> 1 -> 2 -> 3 -> wrap to 0
+    ref.current!.handleKey('ArrowDown'); // index 1 = /novita
+    ref.current!.handleKey('ArrowDown'); // index 2 = /procedura
+    ref.current!.handleKey('ArrowDown'); // index 3 = /utilizzo
+    ref.current!.handleKey('ArrowDown'); // wrap to index 0 = /consigli
     const handled = ref.current!.handleKey('Enter');
     expect(handled).toBe(true);
-    expect(onSelect).toHaveBeenCalledWith('/novita');
+    expect(onSelect).toHaveBeenCalledWith('/consigli');
   });
 
   it('ArrowUp wraps activeIndex to last item', async () => {
@@ -146,8 +149,8 @@ describe('SlashCommandMenu', () => {
         onDismiss={onDismiss}
       />
     );
-    // /novita is alphabetically first, so it's the default selection
-    expect(ref.current!.getSelected()).toBe('/novita');
+    // /consigli is alphabetically first, so it's the default selection
+    expect(ref.current!.getSelected()).toBe('/consigli');
   });
 
   it('getSelected returns null when no matches', () => {

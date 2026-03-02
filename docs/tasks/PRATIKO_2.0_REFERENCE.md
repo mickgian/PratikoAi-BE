@@ -95,13 +95,13 @@ Voglio fare dei cambiamenti per far evolvere PratikoAI da assistente per commerc
 | Vincolo | Valore | Motivazione |
 |---------|--------|-------------|
 | Hosting | EU (Hetzner Germany) | GDPR compliance |
-| Costo target per utente | ≤ €2/mese | Sostenibilità economica |
+| Costo target LLM per utente | ≤ €10/mese (piano Base) | ADR-027: 60% margine sui piani (Base €25, Pro €75, Premium €150) |
 | Response time | ≤ 3 secondi | UX professionale |
 | Uptime | 99.9% | Affidabilità business-critical |
 
 ### 2.3 Vincoli di Business
 
-* **Pricing:** €69/mese (fisso, già definito)
+* **Pricing:** Base €25, Pro €75, Premium €150/mese (ADR-027, usage-based con rolling windows)
 * **Competitor:** NormoAI (€99/mese) - differenziazione su engagement clienti
 * **Timeline MVP:** 12 settimane
 * **Risorse:** 1 sviluppatore umano (2-3h/giorno) + Claude code

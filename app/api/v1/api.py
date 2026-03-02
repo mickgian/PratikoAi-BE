@@ -19,6 +19,7 @@ from app.api.v1.communications import router as communications_router
 
 # Wave 7: Dashboard, Compliance, WebSocket (DEV-356, DEV-369, DEV-378)
 from app.api.v1.compliance import router as compliance_router
+from app.api.v1.consigli import router as consigli_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.data_rights import router as data_rights_router
 from app.api.v1.data_sources import router as data_sources_router
@@ -84,6 +85,7 @@ api_router.include_router(chatbot_router, prefix="/chatbot", tags=["chatbot"])
 api_router.include_router(payments_router, prefix="/payments", tags=["payments"])
 api_router.include_router(billing_router, prefix="/billing", tags=["billing"])
 api_router.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
+api_router.include_router(consigli_router, prefix="/consigli", tags=["consigli"])
 api_router.include_router(privacy_router, prefix="/privacy", tags=["privacy"])
 api_router.include_router(italian_router, prefix="/italian", tags=["italian"])
 api_router.include_router(expert_feedback_router)  # Includes /expert-feedback prefix from router

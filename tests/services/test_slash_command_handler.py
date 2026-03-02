@@ -1,4 +1,4 @@
-"""Tests for DEV-402: /procedura Slash Command Handler."""
+"""Tests for slash command handler (/procedura DEV-402, /consigli ADR-038)."""
 
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -159,3 +159,24 @@ class TestMatchCategory:
 
     def test_empty_query(self, handler):
         assert handler._match_category("") is None
+
+
+class TestParseConsigli:
+    """Tests for /consigli command parsing (ADR-038)."""
+
+    def test_parse_consigli(self, handler):
+        result = handler.parse("/consigli")
+        assert result == {"command": "consigli"}
+
+    def test_parse_consigli_case_insensitive(self, handler):
+        result = handler.parse("/CONSIGLI")
+        assert result["command"] == "consigli"
+
+    def test_parse_consigli_with_whitespace(self, handler):
+        result = handler.parse("  /consigli  ")
+        assert result["command"] == "consigli"
+
+    def test_parse_consigli_ignores_args(self, handler):
+        """Arguments after /consigli are ignored (no args needed)."""
+        result = handler.parse("/consigli extra stuff")
+        assert result is None  # strict match, no arguments allowed

@@ -63,10 +63,10 @@ describe('ChatInput - Slash command menu integration', () => {
     const textarea = screen.getByRole('textbox');
     fireEvent.change(textarea, { target: { value: '/' } });
 
-    // Press Enter while command menu is open - /novita is alphabetically first
+    // Press Enter while command menu is open - /consigli is alphabetically first
     fireEvent.keyDown(textarea, { key: 'Enter' });
 
-    expect(onSlashCommand).toHaveBeenCalledWith('/novita');
+    expect(onSlashCommand).toHaveBeenCalledWith('/consigli');
     expect(onSendMessage).not.toHaveBeenCalled();
   });
 
@@ -75,10 +75,10 @@ describe('ChatInput - Slash command menu integration', () => {
     const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: '/' } });
 
-    // Tab autocompletes to the first alphabetical command: /novita
+    // Tab autocompletes to the first alphabetical command: /consigli
     fireEvent.keyDown(textarea, { key: 'Tab' });
 
-    expect(textarea.value).toBe('/novita');
+    expect(textarea.value).toBe('/consigli');
     expect(onSendMessage).not.toHaveBeenCalled();
   });
 

@@ -22,6 +22,8 @@ import {
 import type { ReleaseNotePublic, ReleaseNote } from '@/lib/api/release-notes';
 import { UsageDialog } from './UsageDialog';
 import { NovitaDialog } from './NovitaDialog';
+import { ConsigliDialog } from './ConsigliDialog';
+import { getConsigliReport, type ConsigliReport } from '@/lib/api/consigli';
 
 /**
  * DEV-257: Parse a usage limit error from StreamingHandler's lastError.
@@ -142,6 +144,13 @@ export function ChatInputArea() {
     environment?: string;
   } | null>(null);
 
+  // Consigli dialog state (ADR-038)
+  const [consigliDialog, setConsigliDialog] = useState<{
+    data: ConsigliReport | null;
+    error: string | null;
+    loading: boolean;
+  } | null>(null);
+
   // Track unseen version for auto-popup mark-as-seen on close
   const unseenVersionRef = useRef<string | null>(null);
 
@@ -238,6 +247,24 @@ export function ChatInputArea() {
   // DEV-257: Slash commands bypass the message-send pipeline entirely (no session creation)
   const handleSlashCommand = useCallback(async (content: string) => {
     const cmd = content.trim().toLowerCase();
+
+    if (cmd === '/consigli') {
+      setConsigliDialog({ data: null, error: null, loading: true });
+      try {
+        const report = await getConsigliReport();
+        setConsigliDialog({ data: report, error: null, loading: false });
+      } catch (e) {
+        setConsigliDialog({
+          data: null,
+          error:
+            e instanceof Error
+              ? e.message
+              : 'Errore nella generazione del report. Riprova tra qualche istante.',
+          loading: false,
+        });
+      }
+      return;
+    }
 
     if (cmd === '/utilizzo') {
       try {
@@ -521,6 +548,14 @@ export function ChatInputArea() {
             setUsageDialog(null);
           }}
           onClose={() => setUsageDialog(null)}
+        />
+      )}
+      {consigliDialog && (
+        <ConsigliDialog
+          data={consigliDialog.data}
+          error={consigliDialog.error}
+          loading={consigliDialog.loading}
+          onClose={() => setConsigliDialog(null)}
         />
       )}
       {novitaDialog && (

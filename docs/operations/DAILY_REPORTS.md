@@ -14,7 +14,7 @@ This document covers the two automated daily email reports:
 
 ## Overview
 
-The Daily Cost Spending Report provides visibility into LLM inference and third-party API costs, broken down by environment, user, and API type. Designed to maintain the **target of under €2/user/month**.
+The Daily Cost Spending Report provides visibility into LLM inference and third-party API costs, broken down by environment, user, and API type. Internal admin tool for monitoring infrastructure costs against plan-based LLM cost caps (ADR-027: Base €10, Pro €30, Premium €60/month).
 
 ## Data Sources
 
@@ -68,14 +68,14 @@ DAILY_COST_REPORT_ENABLED=true
 | Alert Type | Condition | Severity |
 |------------|-----------|----------|
 | DAILY_THRESHOLD_EXCEEDED | Environment daily cost > threshold | HIGH |
-| USER_THRESHOLD_EXCEEDED | User daily cost > €2/day | MEDIUM |
+| USER_THRESHOLD_EXCEEDED | User daily cost > plan daily cap | MEDIUM |
 
-**Thresholds by environment:**
+**Thresholds by environment (ADR-027):**
 | Environment | Daily Total | Per User |
 |-------------|-------------|----------|
 | Development | €10 | €1 |
-| QA | €25 | €2 |
-| Production | €50 | €2 |
+| QA | €25 | €5 |
+| Production | €50 | €10 |
 | Test | €5 | €5 |
 
 ## Decimal Precision

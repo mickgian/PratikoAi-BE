@@ -57,7 +57,7 @@ export function ChatLayoutV2() {
   return (
     <div
       data-testid="chat-layout-v2"
-      className="h-screen bg-[#F8F5F1] flex relative"
+      className="h-dvh bg-[#F8F5F1] flex relative"
     >
       {/* Migration Banner (fixed position, above all content) */}
       {migrationNeeded && sessionId && (
@@ -72,7 +72,7 @@ export function ChatLayoutV2() {
       )}
 
       {/* Desktop Sidebar - 320px width, hidden on mobile */}
-      <div className="hidden lg:flex w-80 flex-col h-screen">
+      <div className="hidden lg:flex w-80 flex-col h-dvh">
         <ChatSidebar />
       </div>
 
@@ -95,7 +95,7 @@ export function ChatLayoutV2() {
       {/* Main Chat Area */}
       <main
         data-testid="chat-main-area"
-        className="flex-1 flex flex-col h-screen"
+        className="flex-1 flex flex-col h-dvh"
         role="main"
       >
         {/* Header - ~72px height */}

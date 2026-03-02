@@ -173,10 +173,15 @@ class DataQualityAuditService:
         )
         s.status_distribution = {row[0] or "NULL": row[1] for row in rows}
 
-        # 9. Missing embeddings
-        s.items_missing_embedding = await self._scalar("SELECT COUNT(*) FROM knowledge_items WHERE embedding IS NULL")
+        # 9. Missing embeddings (only active items — non-active items are not
+        #    searchable and the backfill task also filters by status='active')
+        s.items_missing_embedding = await self._scalar(
+            "SELECT COUNT(*) FROM knowledge_items WHERE embedding IS NULL AND status = 'active'"
+        )
         s.chunks_missing_embedding = await self._scalar(
-            "SELECT COUNT(*) FROM knowledge_chunks WHERE embedding IS NULL"
+            "SELECT COUNT(*) FROM knowledge_chunks kc "
+            "JOIN knowledge_items ki ON kc.knowledge_item_id = ki.id "
+            "WHERE kc.embedding IS NULL AND ki.status = 'active'"
         )
 
         # 10. Staleness

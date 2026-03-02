@@ -152,6 +152,47 @@ class TestDataQualityAuditServiceRunSummary:
         assert summary.null_text_quality == 30
         assert summary.nfd_unicode_chunks == 6
 
+    async def test_missing_embeddings_queries_filter_active_items(self, mock_db):
+        """Test that missing-embedding queries only count active items.
+
+        The backfill task filters by status='active', so the DQ alert should
+        match to avoid permanent false-positive HIGH alerts for non-active items.
+        """
+        captured_queries: list[str] = []
+
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 0
+        mock_result.fetchone.return_value = None
+        mock_result.fetchall.return_value = []
+
+        async def capturing_execute(query, params=None):
+            captured_queries.append(str(query))
+            return mock_result
+
+        mock_db.execute = AsyncMock(side_effect=capturing_execute)
+
+        service = DataQualityAuditService(mock_db)
+        await service.run_summary()
+
+        # Find the embedding-related queries
+        embedding_queries = [q for q in captured_queries if "embedding IS NULL" in q]
+        assert len(embedding_queries) == 2, f"Expected 2 embedding queries, got {len(embedding_queries)}"
+
+        # Items query must filter by active status
+        items_query = embedding_queries[0]
+        assert "status = 'active'" in items_query, (
+            f"Items missing-embedding query must filter by status='active': {items_query}"
+        )
+
+        # Chunks query must join to knowledge_items and filter by active status
+        chunks_query = embedding_queries[1]
+        assert "knowledge_items" in chunks_query, (
+            f"Chunks missing-embedding query must join knowledge_items: {chunks_query}"
+        )
+        assert "status = 'active'" in chunks_query, (
+            f"Chunks missing-embedding query must filter by active status: {chunks_query}"
+        )
+
     async def test_run_summary_handles_null_results(self, mock_db):
         """Test that DB returning NULL defaults to 0."""
         # All queries return NULL/None

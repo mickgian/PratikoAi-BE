@@ -1,9 +1,13 @@
 """DEV-381: DeadlineService — CRUD with studio isolation and status management.
 
 Manages deadlines and client-deadline associations.
+
+DEV-437: Added importo and sanzioni support in create/update.
 """
 
 from datetime import UTC, date, datetime
+from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, select
@@ -26,6 +30,8 @@ class DeadlineService:
         due_date: date,
         description: str | None = None,
         recurrence_rule: str | None = None,
+        importo: Decimal | None = None,
+        sanzioni: dict[str, Any] | None = None,
     ) -> Deadline:
         """Create a new deadline definition."""
         deadline = Deadline(
@@ -35,6 +41,8 @@ class DeadlineService:
             source=source,
             due_date=due_date,
             recurrence_rule=recurrence_rule,
+            importo=importo,
+            sanzioni=sanzioni,
         )
         db.add(deadline)
         await db.flush()

@@ -82,8 +82,8 @@ export function ChatMessagesArea() {
   // Show typing indicator when the placeholder is hidden
   const showTypingIndicator = Boolean(
     isCurrentlyStreaming &&
-      state.activeStreaming &&
-      !state.activeStreaming.content
+    state.activeStreaming &&
+    !state.activeStreaming.content
   );
 
   // Handle interactive question answer (DEV-155)
@@ -376,7 +376,7 @@ export function ChatMessagesArea() {
         role="log"
         aria-live="polite"
         aria-label="Area messaggi della chat"
-        className="h-full overflow-y-auto p-6 bg-[#F8F5F1] scroll-smooth"
+        className="h-full overflow-y-auto p-3 sm:p-6 bg-[#F8F5F1] scroll-smooth"
       >
         <div
           data-testid="messages-container"

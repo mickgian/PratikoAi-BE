@@ -43,6 +43,9 @@ class BillingPlan(SQLModel, table=True):  # type: ignore[call-arg]
     window_5h_cost_limit_eur: float = Field(description="5-hour rolling window cost limit")  # type: ignore[assignment]
     window_7d_cost_limit_eur: float = Field(description="7-day rolling window cost limit")  # type: ignore[assignment]
     credit_markup_factor: float = Field(default=1.0, description="Markup on credit consumption (1.5 = 50% markup)")  # type: ignore[assignment]
+    custom_email_allowed: bool = Field(
+        default=False, description="Whether custom SMTP email config is allowed (Pro/Premium)"
+    )  # type: ignore[assignment]
     stripe_price_id: str | None = Field(default=None, max_length=255)
     is_active: bool = Field(default=True, index=True)
     created_at: datetime | None = Field(

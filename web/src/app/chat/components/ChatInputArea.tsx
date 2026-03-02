@@ -589,7 +589,7 @@ export function ChatInputArea() {
           data-testid="chat-input-area"
           role="region"
           aria-label="Area di input per i messaggi"
-          className="bg-[#F8F5F1] border-t border-[#C4BDB4]/20 p-6"
+          className="bg-[#F8F5F1] border-t border-[#C4BDB4]/20 px-3 py-2 sm:p-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:pb-6"
         >
           <div className="max-w-4xl mx-auto">
             {/* Attachment preview chips */}

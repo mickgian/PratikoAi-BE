@@ -2,13 +2,18 @@
 
 Supports regulatory, tax, and client-specific deadlines. ClientDeadline
 provides the many-to-many link between clients and deadlines.
+
+DEV-437: Added importo (Numeric) and sanzioni (JSONB) fields.
 """
 
 from datetime import date, datetime
+from decimal import Decimal
 from enum import StrEnum
+from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from sqlmodel import Field, SQLModel
 
@@ -41,6 +46,9 @@ class Deadline(SQLModel, table=True):  # type: ignore[call-arg]
         source: REGULATORY / TAX / CLIENT_SPECIFIC.
         due_date: The actual deadline date.
         recurrence_rule: Recurrence pattern (nullable, e.g. MONTHLY_16).
+        importo: Amount in EUR, Numeric(12,2) (nullable).
+        sanzioni: Penalty info as JSONB (nullable).
+            Structure: { percentuale, importo_fisso, descrizione }.
         is_active: Whether the deadline is currently active.
         created_at / updated_at: Audit timestamps.
     """
@@ -64,6 +72,16 @@ class Deadline(SQLModel, table=True):  # type: ignore[call-arg]
 
     due_date: date = Field(sa_column=Column(Date, nullable=False))
     recurrence_rule: str | None = Field(default=None, max_length=50)
+
+    # DEV-437: Amount and penalty fields
+    importo: Decimal | None = Field(
+        default=None,
+        sa_column=Column(Numeric(12, 2), nullable=True),
+    )
+    sanzioni: dict[str, Any] | None = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
 
     is_active: bool = Field(default=True)
 

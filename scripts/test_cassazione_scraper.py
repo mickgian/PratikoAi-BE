@@ -16,10 +16,13 @@ async def test_cassazione_scraper():
     print("CASSAZIONE SCRAPER TEST - DETAILED REPORT")
     print("=" * 80)
 
-    async with AsyncSessionLocal() as session, CassazioneScraper(
-        db_session=session,
-        rate_limit_delay=2.0,
-    ) as scraper:
+    async with (
+        AsyncSessionLocal() as session,
+        CassazioneScraper(
+            db_session=session,
+            rate_limit_delay=2.0,
+        ) as scraper,
+    ):
         print("\n[1] SCRAPING LIST PAGES...")
         print("-" * 40)
 

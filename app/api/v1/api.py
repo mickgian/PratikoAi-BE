@@ -23,14 +23,21 @@ from app.api.v1.consigli import router as consigli_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.data_rights import router as data_rights_router
 from app.api.v1.data_sources import router as data_sources_router
+from app.api.v1.deadline_reminders import router as deadline_reminders_router
 from app.api.v1.deadlines import router as deadlines_router
 from app.api.v1.demo import router as demo_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.dpa import router as dpa_router
+
+# Wave 11: Hybrid Email Sending (DEV-444, ADR-034)
+from app.api.v1.email_config import router as email_config_router
 from app.api.v1.expert_feedback import router as expert_feedback_router
 from app.api.v1.features import router as features_router
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.financial_validation import router as financial_validation_router
+
+# Wave 10: Notifications, Formulari, Quick Actions, Settings (DEV-424, DEV-430, DEV-432, DEV-441)
+from app.api.v1.formulari import router as formulari_router
 
 # from app.api.v1.gdpr_cleanup import router as gdpr_cleanup_router
 from app.api.v1.gdpr_audit import router as gdpr_audit_router
@@ -49,15 +56,18 @@ from app.api.v1.model_comparison import router as model_comparison_router
 # from app.api.v1.security import router as security_router
 # from app.api.v1.performance import router as performance_router
 from app.api.v1.monitoring import router as monitoring_router
+from app.api.v1.notifications import router as notifications_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.privacy import router as privacy_router
 from app.api.v1.procedure import router as procedure_router
+from app.api.v1.quick_actions import router as quick_actions_router
 
 # from app.api.v1.faq import router as faq_router
 from app.api.v1.regional_taxes import router as regional_taxes_router
 from app.api.v1.regulatory import router as regulatory_router
 from app.api.v1.release_notes import router as release_notes_router
 from app.api.v1.scrapers import router as scrapers_router
+from app.api.v1.settings import router as settings_router
 from app.api.v1.studio import router as studio_router
 from app.api.v1.success_criteria import router as success_criteria_router
 
@@ -115,6 +125,7 @@ api_router.include_router(dpa_router)  # Includes /dpa prefix from router
 api_router.include_router(matching_router)  # Includes /matching prefix from router (DEV-326)
 api_router.include_router(data_rights_router)  # Includes /data-rights prefix from router (DEV-377)
 api_router.include_router(deadlines_router)  # Includes /deadlines prefix from router (DEV-385)
+api_router.include_router(deadline_reminders_router)  # Includes /deadlines prefix from router (DEV-438)
 
 # Wave 6: Tracking and Unsubscribe (DEV-412, DEV-415)
 api_router.include_router(tracking_router)  # Includes /t prefix from router
@@ -124,6 +135,15 @@ api_router.include_router(unsubscribe_router)  # Includes /unsubscribe prefix fr
 api_router.include_router(dashboard_router)  # Includes /dashboard prefix from router
 api_router.include_router(compliance_router)  # Includes /compliance prefix from router
 api_router.include_router(websocket_router)  # WebSocket endpoint (DEV-369)
+
+# Wave 10: Notifications, Formulari, Quick Actions, Settings
+api_router.include_router(notifications_router)  # /notifications prefix (DEV-424)
+api_router.include_router(formulari_router)  # /formulari prefix (DEV-432)
+api_router.include_router(quick_actions_router)  # /quick-actions prefix (DEV-430)
+api_router.include_router(settings_router)  # /settings prefix (DEV-441)
+
+# Wave 11: Hybrid Email Sending (DEV-444, ADR-034)
+api_router.include_router(email_config_router)  # Includes /email-config prefix from router
 
 
 @api_router.get("/health")

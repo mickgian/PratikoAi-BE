@@ -28,9 +28,9 @@ export function ChatLayout() {
   }, []);
 
   return (
-    <div data-testid="chat-layout" className="h-screen bg-[#F8F5F1] flex">
+    <div data-testid="chat-layout" className="h-dvh bg-[#F8F5F1] flex">
       {/* Desktop Sidebar - 320px width, hidden on mobile */}
-      <div className="hidden lg:flex w-80 flex-col h-screen">
+      <div className="hidden lg:flex w-80 flex-col h-dvh">
         <ChatSidebar />
       </div>
 
@@ -53,7 +53,7 @@ export function ChatLayout() {
       {/* Main Chat Area */}
       <main
         data-testid="chat-main-area"
-        className="flex-1 flex flex-col h-screen"
+        className="flex-1 flex flex-col h-dvh"
         role="main"
       >
         {/* Header - ~72px height */}

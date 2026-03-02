@@ -35,6 +35,7 @@ plans:
     window_5h_cost_limit_eur: 2.50      # ~25 queries/5h
     window_7d_cost_limit_eur: 7.50      # ~75 queries/7d
     credit_markup_factor: 1.50
+    custom_email_allowed: false          # Base plan uses PratikoAI default SMTP only
     is_active: true
 
   pro:
@@ -44,6 +45,7 @@ plans:
     window_5h_cost_limit_eur: 5.00      # ~50 queries/5h
     window_7d_cost_limit_eur: 22.50     # ~225 queries/7d
     credit_markup_factor: 1.30
+    custom_email_allowed: true           # Pro plan can configure custom SMTP (ADR-034)
     is_active: true
 
   premium:
@@ -53,4 +55,5 @@ plans:
     window_5h_cost_limit_eur: 10.00     # ~100 queries/5h
     window_7d_cost_limit_eur: 45.00     # ~450 queries/7d
     credit_markup_factor: 1.20
+    custom_email_allowed: true           # Premium plan can configure custom SMTP (ADR-034)
     is_active: true

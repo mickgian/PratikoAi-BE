@@ -90,6 +90,7 @@ class TestExpertProfileCreationOnRegistration:
         mock_db.create_user = AsyncMock(return_value=mock_user)
         mock_db.create_expert_profile = AsyncMock()
         mock_db.update_user_refresh_token = AsyncMock()
+        mock_db.create_email_verification = AsyncMock()
 
         user_data = MagicMock(email=FAKE_STAKEHOLDER, password=SecretStr("StrongP@ss1"))
 
@@ -121,6 +122,7 @@ class TestExpertProfileCreationOnRegistration:
         mock_db.create_user = AsyncMock(return_value=mock_user)
         mock_db.create_expert_profile = AsyncMock()
         mock_db.update_user_refresh_token = AsyncMock()
+        mock_db.create_email_verification = AsyncMock()
 
         user_data = MagicMock(email="regular@example.com", password=SecretStr("StrongP@ss1"))
 

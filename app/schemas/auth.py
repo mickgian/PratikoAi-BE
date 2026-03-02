@@ -205,21 +205,7 @@ class OAuthTokenResponse(BaseModel):
 
 
 class EnhancedUserResponse(BaseModel):
-    """Enhanced user response model that includes OAuth provider information.
-
-    This extends the basic UserResponse with OAuth-specific fields.
-
-    Attributes:
-        id: User's ID
-        email: User's email address
-        name: User's full name (from OAuth or manual registration)
-        avatar_url: URL to user's profile picture (from OAuth)
-        provider: Authentication provider ('email', 'google', or 'linkedin')
-        access_token: The JWT access token
-        refresh_token: The JWT refresh token
-        token_type: The type of token (always "bearer")
-        expires_at: When the access token expires
-    """
+    """Enhanced user response model that includes OAuth provider information."""
 
     id: int = Field(..., description="User's ID")
     email: str = Field(..., description="User's email address")
@@ -230,3 +216,108 @@ class EnhancedUserResponse(BaseModel):
     refresh_token: str = Field(..., description="The JWT refresh token")
     token_type: str = Field(default="bearer", description="The type of token")
     expires_at: datetime = Field(..., description="When the access token expires")
+
+
+# --- P0: Password Reset ---
+
+
+class PasswordResetRequest(BaseModel):
+    """Request to initiate password reset."""
+
+    email: EmailStr = Field(..., description="Email address for password reset")
+
+
+class PasswordResetConfirm(BaseModel):
+    """Confirm password reset with token and new password."""
+
+    token: str = Field(..., description="Password reset token from email")
+    new_password: SecretStr = Field(..., description="New password", min_length=8, max_length=64)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: SecretStr) -> SecretStr:
+        """Validate new password strength."""
+        password = v.get_secret_value()
+        if len(password) < 8:
+            raise ValueError("La password deve avere almeno 8 caratteri")
+        if not re.search(r"[A-Z]", password):
+            raise ValueError("La password deve contenere almeno una lettera maiuscola")
+        if not re.search(r"[a-z]", password):
+            raise ValueError("La password deve contenere almeno una lettera minuscola")
+        if not re.search(r"[0-9]", password):
+            raise ValueError("La password deve contenere almeno un numero")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            raise ValueError("La password deve contenere almeno un carattere speciale")
+        return v
+
+
+# --- P0: Email Verification ---
+
+
+class EmailVerificationRequest(BaseModel):
+    """Request to verify email with token."""
+
+    token: str = Field(..., description="Email verification token")
+
+
+class ResendVerificationRequest(BaseModel):
+    """Request to resend verification email."""
+
+    email: EmailStr = Field(..., description="Email address to resend verification")
+
+
+# --- P1: Login with remember_me ---
+
+
+class LoginResponse(BaseModel):
+    """Extended login response with 2FA flag."""
+
+    access_token: str = Field(default="", description="JWT access token (empty if 2FA required)")
+    refresh_token: str = Field(default="", description="JWT refresh token (empty if 2FA required)")
+    token_type: str = Field(default="bearer")
+    expires_at: datetime | None = Field(default=None, description="Token expiration")
+    requires_2fa: bool = Field(default=False, description="Whether 2FA verification is needed")
+    two_factor_token: str = Field(default="", description="Temporary token for 2FA flow")
+
+
+# --- P2: TOTP 2FA ---
+
+
+class TOTPSetupResponse(BaseModel):
+    """Response for 2FA setup initiation."""
+
+    secret: str = Field(..., description="TOTP secret for manual entry")
+    provisioning_uri: str = Field(..., description="otpauth:// URI for QR code")
+    backup_codes: list[str] = Field(..., description="One-time backup codes")
+
+
+class TOTPVerifyRequest(BaseModel):
+    """Request to verify a TOTP code."""
+
+    code: str = Field(..., description="6-digit TOTP code", min_length=6, max_length=6)
+
+
+class TwoFactorVerifyRequest(BaseModel):
+    """Request to complete 2FA during login."""
+
+    two_factor_token: str = Field(..., description="Temporary token from login step")
+    code: str = Field(..., description="6-digit TOTP or email OTP code", min_length=6, max_length=6)
+
+
+class TwoFactorBackupRequest(BaseModel):
+    """Request to use a backup code for 2FA."""
+
+    two_factor_token: str = Field(..., description="Temporary token from login step")
+    backup_code: str = Field(..., description="Backup code (format: xxxx-xxxx)")
+
+
+class EmailOTPRequest(BaseModel):
+    """Request to send email OTP as 2FA fallback."""
+
+    two_factor_token: str = Field(..., description="Temporary token from login step")
+
+
+class MessageResponse(BaseModel):
+    """Generic message response."""
+
+    message: str = Field(..., description="Response message")

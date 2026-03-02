@@ -1,12 +1,14 @@
 """Authentication and authorization endpoints for the API.
 
 This module provides endpoints for user registration, login, session management,
-and token verification.
+token verification, password reset, email verification, and TOTP 2FA.
 """
 
 import asyncio
 import os
+import secrets
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import List
 
 from fastapi import (
@@ -24,21 +26,38 @@ from fastapi.security import (
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logging import logger
+from app.models.email_verification import EmailVerification
+from app.models.login_attempt import LoginAttempt
+from app.models.password_reset import PasswordReset
 from app.models.session import Session
+from app.models.totp_device import TOTPDevice
 from app.models.user import User, UserRole
 from app.schemas.auth import (
+    EmailOTPRequest,
+    EmailVerificationRequest,
+    LoginResponse,
+    MessageResponse,
     OAuthLoginResponse,
     OAuthTokenResponse,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     RefreshTokenRequest,
+    ResendVerificationRequest,
     SessionResponse,
     TokenResponse,
+    TOTPSetupResponse,
+    TOTPVerifyRequest,
+    TwoFactorBackupRequest,
+    TwoFactorVerifyRequest,
     UserCreate,
     UserResponse,
 )
+from app.services.auth_security_service import auth_security_service
 from app.services.database import DatabaseService
 from app.services.email_service import email_service
 from app.services.google_oauth_service import google_oauth_service
 from app.services.linkedin_oauth_service import linkedin_oauth_service
+from app.services.totp_service import totp_service
 from app.utils.auth import (
     create_access_token,
     create_refresh_token,
@@ -202,49 +221,36 @@ def _get_qa_role(email: str) -> str | None:
 @router.post("/register", response_model=UserResponse)
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["register"][0])
 async def register_user(request: Request, user_data: UserCreate):
-    """Register a new user.
-
-    Args:
-        request: The FastAPI request object for rate limiting.
-        user_data: User registration data
-
-    Returns:
-        UserResponse: The created user info
-    """
+    """Register a new user with email verification (P0)."""
     try:
-        # Sanitize email
         sanitized_email = sanitize_email(user_data.email)
-
-        # Extract and validate password
         password = user_data.password.get_secret_value()
         validate_password_strength(password)
 
-        # Check if user exists
         if await db_service.get_user_by_email(sanitized_email):
             raise HTTPException(status_code=400, detail="Email already registered")
 
-        # Assign elevated roles for specific QA emails
         role = _get_qa_role(sanitized_email)
-
-        # Create user
         user = await db_service.create_user(email=sanitized_email, password=User.hash_password(password), role=role)
 
-        # Auto-create ExpertProfile for QA elevated-role users so expert-feedback
-        # endpoints work immediately (avoids NULL array fields → 500 errors).
         if role is not None:
             await db_service.create_expert_profile(user.id)
 
-        # Create both access and refresh tokens for new user
         access_token = create_access_token(str(user.id))
         refresh_token = create_refresh_token(user.id)
-
-        # Store refresh token hash in database for validation and revocation
         await db_service.update_user_refresh_token(user.id, refresh_token.access_token)
 
         logger.info("user_registration_success", user_id=user.id, email=sanitized_email)
 
-        # Fire-and-forget: send welcome email (registration succeeds even if SMTP fails)
-        asyncio.create_task(email_service.send_welcome_email(sanitized_email, password))
+        # P0: Create email verification token and send welcome email with verification link
+        verification_token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(UTC) + timedelta(hours=settings.EMAIL_VERIFICATION_EXPIRE_HOURS)
+        await db_service.create_email_verification(user.id, verification_token, expires_at)
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        verification_url = f"{frontend_url}/verify-email?token={verification_token}"
+
+        # P0: Fire-and-forget welcome email WITHOUT plaintext password
+        asyncio.create_task(email_service.send_welcome_email(sanitized_email, verification_url=verification_url))
 
         return UserResponse(
             id=user.id,
@@ -259,81 +265,410 @@ async def register_user(request: Request, user_data: UserCreate):
         raise HTTPException(status_code=422, detail=str(ve))
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=LoginResponse)
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["login"][0])
 async def login(
-    request: Request, username: str = Form(...), password: str = Form(...), grant_type: str = Form(default="password")
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    remember_me: bool = Form(default=False),
+    grant_type: str = Form(default="password"),
 ):
-    """Login a user.
-
-    Args:
-        request: The FastAPI request object for rate limiting.
-        username: User's email
-        password: User's password
-        grant_type: Must be "password"
-
-    Returns:
-        TokenResponse: Access token information
-
-    Raises:
-        HTTPException: If credentials are invalid
-    """
+    """Login with account lockout (P1), 2FA challenge (P2), and remember_me (P1)."""
     try:
-        # Sanitize inputs
         username = sanitize_string(username)
         password = sanitize_string(password)
         grant_type = sanitize_string(grant_type)
+        ip_address = request.client.host if request.client else ""
 
-        # Verify grant type
         if grant_type != "password":
-            raise HTTPException(
-                status_code=400,
-                detail="Unsupported grant type. Must be 'password'",
-            )
+            raise HTTPException(status_code=400, detail="Unsupported grant type. Must be 'password'")
 
         user = await db_service.get_user_by_email(username)
+
+        # P1: Check account lockout
+        if user and auth_security_service.is_account_locked(user.account_locked_until):
+            await db_service.record_login_attempt(
+                user_id=user.id, email=username, ip_address=ip_address, success=False, failure_reason="account_locked"
+            )
+            raise HTTPException(status_code=423, detail="Account temporaneamente bloccato. Riprova più tardi.")
+
+        # Verify credentials
         if not user or not user.verify_password(password):
+            # P1/P2: Record failed attempt and check lockout threshold
+            if user:
+                new_count = user.failed_login_attempts + 1
+                locked_until = None
+                if auth_security_service.should_lock_account(new_count):
+                    duration = auth_security_service.get_lockout_duration(new_count)
+                    locked_until = datetime.now(UTC) + duration
+                await db_service.update_failed_login_attempts(user.id, new_count, locked_until)
+            await db_service.record_login_attempt(
+                user_id=user.id if user else None,
+                email=username,
+                ip_address=ip_address,
+                success=False,
+                failure_reason="wrong_password",
+            )
             raise HTTPException(
                 status_code=401,
-                detail="Incorrect email or password",
+                detail="Email o password non corretti",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Create both access and refresh tokens
-        access_token = create_access_token(str(user.id))
-        refresh_token = create_refresh_token(user.id)
+        # Reset failed attempts on successful password check
+        if user.failed_login_attempts > 0:
+            await db_service.update_failed_login_attempts(user.id, 0, None)
 
-        # Store refresh token hash in database for validation and revocation
+        # P2: If 2FA is enabled, return challenge instead of tokens
+        if user.totp_enabled:
+            two_factor_token = create_access_token(
+                f"2fa:{user.id}",
+                expires_delta=timedelta(minutes=settings.JWT_2FA_TOKEN_EXPIRE_MINUTES),
+            )
+            await db_service.record_login_attempt(
+                user_id=user.id, email=username, ip_address=ip_address, success=False, failure_reason="2fa_pending"
+            )
+            return LoginResponse(
+                requires_2fa=True,
+                two_factor_token=two_factor_token.access_token,
+            )
+
+        # P1: Use remember_me to determine token expiry
+        if remember_me:
+            access_token = create_access_token(
+                str(user.id), expires_delta=timedelta(hours=settings.JWT_ACCESS_TOKEN_REMEMBER_ME_HOURS)
+            )
+            refresh_token = create_refresh_token(
+                user.id, expires_delta=timedelta(days=settings.JWT_REFRESH_TOKEN_REMEMBER_ME_DAYS)
+            )
+        else:
+            access_token = create_access_token(str(user.id))
+            refresh_token = create_refresh_token(user.id)
+
         await db_service.update_user_refresh_token(user.id, refresh_token.access_token)
+
+        # P2: Record successful login
+        await db_service.record_login_attempt(user_id=user.id, email=username, ip_address=ip_address, success=True)
 
         logger.info("user_login_success", user_id=user.id, email=username)
 
-        return TokenResponse(
+        return LoginResponse(
             access_token=access_token.access_token,
             refresh_token=refresh_token.access_token,
             token_type="bearer",
             expires_at=access_token.expires_at,
+            requires_2fa=False,
         )
     except ValueError as ve:
         logger.error("login_validation_failed", error=str(ve), exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
 
 
+# --- P0: Email Verification ---
+
+
+@router.post("/verify-email", response_model=MessageResponse)
+@limiter.limit("10 per hour")
+async def verify_email(request: Request, data: EmailVerificationRequest):
+    """Verify user email address with token (P0)."""
+    token = sanitize_string(data.token)
+    verification = await db_service.get_email_verification_by_token(token)
+
+    if not verification or verification.used:
+        raise HTTPException(status_code=400, detail="Token di verifica non valido o già utilizzato")
+
+    if verification.is_expired():
+        raise HTTPException(status_code=400, detail="Il token di verifica è scaduto")
+
+    await db_service.mark_user_email_verified(verification.user_id)
+    await db_service.mark_email_verification_used(verification.id)
+
+    logger.info("email_verified", user_id=verification.user_id)
+    return MessageResponse(message="Email verificata con successo")
+
+
+@router.post("/resend-verification", response_model=MessageResponse)
+@limiter.limit("3 per hour")
+async def resend_verification(request: Request, data: ResendVerificationRequest):
+    """Resend email verification link (P0)."""
+    sanitized_email = sanitize_email(data.email)
+    user = await db_service.get_user_by_email(sanitized_email)
+
+    # Always return success to prevent user enumeration
+    if not user or user.email_verified:
+        return MessageResponse(message="Se l'email è registrata, riceverai un link di verifica.")
+
+    verification_token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(UTC) + timedelta(hours=settings.EMAIL_VERIFICATION_EXPIRE_HOURS)
+    await db_service.create_email_verification(user.id, verification_token, expires_at)
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    verification_url = f"{frontend_url}/verify-email?token={verification_token}"
+
+    asyncio.create_task(email_service.send_email_verification(sanitized_email, verification_url))
+
+    return MessageResponse(message="Se l'email è registrata, riceverai un link di verifica.")
+
+
+# --- P0: Password Reset ---
+
+
+@router.post("/password-reset/request", response_model=MessageResponse)
+@limiter.limit("5 per hour")
+async def request_password_reset(request: Request, data: PasswordResetRequest):
+    """Request a password reset email (P0). Always returns success to prevent enumeration."""
+    sanitized_email = sanitize_email(data.email)
+    user = await db_service.get_user_by_email(sanitized_email)
+
+    if user:
+        reset_token = secrets.token_urlsafe(32)
+        token_hash = User.hash_password(reset_token)
+        token_prefix = PasswordReset.compute_prefix(reset_token)
+        expires_at = datetime.now(UTC) + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES)
+        await db_service.create_password_reset_token(user.id, token_hash, expires_at, token_prefix=token_prefix)
+
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        reset_url = f"{frontend_url}/reset-password?token={reset_token}"
+        asyncio.create_task(email_service.send_password_reset_email(sanitized_email, reset_url))
+
+        logger.info("password_reset_requested", user_id=user.id)
+
+    # Always return same message to prevent user enumeration
+    return MessageResponse(message="Se l'email è registrata, riceverai un link per reimpostare la password.")
+
+
+@router.post("/password-reset/confirm", response_model=MessageResponse)
+@limiter.limit("10 per hour")
+async def confirm_password_reset(request: Request, data: PasswordResetConfirm):
+    """Confirm password reset with token and new password (P0)."""
+    token = sanitize_string(data.token)
+    new_password = data.new_password.get_secret_value()
+    validate_password_strength(new_password)
+
+    reset = await db_service.get_password_reset_by_token(token)
+    if not reset or reset.used:
+        raise HTTPException(status_code=400, detail="Token di reset non valido o già utilizzato")
+
+    if reset.is_expired():
+        raise HTTPException(status_code=400, detail="Il token di reset è scaduto")
+
+    hashed = User.hash_password(new_password)
+    await db_service.update_user_password(reset.user_id, hashed)
+    await db_service.mark_password_reset_used(reset.id)
+
+    logger.info("password_reset_confirmed", user_id=reset.user_id)
+    return MessageResponse(message="Password reimpostata con successo")
+
+
+# --- P2: TOTP 2FA ---
+
+
+@router.post("/2fa/setup", response_model=TOTPSetupResponse)
+async def setup_2fa(user: User = Depends(get_current_user)):
+    """Initiate TOTP 2FA setup (P2). Returns secret, QR URI, and backup codes."""
+    if user.totp_enabled:
+        raise HTTPException(status_code=400, detail="L'autenticazione a due fattori è già attiva")
+
+    secret = totp_service.generate_secret()
+    provisioning_uri = totp_service.get_provisioning_uri(secret, user.email)
+    backup_codes = totp_service.generate_backup_codes()
+    backup_codes_json = totp_service.serialize_backup_codes(backup_codes)
+
+    encrypted_secret = totp_service.encrypt_secret(secret, settings.TOTP_ENCRYPTION_KEY)
+    await db_service.create_totp_device(
+        user_id=user.id, secret_encrypted=encrypted_secret, backup_codes_json=backup_codes_json
+    )
+
+    logger.info("2fa_setup_initiated", user_id=user.id)
+    return TOTPSetupResponse(secret=secret, provisioning_uri=provisioning_uri, backup_codes=backup_codes)
+
+
+@router.post("/2fa/confirm", response_model=MessageResponse)
+async def confirm_2fa(data: TOTPVerifyRequest, user: User = Depends(get_current_user)):
+    """Confirm 2FA setup by verifying a TOTP code (P2)."""
+    device = await db_service.get_totp_device(user.id)
+    if not device:
+        raise HTTPException(status_code=400, detail="Nessun dispositivo 2FA trovato. Esegui prima il setup.")
+
+    plaintext_secret = totp_service.decrypt_secret(device.secret_encrypted, settings.TOTP_ENCRYPTION_KEY)
+    if not totp_service.verify_code(plaintext_secret, data.code):
+        raise HTTPException(status_code=400, detail="Codice non valido. Riprova.")
+
+    await db_service.confirm_totp_device(device.id, user.id)
+    logger.info("2fa_setup_confirmed", user_id=user.id)
+    return MessageResponse(message="Autenticazione a due fattori attivata con successo")
+
+
+@router.post("/2fa/verify", response_model=LoginResponse)
+@limiter.limit("10 per minute")
+async def verify_2fa(request: Request, data: TwoFactorVerifyRequest):
+    """Complete login by verifying TOTP code (P2)."""
+    subject = verify_token(data.two_factor_token)
+    if not subject or not str(subject).startswith("2fa:"):
+        raise HTTPException(status_code=401, detail="Token 2FA non valido o scaduto")
+
+    user_id = int(str(subject).split(":", 1)[1])
+    user = await db_service.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+
+    device = await db_service.get_totp_device(user_id)
+    if not device:
+        raise HTTPException(status_code=400, detail="Dispositivo 2FA non configurato")
+
+    plaintext_secret = totp_service.decrypt_secret(device.secret_encrypted, settings.TOTP_ENCRYPTION_KEY)
+    if not totp_service.verify_code(plaintext_secret, data.code):
+        raise HTTPException(status_code=401, detail="Codice 2FA non valido")
+
+    access_token = create_access_token(str(user_id))
+    refresh_token = create_refresh_token(user_id)
+    await db_service.update_user_refresh_token(user_id, refresh_token.access_token)
+
+    ip_address = request.client.host if request.client else ""
+    await db_service.record_login_attempt(user_id=user_id, email=user.email, ip_address=ip_address, success=True)
+
+    logger.info("2fa_login_complete", user_id=user_id)
+    return LoginResponse(
+        access_token=access_token.access_token,
+        refresh_token=refresh_token.access_token,
+        token_type="bearer",
+        expires_at=access_token.expires_at,
+        requires_2fa=False,
+    )
+
+
+@router.post("/2fa/email-otp", response_model=MessageResponse)
+@limiter.limit("3 per hour")
+async def send_email_otp(request: Request, data: EmailOTPRequest):
+    """Send email OTP as 2FA fallback (P2)."""
+    subject = verify_token(data.two_factor_token)
+    if not subject or not str(subject).startswith("2fa:"):
+        raise HTTPException(status_code=401, detail="Token 2FA non valido o scaduto")
+
+    user_id = int(str(subject).split(":", 1)[1])
+    user = await db_service.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+
+    otp_code = totp_service.generate_email_otp()
+    expires_at = datetime.now(UTC) + timedelta(minutes=settings.EMAIL_OTP_EXPIRE_MINUTES)
+
+    await db_service.create_email_verification(user_id, f"otp:{otp_code}", expires_at)
+    asyncio.create_task(email_service.send_2fa_otp_email(user.email, otp_code))
+
+    logger.info("2fa_email_otp_sent", user_id=user_id)
+    return MessageResponse(message="Codice di verifica inviato alla tua email")
+
+
+@router.post("/2fa/verify-email-otp", response_model=LoginResponse)
+@limiter.limit("10 per minute")
+async def verify_email_otp(request: Request, data: TwoFactorVerifyRequest):
+    """Verify email OTP for 2FA fallback (P2)."""
+    subject = verify_token(data.two_factor_token)
+    if not subject or not str(subject).startswith("2fa:"):
+        raise HTTPException(status_code=401, detail="Token 2FA non valido o scaduto")
+
+    user_id = int(str(subject).split(":", 1)[1])
+    otp_token = f"otp:{data.code}"
+    verification = await db_service.get_email_verification_by_token(otp_token)
+
+    if not verification or verification.used or verification.user_id != user_id:
+        raise HTTPException(status_code=401, detail="Codice OTP non valido")
+
+    if verification.is_expired():
+        raise HTTPException(status_code=401, detail="Codice OTP scaduto")
+
+    await db_service.mark_email_verification_used(verification.id)
+
+    user = await db_service.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+
+    access_token = create_access_token(str(user_id))
+    refresh_token = create_refresh_token(user_id)
+    await db_service.update_user_refresh_token(user_id, refresh_token.access_token)
+
+    ip_address = request.client.host if request.client else ""
+    await db_service.record_login_attempt(user_id=user_id, email=user.email, ip_address=ip_address, success=True)
+
+    logger.info("2fa_email_otp_verified", user_id=user_id)
+    return LoginResponse(
+        access_token=access_token.access_token,
+        refresh_token=refresh_token.access_token,
+        token_type="bearer",
+        expires_at=access_token.expires_at,
+        requires_2fa=False,
+    )
+
+
+@router.post("/2fa/backup", response_model=LoginResponse)
+@limiter.limit("5 per hour")
+async def use_backup_code(request: Request, data: TwoFactorBackupRequest):
+    """Verify a backup code for 2FA recovery (P2)."""
+    subject = verify_token(data.two_factor_token)
+    if not subject or not str(subject).startswith("2fa:"):
+        raise HTTPException(status_code=401, detail="Token 2FA non valido o scaduto")
+
+    user_id = int(str(subject).split(":", 1)[1])
+    device = await db_service.get_totp_device(user_id)
+    if not device or not device.backup_codes_json:
+        raise HTTPException(status_code=400, detail="Nessun codice di backup disponibile")
+
+    if not totp_service.verify_backup_code(data.backup_code, device.backup_codes_json):
+        raise HTTPException(status_code=401, detail="Codice di backup non valido")
+
+    updated_codes = totp_service.consume_backup_code(data.backup_code, device.backup_codes_json)
+    if updated_codes is not None:
+        await db_service.update_totp_backup_codes(device.id, updated_codes)
+
+    user = await db_service.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+
+    access_token = create_access_token(str(user_id))
+    refresh_token = create_refresh_token(user_id)
+    await db_service.update_user_refresh_token(user_id, refresh_token.access_token)
+
+    logger.info("2fa_backup_code_used", user_id=user_id)
+    return LoginResponse(
+        access_token=access_token.access_token,
+        refresh_token=refresh_token.access_token,
+        token_type="bearer",
+        expires_at=access_token.expires_at,
+        requires_2fa=False,
+    )
+
+
+@router.delete("/2fa", response_model=MessageResponse)
+async def disable_2fa(data: TOTPVerifyRequest, user: User = Depends(get_current_user)):
+    """Disable 2FA (requires current TOTP code for security) (P2)."""
+    device = await db_service.get_totp_device(user.id)
+    if not device:
+        raise HTTPException(status_code=400, detail="2FA non è attivo")
+
+    plaintext_secret = totp_service.decrypt_secret(device.secret_encrypted, settings.TOTP_ENCRYPTION_KEY)
+    if not totp_service.verify_code(plaintext_secret, data.code):
+        raise HTTPException(status_code=401, detail="Codice non valido")
+
+    await db_service.delete_totp_device(user.id)
+    logger.info("2fa_disabled", user_id=user.id)
+    return MessageResponse(message="Autenticazione a due fattori disattivata")
+
+
 @router.post("/session", response_model=SessionResponse)
 async def create_session(user: User = Depends(get_current_user)):
-    """Create a new chat session for the authenticated user.
-
-    Args:
-        user: The authenticated user
-
-    Returns:
-        SessionResponse: The session ID, name, and access token
-    """
+    """Create a new chat session with concurrent session limit (P3)."""
     try:
-        # Generate a unique session ID
-        session_id = str(uuid.uuid4())
+        # P3: Enforce concurrent session limit
+        existing_sessions = await db_service.get_user_sessions(user.id)
+        if auth_security_service.exceeds_session_limit(len(existing_sessions)):
+            raise HTTPException(
+                status_code=429,
+                detail=f"Limite di {auth_security_service.max_sessions} sessioni simultanee raggiunto. "
+                "Chiudi una sessione esistente.",
+            )
 
-        # Create session in database
+        session_id = str(uuid.uuid4())
         session = await db_service.create_session(session_id, user.id)
 
         # Create access token for the session

@@ -204,15 +204,28 @@ class Settings:
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
         self.MAX_LLM_CALL_RETRIES = int(os.getenv("MAX_LLM_CALL_RETRIES", "3"))
 
-        # JWT Configuration
+        # JWT Configuration (P1: reduced defaults for production readiness)
         self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
         self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-        # Access token expires in 30 days for faster development (TODO: reduce for production)
-        self.JWT_ACCESS_TOKEN_EXPIRE_HOURS = int(
-            os.getenv("JWT_ACCESS_TOKEN_EXPIRE_HOURS", str(30 * 24))
-        )  # 30 days in hours
-        # Refresh token expires in 365 days for faster development (TODO: reduce for production)
-        self.JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "365"))
+        # Default: 2 hours. With "remember me": 30 days (720 hours)
+        self.JWT_ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_HOURS", "2"))
+        self.JWT_ACCESS_TOKEN_REMEMBER_ME_HOURS = int(os.getenv("JWT_ACCESS_TOKEN_REMEMBER_ME_HOURS", "720"))
+        # Refresh token: 7 days default, 30 days with "remember me"
+        self.JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+        self.JWT_REFRESH_TOKEN_REMEMBER_ME_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_REMEMBER_ME_DAYS", "30"))
+        # Short-lived token for 2FA flow (10 minutes)
+        self.JWT_2FA_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_2FA_TOKEN_EXPIRE_MINUTES", "10"))
+
+        # Auth security settings
+        self.MAX_FAILED_LOGIN_ATTEMPTS = int(os.getenv("MAX_FAILED_LOGIN_ATTEMPTS", "5"))
+        self.MAX_CONCURRENT_SESSIONS = int(os.getenv("MAX_CONCURRENT_SESSIONS", "5"))
+        self.EMAIL_VERIFICATION_EXPIRE_HOURS = int(os.getenv("EMAIL_VERIFICATION_EXPIRE_HOURS", "24"))
+        self.PASSWORD_RESET_EXPIRE_MINUTES = int(os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "60"))
+        self.EMAIL_OTP_EXPIRE_MINUTES = int(os.getenv("EMAIL_OTP_EXPIRE_MINUTES", "10"))
+
+        # TOTP Fernet encryption key (must be 32 url-safe base64-encoded bytes)
+        # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+        self.TOTP_ENCRYPTION_KEY = os.getenv("TOTP_ENCRYPTION_KEY", "")
 
         # Logging Configuration
         self.LOG_DIR = Path(os.getenv("LOG_DIR", "logs"))

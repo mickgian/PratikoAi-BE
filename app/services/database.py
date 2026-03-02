@@ -26,10 +26,14 @@ from app.core.config import (
 )
 from app.core.logging import logger
 from app.models.database import AsyncSessionLocal
+from app.models.email_verification import EmailVerification
+from app.models.login_attempt import LoginAttempt
 from app.models.matching_rule import MatchingRule  # noqa: F401 — FK target for communications
+from app.models.password_reset import PasswordReset
 from app.models.quality_analysis import ExpertProfile
 from app.models.session import Session as ChatSession
 from app.models.studio import Studio  # noqa: F401 — FK target for multi-tenant models
+from app.models.totp_device import TOTPDevice
 from app.models.user import User
 from app.utils.account_code import generate_account_code
 
@@ -346,15 +350,198 @@ class DatabaseService:
             logger.info("user_refresh_token_revoked", user_id=user_id)
             return True
 
-    async def health_check(self) -> bool:
-        """Check database connection health.
+    # --- P0: Email Verification ---
 
-        Returns:
-            bool: True if database is healthy, False otherwise
+    async def create_email_verification(self, user_id: int, token: str, expires_at) -> EmailVerification:
+        """Create an email verification token."""
+        with Session(self.engine) as session:
+            verification = EmailVerification(user_id=user_id, token=token, expires_at=expires_at)
+            session.add(verification)
+            session.commit()
+            session.refresh(verification)
+            return verification
+
+    async def get_email_verification_by_token(self, token: str) -> EmailVerification | None:
+        """Get email verification by token."""
+        with Session(self.engine) as session:
+            stmt = select(EmailVerification).where(EmailVerification.token == token)
+            return cast(EmailVerification | None, session.exec(stmt).first())
+
+    async def mark_email_verification_used(self, verification_id: int) -> None:
+        """Mark an email verification token as used."""
+        with Session(self.engine) as session:
+            verification = session.get(EmailVerification, verification_id)
+            if verification:
+                verification.used = True
+                session.add(verification)
+                session.commit()
+
+    async def mark_user_email_verified(self, user_id: int) -> None:
+        """Set user's email_verified flag to True."""
+        with Session(self.engine) as session:
+            user = session.get(User, user_id)
+            if user:
+                user.email_verified = True
+                session.add(user)
+                session.commit()
+
+    # --- P0: Password Reset ---
+
+    async def create_password_reset_token(
+        self, user_id: int, token_hash: str, expires_at, *, token_prefix: str = ""
+    ) -> PasswordReset:
+        """Create a password reset token with an indexed prefix for fast lookup."""
+        with Session(self.engine) as session:
+            reset = PasswordReset(
+                user_id=user_id, token_hash=token_hash, expires_at=expires_at, token_prefix=token_prefix
+            )
+            session.add(reset)
+            session.commit()
+            session.refresh(reset)
+            return reset
+
+    async def get_password_reset_by_token(self, token: str) -> PasswordReset | None:
+        """Get password reset by prefix lookup + bcrypt verification.
+
+        Uses a SHA-256 prefix (indexed) to narrow candidates to O(1),
+        then verifies the full bcrypt hash against the raw token.
         """
+        import bcrypt as bcrypt_lib
+
+        prefix = PasswordReset.compute_prefix(token)
+        with Session(self.engine) as session:
+            stmt = select(PasswordReset).where(
+                PasswordReset.used == False,  # noqa: E712
+                PasswordReset.token_prefix == prefix,
+            )
+            candidates = session.exec(stmt).all()
+            for reset in candidates:
+                try:
+                    if bcrypt_lib.checkpw(token.encode("utf-8")[:72], reset.token_hash.encode("utf-8")):
+                        return cast(PasswordReset, reset)
+                except (ValueError, TypeError):
+                    continue
+            return None
+
+    async def mark_password_reset_used(self, reset_id: int) -> None:
+        """Mark a password reset token as used."""
+        with Session(self.engine) as session:
+            reset = session.get(PasswordReset, reset_id)
+            if reset:
+                reset.used = True
+                session.add(reset)
+                session.commit()
+
+    async def update_user_password(self, user_id: int, hashed_password: str) -> None:
+        """Update a user's password hash."""
+        with Session(self.engine) as session:
+            user = session.get(User, user_id)
+            if user:
+                user.hashed_password = hashed_password
+                session.add(user)
+                session.commit()
+
+    # --- P1: Account Lockout ---
+
+    async def update_failed_login_attempts(self, user_id: int, count: int, locked_until: object | None = None) -> None:
+        """Update failed login attempt count and optional lockout time."""
+        with Session(self.engine) as session:
+            user = session.get(User, user_id)
+            if user:
+                user.failed_login_attempts = count
+                user.account_locked_until = locked_until
+                session.add(user)
+                session.commit()
+
+    # --- P2: Login Attempt Logging ---
+
+    async def record_login_attempt(
+        self,
+        *,
+        user_id: int | None,
+        email: str,
+        ip_address: str = "",
+        success: bool = False,
+        failure_reason: str | None = None,
+    ) -> LoginAttempt:
+        """Record a login attempt for audit trail."""
+        with Session(self.engine) as session:
+            attempt = LoginAttempt(
+                user_id=user_id,
+                email=email,
+                ip_address=ip_address,
+                success=success,
+                failure_reason=failure_reason,
+            )
+            session.add(attempt)
+            session.commit()
+            session.refresh(attempt)
+            return attempt
+
+    # --- P2: TOTP 2FA ---
+
+    async def create_totp_device(self, *, user_id: int, secret_encrypted: str, backup_codes_json: str) -> TOTPDevice:
+        """Create a TOTP device for a user."""
+        with Session(self.engine) as session:
+            device = TOTPDevice(
+                user_id=user_id,
+                secret_encrypted=secret_encrypted,
+                backup_codes_json=backup_codes_json,
+            )
+            session.add(device)
+            session.commit()
+            session.refresh(device)
+            return device
+
+    async def get_totp_device(self, user_id: int) -> TOTPDevice | None:
+        """Get the confirmed TOTP device for a user."""
+        with Session(self.engine) as session:
+            stmt = select(TOTPDevice).where(TOTPDevice.user_id == user_id)
+            return cast(TOTPDevice | None, session.exec(stmt).first())
+
+    async def confirm_totp_device(self, device_id: int, user_id: int) -> None:
+        """Confirm a TOTP device and enable 2FA on the user."""
+        with Session(self.engine) as session:
+            device = session.get(TOTPDevice, device_id)
+            if device:
+                device.confirmed = True
+                session.add(device)
+
+            user = session.get(User, user_id)
+            if user:
+                user.totp_enabled = True
+                session.add(user)
+
+            session.commit()
+
+    async def update_totp_backup_codes(self, device_id: int, backup_codes_json: str) -> None:
+        """Update the backup codes for a TOTP device."""
+        with Session(self.engine) as session:
+            device = session.get(TOTPDevice, device_id)
+            if device:
+                device.backup_codes_json = backup_codes_json
+                session.add(device)
+                session.commit()
+
+    async def delete_totp_device(self, user_id: int) -> None:
+        """Delete TOTP device and disable 2FA for a user."""
+        with Session(self.engine) as session:
+            stmt = select(TOTPDevice).where(TOTPDevice.user_id == user_id)
+            device = session.exec(stmt).first()
+            if device:
+                session.delete(device)
+
+            user = session.get(User, user_id)
+            if user:
+                user.totp_enabled = False
+                session.add(user)
+
+            session.commit()
+
+    async def health_check(self) -> bool:
+        """Check database connection health."""
         try:
             with Session(self.engine) as session:
-                # Execute a simple query to check connection
                 session.exec(select(1)).first()
                 return True
         except Exception as e:

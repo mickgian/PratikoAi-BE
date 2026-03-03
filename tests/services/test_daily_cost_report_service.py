@@ -221,9 +221,10 @@ class TestDailyCostReportService:
 
         # Mock database result
         mock_result = MagicMock()
+        # env, total_cost, llm_cost, third_party_cost, embedding_cost, request_count, total_tokens, unique_users
         mock_result.all.return_value = [
-            ("development", 5.00, 4.00, 1.00, 250, 50000, 10),
-            ("production", 10.50, 8.00, 2.50, 500, 100000, 20),
+            ("development", 5.00, 4.00, 1.00, 0.0, 250, 50000, 10),
+            ("production", 10.50, 8.00, 2.50, 0.0, 500, 100000, 20),
         ]
         mock_db_session.execute = AsyncMock(return_value=mock_result)
 
@@ -248,10 +249,11 @@ class TestDailyCostReportService:
 
         # Mock database result
         mock_result = MagicMock()
+        # user_id, account_code, total_cost, llm_cost, third_party_cost, embedding_cost, request_count, total_tokens
         mock_result.all.return_value = [
-            ("user_1", "ACC-001", 5.00, 4.50, 0.50, 200, 45000),
-            ("user_2", "ACC-002", 3.00, 2.80, 0.20, 100, 30000),
-            ("user_3", None, 2.00, 1.90, 0.10, 75, 20000),
+            ("user_1", "ACC-001", 5.00, 4.50, 0.50, 0.0, 200, 45000),
+            ("user_2", "ACC-002", 3.00, 2.80, 0.20, 0.0, 100, 30000),
+            ("user_3", None, 2.00, 1.90, 0.10, 0.0, 75, 20000),
         ]
         mock_db_session.execute = AsyncMock(return_value=mock_result)
 
@@ -374,17 +376,17 @@ class TestDailyCostReportService:
         # Mock all database calls
         mock_db_session.execute = AsyncMock()
 
-        # Mock totals query
+        # Mock totals query: total_cost, llm_cost, third_party_cost, embedding_cost, total_requests, total_tokens, unique_users
         mock_totals = MagicMock()
-        mock_totals.first.return_value = (15.50, 12.00, 3.50, 750, 150000, 30)
+        mock_totals.first.return_value = (15.50, 12.00, 3.50, 0.0, 750, 150000, 30)
 
-        # Mock environment breakdown
+        # Mock environment breakdown: env, total_cost, llm_cost, third_party_cost, embedding_cost, request_count, total_tokens, unique_users
         mock_env = MagicMock()
-        mock_env.all.return_value = [("production", 15.50, 12.00, 3.50, 750, 150000, 30)]
+        mock_env.all.return_value = [("production", 15.50, 12.00, 3.50, 0.0, 750, 150000, 30)]
 
-        # Mock user breakdown
+        # Mock user breakdown: user_id, account_code, total_cost, llm_cost, third_party_cost, embedding_cost, request_count, total_tokens
         mock_users = MagicMock()
-        mock_users.all.return_value = [("user_1", "MIC40048-1", 5.00, 4.50, 0.50, 200, 45000)]
+        mock_users.all.return_value = [("user_1", "MIC40048-1", 5.00, 4.50, 0.50, 0.0, 200, 45000)]
 
         # Mock third-party breakdown
         mock_third_party = MagicMock()

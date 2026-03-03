@@ -30,6 +30,7 @@ class CostCategory(str, Enum):
     COMPUTE = "compute"
     BANDWIDTH = "bandwidth"
     THIRD_PARTY = "third_party"
+    EMBEDDING = "embedding"
 
 
 class UsageEvent(SQLModel, table=True):  # type: ignore[call-arg]

@@ -52,6 +52,7 @@ class CostBreakdown:
     compute: float = 0.0
     bandwidth: float = 0.0
     third_party: float = 0.0
+    embedding: float = 0.0
     total: float = 0.0
 
     def to_dict(self) -> dict[str, float]:
@@ -62,6 +63,7 @@ class CostBreakdown:
             "compute": self.compute,
             "bandwidth": self.bandwidth,
             "third_party": self.third_party,
+            "embedding": self.embedding,
             "total": self.total,
         }
 
@@ -287,6 +289,76 @@ class UsageTracker:
 
         return usage_event
 
+    async def track_embedding_usage(
+        self,
+        total_tokens: int,
+        model: str,
+        cost_eur: float,
+        batch_size: int = 1,
+    ) -> UsageEvent:
+        """Track embedding API usage for cost reporting.
+
+        Records embedding costs as UsageEvents with EMBEDDING cost category.
+        Uses SYSTEM_TEST_USER_ID as user since embeddings are system-level
+        operations (ingestion, backfill, profile embedding).
+
+        The environment is always set from settings.ENVIRONMENT (not "test"),
+        so embedding costs appear correctly under DEV/QA in daily reports.
+
+        Args:
+            total_tokens: Total tokens consumed by the embedding API call
+            model: Embedding model name (e.g., "text-embedding-3-small")
+            cost_eur: Cost in EUR for this API call
+            batch_size: Number of texts embedded in this call
+
+        Returns:
+            UsageEvent: The created usage event
+        """
+        try:
+            usage_event = UsageEvent(
+                user_id=settings.SYSTEM_TEST_USER_ID,
+                session_id=f"embed_{model}",
+                event_type=UsageType.API_REQUEST,
+                environment=settings.ENVIRONMENT.value,
+                api_type="openai_embedding",
+                provider="openai",
+                model=model,
+                total_tokens=total_tokens,
+                cost_eur=cost_eur,
+                cost_category=CostCategory.EMBEDDING,
+                error_occurred=False,
+            )
+
+            async with database_service.get_db() as db:
+                db.add(usage_event)
+                await db.commit()
+                await db.refresh(usage_event)
+
+            logger.info(
+                "embedding_usage_tracked",
+                model=model,
+                total_tokens=total_tokens,
+                cost_eur=cost_eur,
+                batch_size=batch_size,
+                environment=settings.ENVIRONMENT.value,
+            )
+
+            return usage_event
+
+        except Exception as e:
+            logger.error(
+                "embedding_usage_tracking_failed",
+                model=model,
+                total_tokens=total_tokens,
+                error=str(e),
+            )
+            return UsageEvent(
+                user_id=settings.SYSTEM_TEST_USER_ID,
+                event_type=UsageType.API_REQUEST,
+                error_occurred=True,
+                error_type=str(e),
+            )
+
     async def track_third_party_api(
         self,
         user_id: str | int,
@@ -483,6 +555,8 @@ class UsageTracker:
                     breakdown.bandwidth = float(cost or 0)
                 elif category == CostCategory.THIRD_PARTY:
                     breakdown.third_party = float(cost or 0)
+                elif category == CostCategory.EMBEDDING:
+                    breakdown.embedding = float(cost or 0)
 
             breakdown.total = (
                 breakdown.llm_inference
@@ -490,6 +564,7 @@ class UsageTracker:
                 + breakdown.compute
                 + breakdown.bandwidth
                 + breakdown.third_party
+                + breakdown.embedding
             )
 
             return breakdown

@@ -582,7 +582,7 @@ class TestConsolidatedReportServiceAsync:
         # Mock the DB session
         mock_session = MagicMock()
         mock_totals = MagicMock()
-        mock_totals.first.return_value = (5.00, 4.00, 1.00, 100, 50000, 5)
+        mock_totals.first.return_value = (5.00, 4.00, 1.00, 0.0, 100, 50000, 5)
         mock_env = MagicMock()
         mock_env.all.return_value = []
         mock_users = MagicMock()

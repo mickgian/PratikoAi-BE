@@ -2,8 +2,10 @@
 
 Generates vector embeddings using configurable OpenAI embedding models.
 Includes retry logic for transient API errors (rate limit, timeout, connection).
+Tracks embedding API costs as UsageEvents for daily cost reporting.
 """
 
+import asyncio
 import os
 from typing import (
     List,
@@ -17,6 +19,7 @@ from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, RateLimitEr
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import (
+    EMBED_COST_PER_1M_TOKENS,
     EMBED_DIM,
     EMBED_MODEL,
 )
@@ -28,6 +31,9 @@ client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Token limit for text-embedding-3-small / text-embedding-3-large
 _MAX_EMBEDDING_TOKENS = 8191
 _tokenizer = tiktoken.get_encoding("cl100k_base")
+
+# Default EUR/USD rate fallback (used if exchange rate service unavailable)
+_DEFAULT_EUR_USD_RATE = 1.08
 
 
 def truncate_to_token_limit(text: str, max_tokens: int = _MAX_EMBEDDING_TOKENS) -> str:
@@ -61,6 +67,53 @@ async def _create_embedding(model: str, input_data: str | list[str]):
     return await client.embeddings.create(model=model, input=input_data)
 
 
+def _calculate_embedding_cost_eur(total_tokens: int) -> float:
+    """Calculate embedding cost in EUR from token count.
+
+    Args:
+        total_tokens: Number of tokens consumed
+
+    Returns:
+        Cost in EUR
+    """
+    cost_usd = total_tokens * EMBED_COST_PER_1M_TOKENS / 1_000_000
+    return round(cost_usd / _DEFAULT_EUR_USD_RATE, 8)
+
+
+async def _track_embedding_cost(
+    total_tokens: int,
+    model: str,
+    batch_size: int = 1,
+) -> None:
+    """Track embedding API cost as a UsageEvent (fire-and-forget).
+
+    This function never raises — errors are logged and swallowed
+    so embedding generation is never blocked by cost tracking failures.
+
+    Args:
+        total_tokens: Tokens consumed by the API call
+        model: Model name used
+        batch_size: Number of texts in the batch
+    """
+    try:
+        from app.services.usage_tracker import usage_tracker
+
+        cost_eur = _calculate_embedding_cost_eur(total_tokens)
+        await usage_tracker.track_embedding_usage(
+            total_tokens=total_tokens,
+            model=model,
+            cost_eur=cost_eur,
+            batch_size=batch_size,
+        )
+    except Exception as e:
+        logger.warning(
+            "embedding_cost_tracking_failed",
+            total_tokens=total_tokens,
+            model=model,
+            error=str(e),
+        )
+
+
 async def generate_embedding(text: str) -> list[float] | None:
     """Generate embedding for a single text.
 
@@ -82,6 +135,16 @@ async def generate_embedding(text: str) -> list[float] | None:
         response = await _create_embedding(model=EMBED_MODEL, input_data=text)
 
         embedding = cast(list[float], response.data[0].embedding)
+
+        # Fire-and-forget cost tracking
+        try:
+            await _track_embedding_cost(
+                total_tokens=response.usage.total_tokens,
+                model=EMBED_MODEL,
+            )
+        except Exception:
+            pass  # Never block embedding on tracking failure
+
         return embedding
 
     except Exception as e:
@@ -114,6 +177,16 @@ async def generate_embeddings_batch(texts: list[str], batch_size: int = 20) -> l
 
             batch_embeddings = [item.embedding for item in response.data]
             all_embeddings.extend(batch_embeddings)
+
+            # Fire-and-forget cost tracking
+            try:
+                await _track_embedding_cost(
+                    total_tokens=response.usage.total_tokens,
+                    model=EMBED_MODEL,
+                    batch_size=len(batch),
+                )
+            except Exception:
+                pass  # Never block embedding on tracking failure
 
         except Exception as e:
             logger.error("Error generating batch embeddings: %s", e, exc_info=True)

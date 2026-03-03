@@ -21,6 +21,7 @@ import type {
   PendingComparisonData,
   ExpertEvaluationRequest,
   ExpertEvaluationResponse,
+  UnevaluatedSessionsResponse,
 } from '@/types/modelComparison';
 
 /**
@@ -438,6 +439,22 @@ export async function getComparisonSession(
 ): Promise<ComparisonSessionDetail> {
   return makeRequest<ComparisonSessionDetail>(
     `/api/v1/model-comparison/session/${encodeURIComponent(batchId)}`,
+    { method: 'GET' }
+  );
+}
+
+/**
+ * Get all unevaluated (unvoted) comparison sessions
+ *
+ * Returns all comparison sessions where the user has not yet voted
+ * for a winner. Used to display pending evaluations on the comparison page.
+ * Requires SUPER_USER or ADMIN role.
+ *
+ * @returns UnevaluatedSessionsResponse with list of sessions
+ */
+export async function getUnevaluatedSessions(): Promise<UnevaluatedSessionsResponse> {
+  return makeRequest<UnevaluatedSessionsResponse>(
+    '/api/v1/model-comparison/sessions/unevaluated',
     { method: 'GET' }
   );
 }

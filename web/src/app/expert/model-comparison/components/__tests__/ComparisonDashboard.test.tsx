@@ -17,6 +17,9 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('@/lib/api/modelComparison', () => ({
   getPendingComparison: jest.fn(),
+  getUnevaluatedSessions: jest.fn().mockResolvedValue({ sessions: [] }),
+  markPendingUsed: jest.fn().mockResolvedValue({ message: 'ok' }),
+  getComparisonSession: jest.fn(),
 }));
 
 jest.mock('@/hooks/useExpertStatus', () => ({
@@ -39,6 +42,7 @@ const mockRunWithExisting = jest.fn().mockResolvedValue(undefined);
 const mockVote = jest.fn();
 const mockClearComparison = jest.fn();
 const mockSetError = jest.fn();
+const mockRestoreComparison = jest.fn();
 
 const createComparisonHook = (overrides = {}) => ({
   comparison: null,
@@ -56,6 +60,7 @@ const createComparisonHook = (overrides = {}) => ({
   runWithExisting: mockRunWithExisting,
   vote: mockVote,
   clearComparison: mockClearComparison,
+  restoreComparison: mockRestoreComparison,
   setError: mockSetError,
   ...overrides,
 });

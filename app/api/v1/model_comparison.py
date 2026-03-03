@@ -30,6 +30,7 @@ from app.schemas.comparison import (
     ModelPreferencesRequest,
     PendingComparisonData,
     PendingComparisonResponse,
+    UnevaluatedSessionsResponse,
     VoteRequest,
     VoteResponse,
 )
@@ -431,6 +432,27 @@ async def mark_pending_used(
     )
 
     return {"message": "Confronto contrassegnato come utilizzato"}
+
+
+@router.get("/sessions/unevaluated", response_model=UnevaluatedSessionsResponse)
+async def get_unevaluated_sessions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UnevaluatedSessionsResponse:
+    """Get all comparison sessions that have not been voted on yet.
+
+    Returns sessions where winner_model is NULL, with all responses loaded.
+    Used by the comparison page to display all pending evaluations.
+    """
+    _require_super_user(current_user)
+
+    service = get_comparison_service()
+    sessions = await service.get_unevaluated_sessions(
+        user_id=current_user.id,
+        db=db,
+    )
+
+    return UnevaluatedSessionsResponse(sessions=sessions)
 
 
 @router.get("/session/{batch_id}", response_model=ComparisonSessionDetail)

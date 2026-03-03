@@ -261,6 +261,13 @@ export interface ComparisonSessionDetail {
 }
 
 /**
+ * Response containing all unevaluated comparison sessions
+ */
+export interface UnevaluatedSessionsResponse {
+  sessions: ComparisonSessionDetail[];
+}
+
+/**
  * Request to submit expert evaluation on a comparison response
  */
 export interface ExpertEvaluationRequest {

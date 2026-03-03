@@ -74,6 +74,37 @@ models:
       supports_tools: true
       supports_streaming: true
 
+  # --- OpenAI Embeddings ---
+  openai:text-embedding-3-small:
+    provider: openai
+    display_name: "Text Embedding 3 Small"
+    tier: basic
+    status: active
+    context_window: 8191
+    costs:
+      input_per_1k_tokens: 0.00002  # $0.02 per 1M tokens
+      output_per_1k_tokens: 0  # Embeddings have no output tokens
+    capabilities:
+      supports_tools: false
+      supports_streaming: false
+    model_type: embedding
+    dimensions: 1536
+
+  openai:text-embedding-3-large:
+    provider: openai
+    display_name: "Text Embedding 3 Large"
+    tier: standard
+    status: active
+    context_window: 8191
+    costs:
+      input_per_1k_tokens: 0.00013  # $0.13 per 1M tokens
+      output_per_1k_tokens: 0
+    capabilities:
+      supports_tools: false
+      supports_streaming: false
+    model_type: embedding
+    dimensions: 3072
+
   # --- Anthropic ---
   anthropic:claude-3-haiku-20240307:
     provider: anthropic

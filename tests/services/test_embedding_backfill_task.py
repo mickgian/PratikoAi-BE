@@ -6,10 +6,12 @@ repaired automatically via the scheduled backfill task, using proper
 pgvector format and ::vector SQL cast.
 """
 
+import json
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
+from app.services.ingestion_report_service import EmbeddingBackfillResult
 from app.services.scheduler_service import backfill_missing_embeddings_task
 
 
@@ -228,3 +230,117 @@ class TestBackfillMissingEmbeddingsTask:
         ):
             # Should not raise - task catches all exceptions
             await backfill_missing_embeddings_task()
+
+    async def test_backfill_stores_result_in_redis(self):
+        """Task stores backfill results in Redis after completion."""
+        item_rows = [(1, "content 1"), (2, "content 2")]
+        chunk_rows = [(10, "chunk 1")]
+        mock_session, mock_session_maker, mock_engine = self._make_session_mocks(item_rows, chunk_rows)
+        fake_item_embeddings = [[0.1] * 1536, [0.2] * 1536]
+        fake_chunk_embeddings = [[0.3] * 1536]
+
+        with (
+            patch("app.services.scheduler_service.settings", self._make_settings()),
+            patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+            patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_maker),
+            patch(
+                "app.core.embed.generate_embeddings_batch",
+                new_callable=AsyncMock,
+                side_effect=[fake_item_embeddings, fake_chunk_embeddings],
+            ),
+            patch("app.services.scheduler_service._store_backfill_result") as mock_store,
+        ):
+            await backfill_missing_embeddings_task()
+
+        mock_store.assert_called_once()
+        result = mock_store.call_args[0][0]
+        assert isinstance(result, EmbeddingBackfillResult)
+        assert result.items_found == 2
+        assert result.items_fixed == 2
+        assert result.chunks_found == 1
+        assert result.chunks_fixed == 1
+
+    async def test_backfill_stores_result_with_failures(self):
+        """Task stores correct failure counts when some embeddings fail."""
+        item_rows = [(1, "content 1")]
+        mock_session, mock_session_maker, mock_engine = self._make_session_mocks(item_rows, [])
+
+        with (
+            patch("app.services.scheduler_service.settings", self._make_settings()),
+            patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+            patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_maker),
+            patch(
+                "app.core.embed.generate_embeddings_batch",
+                new_callable=AsyncMock,
+                return_value=[None],
+            ),
+            patch("app.services.scheduler_service._store_backfill_result") as mock_store,
+        ):
+            await backfill_missing_embeddings_task()
+
+        result = mock_store.call_args[0][0]
+        assert result.items_found == 1
+        assert result.items_fixed == 0
+        assert result.items_failed == 1
+
+    async def test_backfill_stores_result_when_nothing_to_do(self):
+        """Task stores result even when no missing embeddings found."""
+        mock_session, mock_session_maker, mock_engine = self._make_session_mocks([], [])
+
+        with (
+            patch("app.services.scheduler_service.settings", self._make_settings()),
+            patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+            patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_maker),
+            patch("app.services.scheduler_service._store_backfill_result") as mock_store,
+        ):
+            await backfill_missing_embeddings_task()
+
+        result = mock_store.call_args[0][0]
+        assert result.items_found == 0
+        assert result.chunks_found == 0
+
+
+class TestEmbeddingBackfillResult:
+    """Tests for EmbeddingBackfillResult dataclass."""
+
+    def test_defaults(self):
+        """All fields default to zero."""
+        result = EmbeddingBackfillResult()
+        assert result.items_found == 0
+        assert result.items_fixed == 0
+        assert result.items_failed == 0
+        assert result.chunks_found == 0
+        assert result.chunks_fixed == 0
+        assert result.chunks_failed == 0
+
+    def test_to_dict(self):
+        """to_dict returns serializable dictionary."""
+        result = EmbeddingBackfillResult(items_found=10, items_fixed=8, items_failed=2)
+        d = result.to_dict()
+        assert d["items_found"] == 10
+        assert d["items_fixed"] == 8
+        assert d["items_failed"] == 2
+        # Should be JSON-serializable
+        json.dumps(d)
+
+    def test_from_dict(self):
+        """from_dict reconstructs from dictionary."""
+        data = {
+            "items_found": 5,
+            "items_fixed": 4,
+            "items_failed": 1,
+            "chunks_found": 10,
+            "chunks_fixed": 9,
+            "chunks_failed": 1,
+            "ran_at": "2026-03-03T03:00:00+00:00",
+        }
+        result = EmbeddingBackfillResult.from_dict(data)
+        assert result.items_found == 5
+        assert result.chunks_fixed == 9
+        assert result.ran_at == "2026-03-03T03:00:00+00:00"
+
+    def test_from_dict_handles_missing_keys(self):
+        """from_dict defaults missing keys to zero."""
+        result = EmbeddingBackfillResult.from_dict({})
+        assert result.items_found == 0
+        assert result.chunks_found == 0

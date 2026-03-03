@@ -511,6 +511,8 @@ from app.core.remote_config import get_config as _rc_get_config
 # Embedding Model Configuration
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")  # 1536-d
 EMBED_DIM = int(os.getenv("EMBED_DIM", "1536"))
+# OpenAI text-embedding-3-small pricing: $0.02 per 1M tokens (USD)
+EMBED_COST_PER_1M_TOKENS = float(os.getenv("EMBED_COST_PER_1M_TOKENS", "0.02"))
 
 # Chunking Configuration
 CHUNK_TOKENS = int(os.getenv("CHUNK_TOKENS", "900"))

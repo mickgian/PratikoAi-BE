@@ -58,6 +58,7 @@ class EnvironmentCostBreakdown:
     total_cost_eur: float = 0.0
     llm_cost_eur: float = 0.0
     third_party_cost_eur: float = 0.0
+    embedding_cost_eur: float = 0.0
     request_count: int = 0
     total_tokens: int = 0
     unique_users: int = 0
@@ -71,6 +72,7 @@ class UserCostBreakdown:
     total_cost_eur: float = 0.0
     llm_cost_eur: float = 0.0
     third_party_cost_eur: float = 0.0
+    embedding_cost_eur: float = 0.0
     request_count: int = 0
     total_tokens: int = 0
 
@@ -130,6 +132,7 @@ class DailyCostReport:
     total_cost_eur: float = 0.0
     llm_cost_eur: float = 0.0
     third_party_cost_eur: float = 0.0
+    embedding_cost_eur: float = 0.0
     total_requests: int = 0
     total_tokens: int = 0
     unique_users: int = 0
@@ -215,6 +218,7 @@ class DailyCostReportService:
             total_cost_eur=totals.get("total_cost", 0.0),
             llm_cost_eur=totals.get("llm_cost", 0.0),
             third_party_cost_eur=totals.get("third_party_cost", 0.0),
+            embedding_cost_eur=totals.get("embedding_cost", 0.0),
             total_requests=totals.get("total_requests", 0),
             total_tokens=totals.get("total_tokens", 0),
             unique_users=totals.get("unique_users", 0),
@@ -254,6 +258,15 @@ class DailyCostReportService:
                 ),
                 0,
             ).label("third_party_cost"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (UsageEvent.cost_category == CostCategory.EMBEDDING, UsageEvent.cost_eur),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("embedding_cost"),
             func.count(UsageEvent.id).label("total_requests"),
             func.coalesce(func.sum(UsageEvent.total_tokens), 0).label("total_tokens"),
             func.count(func.distinct(UsageEvent.user_id)).label("unique_users"),
@@ -272,15 +285,17 @@ class DailyCostReportService:
                 "total_cost": float(row[0] or 0),
                 "llm_cost": float(row[1] or 0),
                 "third_party_cost": float(row[2] or 0),
-                "total_requests": int(row[3] or 0),
-                "total_tokens": int(row[4] or 0),
-                "unique_users": int(row[5] or 0),
+                "embedding_cost": float(row[3] or 0),
+                "total_requests": int(row[4] or 0),
+                "total_tokens": int(row[5] or 0),
+                "unique_users": int(row[6] or 0),
             }
 
         return {
             "total_cost": 0.0,
             "llm_cost": 0.0,
             "third_party_cost": 0.0,
+            "embedding_cost": 0.0,
             "total_requests": 0,
             "total_tokens": 0,
             "unique_users": 0,
@@ -320,6 +335,15 @@ class DailyCostReportService:
                     ),
                     0,
                 ).label("third_party_cost"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (UsageEvent.cost_category == CostCategory.EMBEDDING, UsageEvent.cost_eur),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                ).label("embedding_cost"),
                 func.count(UsageEvent.id).label("request_count"),
                 func.coalesce(func.sum(UsageEvent.total_tokens), 0).label("total_tokens"),
                 func.count(func.distinct(UsageEvent.user_id)).label("unique_users"),
@@ -346,9 +370,10 @@ class DailyCostReportService:
                     total_cost_eur=float(row[1] or 0),
                     llm_cost_eur=float(row[2] or 0),
                     third_party_cost_eur=float(row[3] or 0),
-                    request_count=int(row[4] or 0),
-                    total_tokens=int(row[5] or 0),
-                    unique_users=int(row[6] or 0),
+                    embedding_cost_eur=float(row[4] or 0),
+                    request_count=int(row[5] or 0),
+                    total_tokens=int(row[6] or 0),
+                    unique_users=int(row[7] or 0),
                 )
             )
 
@@ -390,6 +415,15 @@ class DailyCostReportService:
                     ),
                     0,
                 ).label("third_party_cost"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (UsageEvent.cost_category == CostCategory.EMBEDDING, UsageEvent.cost_eur),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                ).label("embedding_cost"),
                 func.count(UsageEvent.id).label("request_count"),
                 func.coalesce(func.sum(UsageEvent.total_tokens), 0).label("total_tokens"),
             )
@@ -417,8 +451,9 @@ class DailyCostReportService:
                     total_cost_eur=float(row[2] or 0),
                     llm_cost_eur=float(row[3] or 0),
                     third_party_cost_eur=float(row[4] or 0),
-                    request_count=int(row[5] or 0),
-                    total_tokens=int(row[6] or 0),
+                    embedding_cost_eur=float(row[5] or 0),
+                    request_count=int(row[6] or 0),
+                    total_tokens=int(row[7] or 0),
                 )
             )
 
@@ -543,6 +578,7 @@ class DailyCostReportService:
                 <td style="text-align: right;">€{env.total_cost_eur:.2f}</td>
                 <td style="text-align: right;">€{env.llm_cost_eur:.2f}</td>
                 <td style="text-align: right;">€{env.third_party_cost_eur:.4f}</td>
+                <td style="text-align: right;">€{env.embedding_cost_eur:.4f}</td>
                 <td style="text-align: right;">{env.request_count:,}</td>
                 <td style="text-align: right;">{env.unique_users}</td>
             </tr>
@@ -644,12 +680,12 @@ class DailyCostReportService:
                     <div class="stat-label">LLM Inference</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">€{report.third_party_cost_eur:.4f}</div>
-                    <div class="stat-label">Third-Party APIs</div>
+                    <div class="stat-value">€{report.embedding_cost_eur:.4f}</div>
+                    <div class="stat-label">Embedding (text-embedding-3-small)</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">{report.total_tokens:,}</div>
-                    <div class="stat-label">Total Tokens</div>
+                    <div class="stat-value">€{report.third_party_cost_eur:.4f}</div>
+                    <div class="stat-label">Third-Party APIs</div>
                 </div>
             </div>
 
@@ -661,12 +697,13 @@ class DailyCostReportService:
                         <th style="text-align: right;">Total Cost</th>
                         <th style="text-align: right;">LLM Cost</th>
                         <th style="text-align: right;">Third-Party</th>
+                        <th style="text-align: right;">Embedding</th>
                         <th style="text-align: right;">Requests</th>
                         <th style="text-align: right;">Users</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {env_rows if env_rows else '<tr><td colspan="6" style="text-align: center; color: #666;">No data</td></tr>'}
+                    {env_rows if env_rows else '<tr><td colspan="7" style="text-align: center; color: #666;">No data</td></tr>'}
                 </tbody>
             </table>
 

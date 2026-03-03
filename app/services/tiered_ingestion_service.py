@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.chunking import estimate_tokens
 from app.core.config import CHUNK_OVERLAP, CHUNK_TOKENS
 from app.core.document_ingestion import compute_content_hash
+from app.core.embed import generate_embedding, generate_embeddings_batch
 from app.core.logging import logger
 from app.models.knowledge import KnowledgeItem
 from app.models.knowledge_chunk import KnowledgeChunk
@@ -205,9 +206,11 @@ class TieredIngestionService:
         parsed_law = self._law_parser.parse(content, title)
 
         # Create parent document record (stores reference to full law)
+        parent_content = content[:10000]
+        parent_embedding = await generate_embedding(parent_content)
         parent_doc = KnowledgeItem(
             title=title,
-            content=content[:10000],  # Store first 10k chars as reference
+            content=parent_content,
             source=source,
             category=category,
             publication_date=publication_date,
@@ -215,6 +218,7 @@ class TieredIngestionService:
             document_type="full_document",
             content_hash=self._current_content_hash,
             topics=classification.detected_topics,
+            embedding=parent_embedding,
             parsing_metadata={
                 "law_number": parsed_law.law_number,
                 "articles_count": len(parsed_law.articles),
@@ -232,11 +236,13 @@ class TieredIngestionService:
 
         # Create article records with corresponding chunks for FTS
         chunks_created = 0
+        pending_chunks: list[dict] = []
         for article in parsed_law.articles:
             # Combine document-level and article-level topics
             article_topics = list(set(classification.detected_topics + article.topics))
             all_topics.update(article.topics)
 
+            article_embedding = await generate_embedding(article.full_text or "")
             article_doc = KnowledgeItem(
                 title=f"{title} - {article.display_title}",
                 content=article.full_text,
@@ -248,6 +254,7 @@ class TieredIngestionService:
                 article_number=article.article_number,
                 document_type="article",
                 topics=article_topics,
+                embedding=article_embedding,
                 parsing_metadata={
                     "titolo": article.titolo,
                     "capo": article.capo,
@@ -271,45 +278,54 @@ class TieredIngestionService:
 
                 # Split large articles into multiple chunks for better RAG retrieval
                 if len(article_text) > DEFAULT_CHUNK_SIZE * 2:
-                    # Large article: split into overlapping chunks
                     text_chunks = self._chunk_text(article_text, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP)
-                    for i, chunk_text in enumerate(text_chunks):
-                        chunk = KnowledgeChunk(
-                            knowledge_item_id=article_doc.id,
-                            chunk_text=chunk_text,
-                            chunk_index=i,
-                            token_count=estimate_tokens(chunk_text),
-                            kb_epoch=time.time(),
-                            document_title=doc_title,
-                            junk=False,
-                        )
-                        self._db.add(chunk)
-                        chunks_created += 1
                 else:
-                    # Small article: single chunk
-                    chunk = KnowledgeChunk(
-                        knowledge_item_id=article_doc.id,
-                        chunk_text=article_text,
-                        chunk_index=0,
-                        token_count=estimate_tokens(article_text),
-                        kb_epoch=time.time(),
-                        document_title=doc_title,
-                        junk=False,
+                    text_chunks = [article_text]
+
+                # Collect chunk texts and metadata before creating objects
+                for i, chunk_text in enumerate(text_chunks):
+                    pending_chunks.append(
+                        {
+                            "knowledge_item_id": article_doc.id,
+                            "chunk_text": chunk_text,
+                            "chunk_index": i,
+                            "document_title": doc_title,
+                        }
                     )
-                    self._db.add(chunk)
-                    chunks_created += 1
+
+        # Batch-generate embeddings for all chunks
+        if pending_chunks:
+            chunk_texts = [c["chunk_text"] for c in pending_chunks]
+            chunk_embeddings = await generate_embeddings_batch(chunk_texts)
+            for idx, chunk_meta in enumerate(pending_chunks):
+                chunk_emb = chunk_embeddings[idx] if idx < len(chunk_embeddings) else None
+                chunk = KnowledgeChunk(
+                    knowledge_item_id=chunk_meta["knowledge_item_id"],
+                    chunk_text=chunk_meta["chunk_text"],
+                    chunk_index=chunk_meta["chunk_index"],
+                    token_count=estimate_tokens(chunk_meta["chunk_text"]),
+                    kb_epoch=time.time(),
+                    document_title=chunk_meta["document_title"],
+                    junk=False,
+                    embedding=chunk_emb,
+                )
+                self._db.add(chunk)
+                chunks_created += 1
 
         # Create allegati records
         for allegato in parsed_law.allegati:
+            allegato_content = f"Allegato {allegato['id']}: {allegato.get('title', '')}"
+            allegato_embedding = await generate_embedding(allegato_content)
             allegato_doc = KnowledgeItem(
                 title=f"{title} - Allegato {allegato['id']}",
-                content=f"Allegato {allegato['id']}: {allegato.get('title', '')}",
+                content=allegato_content,
                 source=source,
                 category=category,
                 tier=DocumentTier.CRITICAL,
                 parent_document_id=parent_doc.id,
                 document_type="allegato",
                 parsing_metadata=allegato,
+                embedding=allegato_embedding,
             )
             self._db.add(allegato_doc)
             items_created += 1
@@ -353,7 +369,11 @@ class TieredIngestionService:
         items_created = 0
         first_id = None
 
+        # Batch-generate embeddings for all chunks
+        chunk_embeddings = await generate_embeddings_batch(chunks) if chunks else []
+
         for i, chunk in enumerate(chunks):
+            chunk_emb = chunk_embeddings[i] if i < len(chunk_embeddings) else None
             chunk_doc = KnowledgeItem(
                 title=title,
                 content=chunk,
@@ -364,6 +384,7 @@ class TieredIngestionService:
                 document_type="chunk",
                 content_hash=self._current_content_hash,
                 topics=classification.detected_topics,
+                embedding=chunk_emb,
                 parsing_metadata={
                     "chunk_index": i,
                     "total_chunks": len(chunks),
@@ -411,9 +432,11 @@ class TieredIngestionService:
         Single record with truncated content for quick lookups.
         """
         # Store first 5000 chars
+        doc_content = content[:5000]
+        doc_embedding = await generate_embedding(doc_content)
         doc = KnowledgeItem(
             title=title,
-            content=content[:5000],
+            content=doc_content,
             source=source,
             category=category,
             publication_date=publication_date,
@@ -421,6 +444,7 @@ class TieredIngestionService:
             document_type="chunk",
             content_hash=self._current_content_hash,
             topics=classification.detected_topics,
+            embedding=doc_embedding,
             parsing_metadata={
                 "original_length": len(content),
                 "confidence": classification.confidence,

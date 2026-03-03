@@ -17,11 +17,15 @@ from datetime import (
 )
 from enum import Enum
 from typing import (
+    TYPE_CHECKING,
     Any,
     Dict,
     List,
     Optional,
 )
+
+if TYPE_CHECKING:
+    from app.services.ingestion_report_service import EmbeddingBackfillResult
 from zoneinfo import ZoneInfo
 
 from app.core.config import settings
@@ -883,6 +887,63 @@ async def send_daily_eval_report_task() -> None:
         logger.error(f"Error running daily evaluation report: {e}")
 
 
+BACKFILL_RESULT_REDIS_KEY = "embedding_backfill:last_result"
+BACKFILL_RESULT_TTL_SECONDS = 86400  # 24 hours
+
+
+async def _store_backfill_result(result: "EmbeddingBackfillResult") -> None:
+    """Store backfill results in Redis for the ingestion report to read.
+
+    Uses a 24-hour TTL so stale results auto-expire. Fails silently
+    if Redis is unavailable — the backfill itself is more important
+    than reporting on it.
+    """
+    import json
+
+    try:
+        from app.services.cache import cache_service
+
+        redis_client = await cache_service._get_redis()
+        if redis_client is None:
+            logger.debug("backfill_result_store_skipped", reason="Redis unavailable")
+            return
+
+        await redis_client.set(
+            BACKFILL_RESULT_REDIS_KEY,
+            json.dumps(result.to_dict()),
+            ex=BACKFILL_RESULT_TTL_SECONDS,
+        )
+        logger.info("backfill_result_stored", items_fixed=result.items_fixed, chunks_fixed=result.chunks_fixed)
+    except Exception as e:
+        logger.warning("backfill_result_store_failed", error=str(e))
+
+
+async def get_backfill_result() -> "EmbeddingBackfillResult | None":
+    """Read the latest backfill result from Redis.
+
+    Returns None if no result is available or Redis is unreachable.
+    """
+    import json
+
+    from app.services.ingestion_report_service import EmbeddingBackfillResult
+
+    try:
+        from app.services.cache import cache_service
+
+        redis_client = await cache_service._get_redis()
+        if redis_client is None:
+            return None
+
+        raw = await redis_client.get(BACKFILL_RESULT_REDIS_KEY)
+        if raw is None:
+            return None
+
+        return EmbeddingBackfillResult.from_dict(json.loads(raw))
+    except Exception as e:
+        logger.warning("backfill_result_read_failed", error=str(e))
+        return None
+
+
 async def backfill_missing_embeddings_task() -> None:
     """Scheduled task to backfill missing embeddings for knowledge items and chunks.
 
@@ -897,13 +958,16 @@ async def backfill_missing_embeddings_task() -> None:
     from sqlalchemy.orm import sessionmaker
 
     from app.core.embed import embedding_to_pgvector, generate_embeddings_batch
+    from app.services.ingestion_report_service import EmbeddingBackfillResult
 
     if not getattr(settings, "EMBEDDING_BACKFILL_ENABLED", True):
         logger.info("Embedding backfill is disabled via EMBEDDING_BACKFILL_ENABLED")
         return
 
+    items_found = 0
     items_fixed = 0
     items_failed = 0
+    chunks_found = 0
     chunks_fixed = 0
     chunks_failed = 0
 
@@ -923,6 +987,7 @@ async def backfill_missing_embeddings_task() -> None:
                 )
             )
             item_rows = result.fetchall()
+            items_found = len(item_rows)
 
             if item_rows:
                 logger.info(f"Backfilling embeddings for {len(item_rows)} items")
@@ -963,6 +1028,7 @@ async def backfill_missing_embeddings_task() -> None:
                 text("SELECT id, chunk_text FROM knowledge_chunks WHERE embedding IS NULL ORDER BY id")
             )
             chunk_rows = result.fetchall()
+            chunks_found = len(chunk_rows)
 
             if chunk_rows:
                 logger.info(f"Backfilling embeddings for {len(chunk_rows)} chunks")
@@ -1011,6 +1077,18 @@ async def backfill_missing_embeddings_task() -> None:
 
     except Exception as e:
         logger.error(f"Error in embedding backfill task: {e}", exc_info=True)
+
+    # Store results in Redis for the ingestion report email
+    backfill_result = EmbeddingBackfillResult(
+        items_found=items_found,
+        items_fixed=items_fixed,
+        items_failed=items_failed,
+        chunks_found=chunks_found,
+        chunks_fixed=chunks_fixed,
+        chunks_failed=chunks_failed,
+        ran_at=datetime.now(UTC).isoformat(),
+    )
+    await _store_backfill_result(backfill_result)
 
 
 async def send_consolidated_ingestion_report_task() -> None:

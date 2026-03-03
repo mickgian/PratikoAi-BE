@@ -68,6 +68,49 @@ class IngestionAlert:
     source_name: str | None = None
 
 
+@dataclass
+class EmbeddingBackfillResult:
+    """Results from the daily embedding backfill task.
+
+    Stored in Redis by the backfill task (03:00) and read by the
+    ingestion report (06:00) to correlate DQ_MISSING_EMBEDDINGS
+    alerts with actual repair outcomes.
+    """
+
+    items_found: int = 0
+    items_fixed: int = 0
+    items_failed: int = 0
+    chunks_found: int = 0
+    chunks_fixed: int = 0
+    chunks_failed: int = 0
+    ran_at: str = ""
+
+    def to_dict(self) -> dict:
+        """Serialize to a JSON-safe dictionary."""
+        return {
+            "items_found": self.items_found,
+            "items_fixed": self.items_fixed,
+            "items_failed": self.items_failed,
+            "chunks_found": self.chunks_found,
+            "chunks_fixed": self.chunks_fixed,
+            "chunks_failed": self.chunks_failed,
+            "ran_at": self.ran_at,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "EmbeddingBackfillResult":
+        """Reconstruct from a dictionary (e.g. from Redis JSON)."""
+        return cls(
+            items_found=data.get("items_found", 0),
+            items_fixed=data.get("items_fixed", 0),
+            items_failed=data.get("items_failed", 0),
+            chunks_found=data.get("chunks_found", 0),
+            chunks_fixed=data.get("chunks_fixed", 0),
+            chunks_failed=data.get("chunks_failed", 0),
+            ran_at=data.get("ran_at", ""),
+        )
+
+
 # =============================================================================
 # Environment Color Mapping
 # =============================================================================
@@ -239,6 +282,9 @@ class DailyIngestionReport:
     # DEV-258: Data quality audit summary
     data_quality: Any | None = None
 
+    # Embedding backfill results (from 03:00 scheduled task)
+    embedding_backfill: EmbeddingBackfillResult | None = None
+
     @property
     def total_documents_processed(self) -> int:
         """Total documents processed across all sources."""
@@ -368,6 +414,14 @@ class IngestionReportService:
             report.alerts.extend(quality_alerts)
         except Exception as e:
             self.logger.warning(f"Data quality audit failed (non-fatal): {e}")
+
+        # Fetch embedding backfill results from Redis (non-fatal)
+        try:
+            from app.services.scheduler_service import get_backfill_result
+
+            report.embedding_backfill = await get_backfill_result()
+        except Exception as e:
+            self.logger.warning(f"Embedding backfill result fetch failed (non-fatal): {e}")
 
         self.logger.info(
             f"Report generated: {report.total_documents_processed} processed, "
@@ -1211,6 +1265,11 @@ class IngestionReportService:
         if report.data_quality:
             data_quality_html = self._generate_data_quality_html(report.data_quality)
 
+        # Generate embedding backfill section
+        backfill_html = ""
+        if report.embedding_backfill:
+            backfill_html = self._generate_backfill_html(report.embedding_backfill)
+
         # Overall status color
         overall_color = (
             "#28a745"
@@ -1341,6 +1400,8 @@ class IngestionReportService:
 
                 {data_quality_html}
 
+                {backfill_html}
+
                 <div class="footer">
                     <p>This is an automated report from PratikoAI Ingestion Monitoring System.</p>
                     <p>Environment: {env_color["name"]} | Contact DevOps team for questions.</p>
@@ -1415,6 +1476,70 @@ class IngestionReportService:
                 </table>
                 <p style="font-size: 12px; color: #999; margin-top: 10px;">
                     Full audit: <code>python scripts/audit_data_quality.py</code>
+                </p>
+            </div>
+        """
+
+    def _generate_backfill_html(self, bf: EmbeddingBackfillResult) -> str:
+        """Generate HTML section for embedding backfill results.
+
+        Shows what the daily backfill task found and fixed, so the reader
+        can correlate with the DQ_MISSING_EMBEDDINGS count above.
+
+        Args:
+            bf: EmbeddingBackfillResult from the last backfill run
+
+        Returns:
+            HTML string for the embedding backfill section
+        """
+        total_found = bf.items_found + bf.chunks_found
+        total_fixed = bf.items_fixed + bf.chunks_fixed
+        total_failed = bf.items_failed + bf.chunks_failed
+
+        if total_found == 0:
+            status_text = '<span style="color: #28a745;">No missing embeddings found</span>'
+        elif total_failed == 0:
+            status_text = f'<span style="color: #28a745;">All {total_fixed} fixed</span>'
+        else:
+            status_text = f'<span style="color: #ffc107;">{total_fixed} fixed, {total_failed} failed</span>'
+
+        ran_at_display = bf.ran_at[:19].replace("T", " ") if bf.ran_at else "N/A"
+
+        return f"""
+            <div class="section">
+                <h2>Embedding Backfill (03:00)</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Items</th>
+                            <th>Chunks</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Found Missing</td>
+                            <td>{bf.items_found}</td>
+                            <td>{bf.chunks_found}</td>
+                            <td>{total_found}</td>
+                        </tr>
+                        <tr>
+                            <td>Fixed</td>
+                            <td>{bf.items_fixed}</td>
+                            <td>{bf.chunks_fixed}</td>
+                            <td>{total_fixed}</td>
+                        </tr>
+                        <tr>
+                            <td>Failed</td>
+                            <td>{bf.items_failed}</td>
+                            <td>{bf.chunks_failed}</td>
+                            <td>{total_failed}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p style="font-size: 12px; color: #999; margin-top: 10px;">
+                    Status: {status_text} | Ran at: {ran_at_display}
                 </p>
             </div>
         """

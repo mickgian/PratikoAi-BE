@@ -46,7 +46,7 @@ class TestCostCategory:
 
     def test_cost_category_enum_members(self):
         """Test that all expected cost categories exist."""
-        expected_categories = {"LLM_INFERENCE", "STORAGE", "COMPUTE", "BANDWIDTH", "THIRD_PARTY"}
+        expected_categories = {"LLM_INFERENCE", "EMBEDDING", "STORAGE", "COMPUTE", "BANDWIDTH", "THIRD_PARTY"}
         actual_categories = {member.name for member in CostCategory}
         assert actual_categories == expected_categories
 

@@ -81,8 +81,7 @@ class TestExpertProfileCreationOnRegistration:
     @pytest.mark.asyncio()
     @patch("app.api.v1.auth.email_service")
     @patch("app.api.v1.auth.db_service")
-    @patch("app.api.v1.auth.limiter")
-    async def test_creates_expert_profile_when_qa_role_assigned(self, _mock_limiter, mock_db, mock_email):
+    async def test_creates_expert_profile_when_qa_role_assigned(self, mock_db, mock_email):
         """ExpertProfile is created when registration assigns a QA role."""
         mock_email.send_welcome_email = AsyncMock(return_value=True)
         mock_user = MagicMock(id=1, email=FAKE_STAKEHOLDER)
@@ -106,15 +105,17 @@ class TestExpertProfileCreationOnRegistration:
             mock_at.return_value = MagicMock(access_token="at", expires_at="2099-01-01")
             mock_rt.return_value = MagicMock(access_token="rt")
 
-            await register_user(self._make_request(), user_data)
+            # Call __wrapped__ to bypass the @limiter.limit() decorator, which
+            # holds a closure over the real Limiter instance and interferes with
+            # pytest-asyncio's event-loop handling.
+            await register_user.__wrapped__(self._make_request(), user_data)
 
         mock_db.create_expert_profile.assert_called_once_with(1)
 
     @pytest.mark.asyncio()
     @patch("app.api.v1.auth.email_service")
     @patch("app.api.v1.auth.db_service")
-    @patch("app.api.v1.auth.limiter")
-    async def test_skips_expert_profile_for_regular_user(self, _mock_limiter, mock_db, mock_email):
+    async def test_skips_expert_profile_for_regular_user(self, mock_db, mock_email):
         """ExpertProfile is NOT created for regular (non-QA) registrations."""
         mock_email.send_welcome_email = AsyncMock(return_value=True)
         mock_user = MagicMock(id=2, email="regular@example.com")
@@ -138,6 +139,8 @@ class TestExpertProfileCreationOnRegistration:
             mock_at.return_value = MagicMock(access_token="at", expires_at="2099-01-01")
             mock_rt.return_value = MagicMock(access_token="rt")
 
-            await register_user(self._make_request(), user_data)
+            # Call __wrapped__ to bypass the @limiter.limit() decorator (see
+            # comment in the test above for rationale).
+            await register_user.__wrapped__(self._make_request(), user_data)
 
         mock_db.create_expert_profile.assert_not_called()

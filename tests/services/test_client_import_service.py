@@ -1,4 +1,4 @@
-"""DEV-313: Tests for ClientImportService — Excel and programmatic client import.
+"""DEV-313: Tests for ClientImportService — Excel, CSV, PDF and programmatic client import.
 
 Tests cover:
 - Happy path: import from Excel with valid data
@@ -10,8 +10,14 @@ Tests cover:
 - Import report (success count, error count, error details)
 - Edge case: row missing required fields is skipped with error
 - Error: ClientService ValueError (duplicate CF in DB) recorded in report
+- Happy path: import from CSV (comma and semicolon delimiters)
+- Error: CSV missing required columns
+- Happy path: import from PDF (mocked pdfplumber)
+- Error: PDF with no table
+- Error: PDF with missing required columns
 """
 
+import csv
 import io
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -24,6 +30,7 @@ from app.services.client_import_service import (
     ClientImportService,
     ImportReport,
     ImportRowError,
+    PreviewRow,
 )
 
 
@@ -496,3 +503,431 @@ class TestClientImportFromRecords:
 
         assert report.success_count == 1
         assert created_tipo == TipoCliente.SOCIETA
+
+
+# ------------------------------------------------------------------
+# Helper: build CSV bytes
+# ------------------------------------------------------------------
+
+
+def _make_csv_bytes(
+    rows: list[list[str]],
+    delimiter: str = ",",
+    encoding: str = "utf-8",
+) -> bytes:
+    """Build a CSV file in memory from header + data rows."""
+    buf = io.StringIO()
+    writer = csv.writer(buf, delimiter=delimiter)
+    for row in rows:
+        writer.writerow(row)
+    return buf.getvalue().encode(encoding)
+
+
+# ------------------------------------------------------------------
+# CSV import tests
+# ------------------------------------------------------------------
+
+
+class TestClientImportFromCsv:
+    """Test ClientImportService.import_from_csv()."""
+
+    @pytest.mark.asyncio
+    async def test_import_csv_happy_path(
+        self,
+        import_service: ClientImportService,
+        mock_db: AsyncMock,
+        studio_id,
+    ) -> None:
+        """Happy path: CSV with 2 valid rows imports both."""
+        header = ["codice_fiscale", "nome", "tipo_cliente", "comune", "provincia"]
+        row1 = ["RSSMRA85M01H501Z", "Mario Rossi", "persona_fisica", "Roma", "RM"]
+        row2 = ["BNCLGU90A01F205X", "Luigi Bianchi", "societa", "Milano", "MI"]
+        csv_bytes = _make_csv_bytes([header, row1, row2])
+
+        with patch.object(
+            import_service._client_service,
+            "create",
+            side_effect=_mock_client_service_create(studio_id),
+        ):
+            report = await import_service.import_from_csv(db=mock_db, studio_id=studio_id, file_content=csv_bytes)
+
+        assert report.total == 2
+        assert report.success_count == 2
+        assert report.error_count == 0
+
+    @pytest.mark.asyncio
+    async def test_import_csv_missing_required_columns(
+        self,
+        import_service: ClientImportService,
+        mock_db: AsyncMock,
+        studio_id,
+    ) -> None:
+        """Error: CSV missing required columns raises ValueError."""
+        header = ["codice_fiscale", "nome"]  # Missing comune, provincia
+        row1 = ["RSSMRA85M01H501Z", "Mario Rossi"]
+        csv_bytes = _make_csv_bytes([header, row1])
+
+        with pytest.raises(ValueError, match="[Cc]olonne.*mancanti"):
+            await import_service.import_from_csv(db=mock_db, studio_id=studio_id, file_content=csv_bytes)
+
+    @pytest.mark.asyncio
+    async def test_import_csv_semicolon_delimiter(
+        self,
+        import_service: ClientImportService,
+        mock_db: AsyncMock,
+        studio_id,
+    ) -> None:
+        """Edge case: Italian-style semicolon CSV delimiter parses correctly."""
+        header = ["codice_fiscale", "nome", "tipo_cliente", "comune", "provincia"]
+        row1 = ["RSSMRA85M01H501Z", "Mario Rossi", "persona_fisica", "Roma", "RM"]
+        csv_bytes = _make_csv_bytes([header, row1], delimiter=";")
+
+        with patch.object(
+            import_service._client_service,
+            "create",
+            side_effect=_mock_client_service_create(studio_id),
+        ):
+            report = await import_service.import_from_csv(db=mock_db, studio_id=studio_id, file_content=csv_bytes)
+
+        assert report.total == 1
+        assert report.success_count == 1
+        assert report.error_count == 0
+
+
+# ------------------------------------------------------------------
+# PDF import tests
+# ------------------------------------------------------------------
+
+
+def _mock_pdfplumber_with_table(table_data: list[list[str]]):
+    """Build a mock pdfplumber context that returns a single-page table."""
+    mock_page = MagicMock()
+    mock_page.extract_tables.return_value = [table_data]
+
+    mock_pdf = MagicMock()
+    mock_pdf.pages = [mock_page]
+    mock_pdf.__enter__ = MagicMock(return_value=mock_pdf)
+    mock_pdf.__exit__ = MagicMock(return_value=False)
+    return mock_pdf
+
+
+def _mock_pdfplumber_no_table():
+    """Build a mock pdfplumber context that returns no tables."""
+    mock_page = MagicMock()
+    mock_page.extract_tables.return_value = []
+
+    mock_pdf = MagicMock()
+    mock_pdf.pages = [mock_page]
+    mock_pdf.__enter__ = MagicMock(return_value=mock_pdf)
+    mock_pdf.__exit__ = MagicMock(return_value=False)
+    return mock_pdf
+
+
+class TestClientImportFromPdf:
+    """Test ClientImportService.import_from_pdf()."""
+
+    @pytest.mark.asyncio
+    async def test_import_pdf_happy_path(
+        self,
+        import_service: ClientImportService,
+        mock_db: AsyncMock,
+        studio_id,
+    ) -> None:
+        """Happy path: PDF with table containing 2 valid rows."""
+        table_data = [
+            ["codice_fiscale", "nome", "tipo_cliente", "comune", "provincia"],
+            ["RSSMRA85M01H501Z", "Mario Rossi", "persona_fisica", "Roma", "RM"],
+            ["BNCLGU90A01F205X", "Luigi Bianchi", "societa", "Milano", "MI"],
+        ]
+        mock_pdf = _mock_pdfplumber_with_table(table_data)
+
+        with (
+            patch("pdfplumber.open", return_value=mock_pdf),
+            patch.object(
+                import_service._client_service,
+                "create",
+                side_effect=_mock_client_service_create(studio_id),
+            ),
+        ):
+            report = await import_service.import_from_pdf(
+                db=mock_db, studio_id=studio_id, file_content=b"fake-pdf-bytes"
+            )
+
+        assert report.total == 2
+        assert report.success_count == 2
+        assert report.error_count == 0
+
+    @pytest.mark.asyncio
+    async def test_import_pdf_no_table(
+        self,
+        import_service: ClientImportService,
+        mock_db: AsyncMock,
+        studio_id,
+    ) -> None:
+        """Error: PDF with no table raises ValueError."""
+        mock_pdf = _mock_pdfplumber_no_table()
+
+        with (
+            patch("pdfplumber.open", return_value=mock_pdf),
+            pytest.raises(ValueError, match="[Nn]essuna tabella"),
+        ):
+            await import_service.import_from_pdf(db=mock_db, studio_id=studio_id, file_content=b"fake-pdf-bytes")
+
+    @pytest.mark.asyncio
+    async def test_import_pdf_missing_required_columns(
+        self,
+        import_service: ClientImportService,
+        mock_db: AsyncMock,
+        studio_id,
+    ) -> None:
+        """Error: PDF table missing required columns raises ValueError."""
+        table_data = [
+            ["codice_fiscale", "nome"],  # Missing comune, provincia
+            ["RSSMRA85M01H501Z", "Mario Rossi"],
+        ]
+        mock_pdf = _mock_pdfplumber_with_table(table_data)
+
+        with (
+            patch("pdfplumber.open", return_value=mock_pdf),
+            pytest.raises(ValueError, match="[Cc]olonne.*mancanti"),
+        ):
+            await import_service.import_from_pdf(db=mock_db, studio_id=studio_id, file_content=b"fake-pdf-bytes")
+
+
+# ------------------------------------------------------------------
+# Parsing tests (parse_* methods return headers + records)
+# ------------------------------------------------------------------
+
+
+class TestParseExcel:
+    """Test ClientImportService.parse_excel()."""
+
+    def test_parse_excel_returns_headers_and_records(
+        self, import_service: ClientImportService, valid_excel_bytes: bytes
+    ) -> None:
+        """parse_excel returns original headers and list of records."""
+        headers, records = import_service.parse_excel(valid_excel_bytes)
+        assert len(headers) == 10
+        assert len(records) == 2
+        # Headers preserve original case
+        assert headers[0].lower() == "codice_fiscale"
+        # Records use lowered keys
+        assert "codice_fiscale" in records[0]
+        assert records[0]["codice_fiscale"] == "RSSMRA85M01H501Z"
+
+    def test_parse_excel_empty_file(self, import_service: ClientImportService, empty_excel_bytes: bytes) -> None:
+        """parse_excel with header-only file returns headers and empty records."""
+        headers, records = import_service.parse_excel(empty_excel_bytes)
+        assert len(headers) == 5
+        assert len(records) == 0
+
+
+class TestParseCsv:
+    """Test ClientImportService.parse_csv()."""
+
+    def test_parse_csv_returns_headers_and_records(self, import_service: ClientImportService) -> None:
+        """parse_csv returns original headers and list of records."""
+        header = ["codice_fiscale", "nome", "tipo_cliente", "comune", "provincia"]
+        row1 = ["RSSMRA85M01H501Z", "Mario Rossi", "persona_fisica", "Roma", "RM"]
+        csv_bytes = _make_csv_bytes([header, row1])
+
+        headers, records = import_service.parse_csv(csv_bytes)
+        assert len(headers) == 5
+        assert len(records) == 1
+        assert records[0]["nome"] == "Mario Rossi"
+
+    def test_parse_csv_empty_file(self, import_service: ClientImportService) -> None:
+        """parse_csv with empty content returns empty lists."""
+        headers, records = import_service.parse_csv(b"")
+        assert headers == []
+        assert records == []
+
+
+# ------------------------------------------------------------------
+# validate_records tests
+# ------------------------------------------------------------------
+
+
+class TestValidateRecords:
+    """Test ClientImportService.validate_records()."""
+
+    def test_validate_valid_records(self, import_service: ClientImportService) -> None:
+        """Valid records return is_valid=True with no errors."""
+        records = [
+            {
+                "codice_fiscale": "RSSMRA85M01H501Z",
+                "nome": "Mario Rossi",
+                "comune": "Roma",
+                "provincia": "RM",
+            },
+        ]
+        result = import_service.validate_records(records)
+        assert len(result) == 1
+        assert isinstance(result[0], PreviewRow)
+        assert result[0].is_valid is True
+        assert result[0].errors == []
+
+    def test_validate_missing_required_fields(self, import_service: ClientImportService) -> None:
+        """Records with missing required fields are flagged."""
+        records = [
+            {"codice_fiscale": "RSSMRA85M01H501Z", "nome": "Mario Rossi"},
+        ]
+        result = import_service.validate_records(records)
+        assert result[0].is_valid is False
+        assert len(result[0].errors) > 0
+        assert "mancanti" in result[0].errors[0].lower()
+
+    def test_validate_duplicate_cf_in_batch(self, import_service: ClientImportService) -> None:
+        """Duplicate codice_fiscale within a batch is flagged."""
+        records = [
+            {
+                "codice_fiscale": "RSSMRA85M01H501Z",
+                "nome": "Mario",
+                "comune": "Roma",
+                "provincia": "RM",
+            },
+            {
+                "codice_fiscale": "RSSMRA85M01H501Z",
+                "nome": "Mario Dup",
+                "comune": "Roma",
+                "provincia": "RM",
+            },
+        ]
+        result = import_service.validate_records(records)
+        assert result[0].is_valid is True
+        assert result[1].is_valid is False
+        assert "duplicato" in result[1].errors[0].lower()
+
+    def test_validate_with_column_mapping(self, import_service: ClientImportService) -> None:
+        """Column mapping remaps keys before validation."""
+        records = [
+            {
+                "cf": "RSSMRA85M01H501Z",
+                "ragione_sociale": "Mario Rossi",
+                "citta": "Roma",
+                "prov": "RM",
+            },
+        ]
+        mapping = {
+            "cf": "codice_fiscale",
+            "ragione_sociale": "nome",
+            "citta": "comune",
+            "prov": "provincia",
+        }
+        result = import_service.validate_records(records, column_mapping=mapping)
+        assert result[0].is_valid is True
+
+
+# ------------------------------------------------------------------
+# Column mapping + created_client_ids tests
+# ------------------------------------------------------------------
+
+
+class TestColumnMappingAndCreatedIds:
+    """Test column mapping in import_from_records and created_client_ids tracking."""
+
+    @pytest.mark.asyncio
+    async def test_import_with_column_mapping(
+        self,
+        import_service: ClientImportService,
+        mock_db: AsyncMock,
+        studio_id,
+    ) -> None:
+        """Column mapping remaps record keys before import."""
+        records = [
+            {
+                "cf": "RSSMRA85M01H501Z",
+                "ragione_sociale": "Mario Rossi",
+                "tipo": "persona_fisica",
+                "citta": "Roma",
+                "prov": "RM",
+            },
+        ]
+        mapping = {
+            "cf": "codice_fiscale",
+            "ragione_sociale": "nome",
+            "tipo": "tipo_cliente",
+            "citta": "comune",
+            "prov": "provincia",
+        }
+
+        with patch.object(
+            import_service._client_service,
+            "create",
+            side_effect=_mock_client_service_create(studio_id),
+        ):
+            report = await import_service.import_from_records(
+                db=mock_db,
+                studio_id=studio_id,
+                records=records,
+                column_mapping=mapping,
+            )
+
+        assert report.total == 1
+        assert report.success_count == 1
+        assert report.error_count == 0
+
+    @pytest.mark.asyncio
+    async def test_created_client_ids_tracked(
+        self,
+        import_service: ClientImportService,
+        mock_db: AsyncMock,
+        studio_id,
+    ) -> None:
+        """Successful imports track created client IDs."""
+        records = [
+            {
+                "codice_fiscale": "RSSMRA85M01H501Z",
+                "nome": "Mario Rossi",
+                "tipo_cliente": "persona_fisica",
+                "comune": "Roma",
+                "provincia": "RM",
+            },
+            {
+                "codice_fiscale": "BNCLGU90A01F205X",
+                "nome": "Luigi Bianchi",
+                "tipo_cliente": "societa",
+                "comune": "Milano",
+                "provincia": "MI",
+            },
+        ]
+
+        with patch.object(
+            import_service._client_service,
+            "create",
+            side_effect=_mock_client_service_create(studio_id),
+        ):
+            report = await import_service.import_from_records(
+                db=mock_db,
+                studio_id=studio_id,
+                records=records,
+            )
+
+        assert report.success_count == 2
+        assert len(report.created_client_ids) == 2
+        assert report.created_client_ids == [1, 2]
+
+    @pytest.mark.asyncio
+    async def test_created_client_ids_empty_on_errors(
+        self,
+        import_service: ClientImportService,
+        mock_db: AsyncMock,
+        studio_id,
+    ) -> None:
+        """Failed imports don't add to created_client_ids."""
+        records = [
+            {
+                "codice_fiscale": "RSSMRA85M01H501Z",
+                "nome": "Mario Rossi",
+                # Missing comune and provincia
+            },
+        ]
+
+        report = await import_service.import_from_records(
+            db=mock_db,
+            studio_id=studio_id,
+            records=records,
+        )
+
+        assert report.error_count == 1
+        assert len(report.created_client_ids) == 0

@@ -103,6 +103,27 @@ class NotificationTriggerService:
             reference_type="regulation",
         )
 
+    async def trigger_profilo_incompleto(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: int,
+        studio_id: UUID,
+        clients_count: int,
+        description: str,
+    ) -> None:
+        """Trigger PROFILO_INCOMPLETO notification after client import."""
+        await self._safe_create(
+            db,
+            user_id=user_id,
+            studio_id=studio_id,
+            notification_type=NotificationType.PROFILO_INCOMPLETO,
+            priority=NotificationPriority.MEDIUM,
+            title=f"{clients_count} clienti importati necessitano del profilo aziendale",
+            description=description,
+            reference_type="client_import",
+        )
+
     async def _safe_create(
         self,
         db: AsyncSession,
@@ -112,6 +133,7 @@ class NotificationTriggerService:
         notification_type: NotificationType,
         priority: NotificationPriority,
         title: str,
+        description: str | None = None,
         reference_id: UUID | None = None,
         reference_type: str | None = None,
     ) -> None:
@@ -140,6 +162,7 @@ class NotificationTriggerService:
                 notification_type=notification_type,
                 priority=priority,
                 title=title,
+                description=description,
                 reference_id=reference_id,
                 reference_type=reference_type,
             )

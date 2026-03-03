@@ -83,3 +83,58 @@ class ClientListResponse(BaseModel):
     total: int
     offset: int
     limit: int
+
+
+class ClientImportErrorResponse(BaseModel):
+    """Single row-level import error."""
+
+    row_number: int
+    field: str | None = None
+    message: str
+
+
+class ImportPreviewRow(BaseModel):
+    """A single validated preview row."""
+
+    row_number: int
+    data: dict[str, str | None]
+    is_valid: bool
+    errors: list[str]
+
+
+class ImportPreviewResponse(BaseModel):
+    """Server-side preview of an uploaded import file."""
+
+    detected_columns: list[str]
+    total_rows: int
+    valid_rows: int
+    invalid_rows: int
+    rows: list[ImportPreviewRow]
+
+
+class ClientMissingFieldWarning(BaseModel):
+    """Warning about a missing field on an imported client."""
+
+    client_id: int
+    client_nome: str
+    field: str
+    priority: str  # "critico" | "importante"
+    reason: str
+
+
+class ClientImportWarningsSummary(BaseModel):
+    """Summary of post-import data completeness warnings."""
+
+    clients_without_profile: int
+    clients_missing_partita_iva: int
+    missing_fields: list[ClientMissingFieldWarning]
+
+
+class ClientImportResponse(BaseModel):
+    """Summary of a batch client import."""
+
+    total: int
+    success_count: int
+    error_count: int
+    errors: list[ClientImportErrorResponse] = Field(default_factory=list)
+    warnings: ClientImportWarningsSummary | None = None

@@ -334,7 +334,7 @@ export function LabelingInstructions() {
             <h3 className="font-semibold text-gray-900 mb-2">
               Consigli per l&apos;etichettatura
             </h3>
-            <ul className="space-y-1.5 list-disc list-inside text-gray-600">
+            <ul className="space-y-1.5 text-gray-600">
               <li>Leggi attentamente l&apos;intera query prima di scegliere</li>
               <li>
                 Se la query contiene un riferimento normativo specifico (legge,

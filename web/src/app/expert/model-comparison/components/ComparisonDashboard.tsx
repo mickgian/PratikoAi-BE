@@ -436,7 +436,7 @@ export function ComparisonDashboard() {
                   <p className="font-medium mb-1">
                     Come funziona il confronto:
                   </p>
-                  <ul className="list-disc list-inside space-y-0.5 text-blue-700">
+                  <ul className="space-y-0.5 text-blue-700">
                     <li>
                       I confronti sono <strong>permanenti</strong>: puoi tornare
                       quando vuoi

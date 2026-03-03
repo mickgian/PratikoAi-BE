@@ -200,13 +200,13 @@ export function Leaderboard({
               <p className="font-medium text-gray-700 mb-1">
                 Come viene calcolato:
               </p>
-              <ul className="list-disc list-inside space-y-1 text-gray-600">
+              <ul className="space-y-1 text-gray-600">
                 <li>
                   Ogni modello parte da <strong>1500</strong> (Elo predefinito)
                 </li>
                 <li>
                   Quando voti per un vincitore:
-                  <ul className="list-disc list-inside ml-4 mt-1">
+                  <ul className="ml-4 mt-1">
                     <li>Il vincitore guadagna punti (+16 a +32)</li>
                     <li>I perdenti perdono punti (-16 a -32)</li>
                   </ul>
@@ -217,7 +217,7 @@ export function Leaderboard({
 
             <div>
               <p className="font-medium text-gray-700 mb-1">La formula:</p>
-              <ul className="list-disc list-inside space-y-1 text-gray-600">
+              <ul className="space-y-1 text-gray-600">
                 <li>
                   Se un modello con punteggio alto batte uno con punteggio basso
                   → <span className="text-green-600">guadagno piccolo</span>{' '}

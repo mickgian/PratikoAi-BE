@@ -100,7 +100,7 @@ describe('useDashboard', () => {
     const { result, rerender } = renderHook(
       ({ period }: { period: 'week' | 'month' | 'year' }) =>
         useDashboard(period),
-      { initialProps: { period: 'month' as const } }
+      { initialProps: { period: 'month' as 'week' | 'month' | 'year' } }
     );
 
     await waitFor(() => {

@@ -218,12 +218,6 @@ export function ChatHeader({ onMobileMenuToggle }: ChatHeaderProps = {}) {
                   testId: 'menu-dashboard-analitica',
                 },
                 {
-                  href: '/matching-normativo',
-                  icon: Scale,
-                  label: 'Matching Normativo',
-                  testId: 'menu-matching-normativo',
-                },
-                {
                   href: '/database-clienti',
                   icon: Users2,
                   label: 'Database Clienti',
@@ -234,6 +228,12 @@ export function ChatHeader({ onMobileMenuToggle }: ChatHeaderProps = {}) {
                   icon: Mail,
                   label: 'Gestione Comunicazioni',
                   testId: 'menu-gestione-comunicazioni',
+                },
+                {
+                  href: '/matching-normativo',
+                  icon: Scale,
+                  label: 'Matching Normativo',
+                  testId: 'menu-matching-normativo',
                 },
                 {
                   href: '/procedure-interattive',

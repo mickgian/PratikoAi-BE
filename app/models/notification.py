@@ -20,6 +20,7 @@ class NotificationType(StrEnum):
     MATCH = "match"
     COMUNICAZIONE = "comunicazione"
     NORMATIVA = "normativa"
+    PROFILO_INCOMPLETO = "profilo_incompleto"
 
 
 class NotificationPriority(StrEnum):

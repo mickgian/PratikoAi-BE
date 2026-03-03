@@ -22,6 +22,8 @@ import {
 import type { ReleaseNotePublic, ReleaseNote } from '@/lib/api/release-notes';
 import { UsageDialog } from './UsageDialog';
 import { NovitaDialog } from './NovitaDialog';
+import { ProcedureSelectorDialog } from './ProcedureSelectorDialog';
+import { listProcedure, type ProceduraResponse } from '@/lib/api/procedure';
 import { ConsigliDialog } from './ConsigliDialog';
 import { getConsigliReport, type ConsigliReport } from '@/lib/api/consigli';
 
@@ -142,6 +144,13 @@ export function ChatInputArea() {
     notes: ReleaseNotePublic[] | ReleaseNote[];
     error: string | null;
     environment?: string;
+  } | null>(null);
+
+  // Procedura dialog state (DEV-402)
+  const [proceduraDialog, setProceduraDialog] = useState<{
+    procedures: ProceduraResponse[];
+    error: string | null;
+    initialQuery?: string;
   } | null>(null);
 
   // Consigli dialog state (ADR-038)
@@ -303,6 +312,25 @@ export function ChatInputArea() {
           notes: [],
           error:
             'Errore nel recupero delle novità. Riprova tra qualche istante.',
+        });
+      }
+      return;
+    }
+
+    // DEV-402: /procedura [query] — show procedure catalog inline
+    if (cmd === '/procedura' || cmd.startsWith('/procedura ')) {
+      const query =
+        cmd === '/procedura'
+          ? undefined
+          : content.trim().slice('/procedura '.length).trim() || undefined;
+      try {
+        const procedures = await listProcedure(query);
+        setProceduraDialog({ procedures, error: null, initialQuery: query });
+      } catch {
+        setProceduraDialog({
+          procedures: [],
+          error:
+            'Errore nel recupero delle procedure. Riprova tra qualche istante.',
         });
       }
       return;
@@ -579,6 +607,14 @@ export function ChatInputArea() {
               console.error('Errore nel salvataggio delle note utente');
             }
           }}
+        />
+      )}
+      {proceduraDialog && (
+        <ProcedureSelectorDialog
+          procedures={proceduraDialog.procedures}
+          error={proceduraDialog.error}
+          initialQuery={proceduraDialog.initialQuery}
+          onClose={() => setProceduraDialog(null)}
         />
       )}
       <DragDropZone

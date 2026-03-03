@@ -74,6 +74,7 @@ from app.api.v1.success_criteria import router as success_criteria_router
 # Wave 6: Tracking and Unsubscribe (DEV-412, DEV-415)
 from app.api.v1.tracking import router as tracking_router
 from app.api.v1.unsubscribe import router as unsubscribe_router
+from app.api.v1.users import router as users_router
 from app.api.v1.websocket import router as websocket_router
 from app.core.logging import logger
 
@@ -144,6 +145,7 @@ api_router.include_router(settings_router)  # /settings prefix (DEV-441)
 
 # Wave 11: Hybrid Email Sending (DEV-444, ADR-034)
 api_router.include_router(email_config_router)  # Includes /email-config prefix from router
+api_router.include_router(users_router)  # Includes /users prefix from router
 
 
 @api_router.get("/health")

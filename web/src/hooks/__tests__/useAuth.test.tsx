@@ -15,6 +15,7 @@ jest.mock('@/lib/api', () => ({
   apiClient: {
     isAuthenticated: jest.fn(),
     logout: jest.fn(),
+    fetchUserProfile: jest.fn().mockResolvedValue(undefined),
   },
   authEvents: {
     on: jest.fn(() => jest.fn()), // Return unsubscribe function

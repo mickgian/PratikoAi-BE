@@ -11,6 +11,7 @@
 
 import { type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { Toaster } from 'sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 interface ProvidersProps {
@@ -49,6 +50,7 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <AuthProvider onSessionExpired={handleSessionExpired}>
       {children}
+      <Toaster position="top-right" richColors />
     </AuthProvider>
   );
 }

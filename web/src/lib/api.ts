@@ -166,6 +166,17 @@ export interface OAuthUserInfo {
   provider: string;
 }
 
+export interface UserProfile {
+  id: number;
+  email: string;
+  name?: string;
+  avatar_url?: string;
+  provider: string;
+  role: string;
+  studio_id: string | null;
+  billing_plan_slug: string;
+}
+
 // Attachment info returned from backend for persisted messages
 export interface APIAttachmentInfo {
   id: string;
@@ -398,6 +409,8 @@ class ApiClient {
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('current_session_id');
       localStorage.removeItem('current_session_token');
+      localStorage.removeItem('studio_id');
+      localStorage.removeItem('user_id');
 
       // Clear auth status cookie (set expiry in past)
       document.cookie = 'pratikoai_auth=; path=/; SameSite=Lax; max-age=0';
@@ -421,6 +434,9 @@ class ApiClient {
 
       // Store tokens after successful registration
       this.storeTokens(result.access_token, result.refresh_token);
+
+      // Fetch user profile to get studio_id and user_id
+      await this.fetchUserProfile();
 
       // Emit login event for auth state subscribers
       authEvents.emit('login', { email: data.email });
@@ -459,6 +475,9 @@ class ApiClient {
 
       // Store tokens after successful login
       this.storeTokens(result.access_token, result.refresh_token);
+
+      // Fetch user profile to get studio_id and user_id
+      await this.fetchUserProfile();
 
       // Emit login event for auth state subscribers
       authEvents.emit('login', { email });
@@ -614,6 +633,25 @@ class ApiClient {
   }
 
   /**
+   * Fetch user profile from GET /users/me and store studio_id + user_id.
+   * Called after login/register/OAuth to populate profile data.
+   */
+  async fetchUserProfile(): Promise<UserProfile | null> {
+    try {
+      const profile = await this.makeRequest<UserProfile>('/api/v1/users/me');
+      if (typeof window !== 'undefined') {
+        if (profile.studio_id) {
+          localStorage.setItem('studio_id', profile.studio_id);
+        }
+        localStorage.setItem('user_id', String(profile.id));
+      }
+      return profile;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Initiate Google OAuth login - get authorization URL
    */
   async initiateGoogleLogin(): Promise<OAuthLoginResponse> {
@@ -674,6 +712,9 @@ class ApiClient {
 
       // Store tokens after successful OAuth login
       this.storeTokens(result.access_token, result.refresh_token);
+
+      // Fetch user profile to get studio_id and user_id
+      await this.fetchUserProfile();
 
       // Emit login event for auth state subscribers (email not available from OAuth response)
       authEvents.emit('login', {});

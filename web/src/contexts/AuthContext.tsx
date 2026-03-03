@@ -43,6 +43,10 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   /** Whether auth state is being determined (initial load) */
   isLoading: boolean;
+  /** Current user's studio_id (null if not yet loaded or no studio) */
+  studioId: string | null;
+  /** Current user's user_id (null if not yet loaded) */
+  userId: number | null;
   /** Logout the current user */
   logout: () => Promise<void>;
 }
@@ -69,13 +73,29 @@ export function AuthProvider({
 }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [studioId, setStudioId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
 
   // Check initial auth state on mount
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
         const authenticated = apiClient.isAuthenticated();
         setIsAuthenticated(authenticated);
+        // Load stored profile data
+        if (authenticated && typeof window !== 'undefined') {
+          let currentStudioId = localStorage.getItem('studio_id');
+          const storedUserId = localStorage.getItem('user_id');
+          setUserId(storedUserId ? parseInt(storedUserId, 10) : null);
+
+          // If studio_id is missing, fetch profile from backend
+          // (triggers auto-provisioning and populates localStorage)
+          if (!currentStudioId) {
+            await apiClient.fetchUserProfile();
+            currentStudioId = localStorage.getItem('studio_id');
+          }
+          setStudioId(currentStudioId);
+        }
       } catch (error) {
         console.error(
           '[AuthContext] Error checking initial auth state:',
@@ -96,18 +116,28 @@ export function AuthProvider({
     const unsubLogin = authEvents.on('login', () => {
       console.log('[AuthContext] Login event received');
       setIsAuthenticated(true);
+      // Reload profile data from localStorage (set by fetchUserProfile)
+      if (typeof window !== 'undefined') {
+        setStudioId(localStorage.getItem('studio_id'));
+        const storedUserId = localStorage.getItem('user_id');
+        setUserId(storedUserId ? parseInt(storedUserId, 10) : null);
+      }
     });
 
     // Handle logout events
     const unsubLogout = authEvents.on('logout', payload => {
       console.log('[AuthContext] Logout event received:', payload);
       setIsAuthenticated(false);
+      setStudioId(null);
+      setUserId(null);
     });
 
     // Handle session expired events
     const unsubSessionExpired = authEvents.on('session-expired', payload => {
       console.log('[AuthContext] Session expired event received:', payload);
       setIsAuthenticated(false);
+      setStudioId(null);
+      setUserId(null);
 
       // Call the onSessionExpired callback if provided
       if (onSessionExpired) {
@@ -140,9 +170,11 @@ export function AuthProvider({
     () => ({
       isAuthenticated,
       isLoading,
+      studioId,
+      userId,
       logout,
     }),
-    [isAuthenticated, isLoading, logout]
+    [isAuthenticated, isLoading, studioId, userId, logout]
   );
 
   return (

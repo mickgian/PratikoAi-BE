@@ -280,6 +280,12 @@ class ComparisonSessionDetail(BaseModel):
     vote_timestamp: datetime | None = None
 
 
+class UnevaluatedSessionsResponse(BaseModel):
+    """Response containing all unevaluated comparison sessions."""
+
+    sessions: list[ComparisonSessionDetail]
+
+
 class ExpertEvaluationRequest(BaseModel):
     """Request to submit expert evaluation on a comparison response."""
 

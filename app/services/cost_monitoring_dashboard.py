@@ -471,7 +471,8 @@ class CostMonitoringDashboard:
             "by_model": by_model,
             "by_complexity": by_complexity,
             "daily_trend": daily_trend,
-            "target_cost_per_user_eur": 2.00,
+            # ADR-027: Base plan LLM cost cap (internal metric, not user-facing)
+            "target_cost_per_user_eur": 10.00,
         }
 
 

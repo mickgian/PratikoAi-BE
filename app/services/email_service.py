@@ -268,15 +268,40 @@ class EmailService:
         else:
             return "health-poor"
 
-    async def send_welcome_email(self, recipient_email: str, password: str) -> bool:
-        """Send welcome email with credentials after registration."""
+    async def send_welcome_email(self, recipient_email: str, verification_url: str | None = None) -> bool:
+        """Send welcome email after registration (no plaintext password - P0 security fix).
+
+        Args:
+            recipient_email: The new user's email
+            verification_url: Optional URL for email verification
+        """
         try:
             login_url = os.getenv("FRONTEND_URL", "http://localhost:3000") + "/signin"
             env_label = {
                 Environment.QA: " QA - Test environment",
                 Environment.DEVELOPMENT: " DEV",
             }.get(settings.ENVIRONMENT, "")
-            subject = f"Benvenuto su PratikoAI{env_label} - Le tue credenziali"
+            subject = f"Benvenuto su PratikoAI{env_label} - Conferma il tuo account"
+
+            verify_block = ""
+            if verification_url:
+                verify_block = f"""
+      <p style="text-align:center;margin:30px 0;">
+        <a href="{verification_url}"
+           style="background:#667eea;color:#fff;padding:12px 30px;border-radius:6px;
+                  text-decoration:none;font-weight:bold;">Verifica la tua Email</a>
+      </p>
+      <p style="text-align:center;color:#6c757d;font-size:13px;">
+        Il link scade tra 24 ore. Se non hai richiesto questo account, ignora questa email.
+      </p>"""
+            else:
+                verify_block = f"""
+      <p style="text-align:center;margin:30px 0;">
+        <a href="{login_url}"
+           style="background:#667eea;color:#fff;padding:12px 30px;border-radius:6px;
+                  text-decoration:none;font-weight:bold;">Accedi a PratikoAI</a>
+      </p>"""
+
             html_content = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -289,26 +314,8 @@ class EmailService:
     </div>
     <div style="padding:30px;">
       <p>Ciao,</p>
-      <p>Il tuo account è stato creato con successo. Ecco le tue credenziali di accesso:</p>
-      <table style="width:100%;border-collapse:collapse;margin:20px 0;">
-        <tr>
-          <td style="padding:10px;border:1px solid #ddd;font-weight:bold;background:#f8f9fa;">
-            Email (username)
-          </td>
-          <td style="padding:10px;border:1px solid #ddd;">{recipient_email}</td>
-        </tr>
-        <tr>
-          <td style="padding:10px;border:1px solid #ddd;font-weight:bold;background:#f8f9fa;">
-            Password
-          </td>
-          <td style="padding:10px;border:1px solid #ddd;">{password}</td>
-        </tr>
-      </table>
-      <p style="text-align:center;margin:30px 0;">
-        <a href="{login_url}"
-           style="background:#667eea;color:#fff;padding:12px 30px;border-radius:6px;
-                  text-decoration:none;font-weight:bold;">Accedi a PratikoAI</a>
-      </p>
+      <p>Il tuo account &egrave; stato creato con successo con l'email <strong>{recipient_email}</strong>.</p>
+      {verify_block}
     </div>
     <div style="text-align:center;color:#6c757d;font-size:12px;padding:15px;
                 border-top:1px solid #dee2e6;">
@@ -328,6 +335,147 @@ class EmailService:
                 recipient_email,
                 str(e),
             )
+            return False
+
+    async def send_email_verification(self, recipient_email: str, verification_url: str) -> bool:
+        """Send email verification link (P0)."""
+        try:
+            env_label = {
+                Environment.QA: " QA",
+                Environment.DEVELOPMENT: " DEV",
+            }.get(settings.ENVIRONMENT, "")
+            subject = f"PratikoAI{env_label} - Verifica la tua email"
+            html_content = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;
+              box-shadow:0 2px 4px rgba(0,0,0,.1);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                color:#fff;padding:30px;text-align:center;">
+      <h1 style="margin:0;">Verifica la tua Email</h1>
+    </div>
+    <div style="padding:30px;">
+      <p>Ciao,</p>
+      <p>Clicca sul pulsante qui sotto per verificare il tuo indirizzo email:</p>
+      <p style="text-align:center;margin:30px 0;">
+        <a href="{verification_url}"
+           style="background:#667eea;color:#fff;padding:12px 30px;border-radius:6px;
+                  text-decoration:none;font-weight:bold;">Verifica Email</a>
+      </p>
+      <p style="color:#6c757d;font-size:13px;">
+        Il link scade tra 24 ore. Se non hai richiesto la verifica, ignora questa email.
+      </p>
+    </div>
+    <div style="text-align:center;color:#6c757d;font-size:12px;padding:15px;
+                border-top:1px solid #dee2e6;">
+      PratikoAI
+    </div>
+  </div>
+</body>
+</html>"""
+            return await self._send_email(
+                recipient_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+            )
+        except Exception as e:
+            self.logger.error("verification_email_failed recipient=%s error=%s", recipient_email, str(e))
+            return False
+
+    async def send_password_reset_email(self, recipient_email: str, reset_url: str) -> bool:
+        """Send password reset link (P0)."""
+        try:
+            env_label = {
+                Environment.QA: " QA",
+                Environment.DEVELOPMENT: " DEV",
+            }.get(settings.ENVIRONMENT, "")
+            subject = f"PratikoAI{env_label} - Reimposta la tua password"
+            html_content = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;
+              box-shadow:0 2px 4px rgba(0,0,0,.1);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                color:#fff;padding:30px;text-align:center;">
+      <h1 style="margin:0;">Reimposta la tua Password</h1>
+    </div>
+    <div style="padding:30px;">
+      <p>Ciao,</p>
+      <p>Abbiamo ricevuto una richiesta di reimpostazione password per il tuo account.</p>
+      <p style="text-align:center;margin:30px 0;">
+        <a href="{reset_url}"
+           style="background:#667eea;color:#fff;padding:12px 30px;border-radius:6px;
+                  text-decoration:none;font-weight:bold;">Reimposta Password</a>
+      </p>
+      <p style="color:#6c757d;font-size:13px;">
+        Il link scade tra 1 ora. Se non hai richiesto il reset, ignora questa email.
+        La tua password rimarr&agrave; invariata.
+      </p>
+    </div>
+    <div style="text-align:center;color:#6c757d;font-size:12px;padding:15px;
+                border-top:1px solid #dee2e6;">
+      PratikoAI
+    </div>
+  </div>
+</body>
+</html>"""
+            return await self._send_email(
+                recipient_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+            )
+        except Exception as e:
+            self.logger.error("password_reset_email_failed recipient=%s error=%s", recipient_email, str(e))
+            return False
+
+    async def send_2fa_otp_email(self, recipient_email: str, otp_code: str) -> bool:
+        """Send a 2FA OTP code via email (fallback when authenticator is unavailable) (P2)."""
+        try:
+            env_label = {
+                Environment.QA: " QA",
+                Environment.DEVELOPMENT: " DEV",
+            }.get(settings.ENVIRONMENT, "")
+            subject = f"PratikoAI{env_label} - Codice di verifica"
+            html_content = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;
+              box-shadow:0 2px 4px rgba(0,0,0,.1);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                color:#fff;padding:30px;text-align:center;">
+      <h1 style="margin:0;">Codice di Verifica</h1>
+    </div>
+    <div style="padding:30px;">
+      <p>Ciao,</p>
+      <p>Ecco il tuo codice di verifica a due fattori:</p>
+      <div style="text-align:center;margin:30px 0;">
+        <span style="font-size:36px;font-weight:bold;letter-spacing:8px;
+                     color:#667eea;background:#f8f9fa;padding:15px 25px;
+                     border-radius:8px;border:2px dashed #667eea;">
+          {otp_code}
+        </span>
+      </div>
+      <p style="color:#6c757d;font-size:13px;text-align:center;">
+        Il codice scade tra 10 minuti. Non condividerlo con nessuno.
+      </p>
+    </div>
+    <div style="text-align:center;color:#6c757d;font-size:12px;padding:15px;
+                border-top:1px solid #dee2e6;">
+      PratikoAI
+    </div>
+  </div>
+</body>
+</html>"""
+            return await self._send_email(
+                recipient_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+            )
+        except Exception as e:
+            self.logger.error("2fa_otp_email_failed recipient=%s error=%s", recipient_email, str(e))
             return False
 
     async def _send_email(self, recipient_email: str, subject: str, html_content: str) -> bool:

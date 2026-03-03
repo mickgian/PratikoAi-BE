@@ -299,9 +299,11 @@ async def get_cost_breakdown(
                     "projected_monthly_cost_eur": cost_breakdown.total / max(1, (end_date - start_date).days) * 30,
                 },
                 "cost_efficiency": {
-                    "target_monthly_cost_eur": 2.00,
+                    # ADR-027: Plan-based cost caps (Base €10, Pro €30, Premium €60).
+                    # Target is the Base plan LLM cost cap as conservative baseline.
+                    "target_monthly_cost_eur": 10.00,
                     "current_efficiency": min(
-                        100, (2.00 / (cost_breakdown.total / max(1, (end_date - start_date).days) * 30)) * 100
+                        100, (10.00 / (cost_breakdown.total / max(1, (end_date - start_date).days) * 30)) * 100
                     )
                     if cost_breakdown.total > 0
                     else 100,

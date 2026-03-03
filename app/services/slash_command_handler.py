@@ -1,8 +1,8 @@
-"""DEV-402: /procedura Slash Command Handler.
+"""Slash Command Handler (DEV-402, ADR-038).
 
-Parses `/procedura [query]` from chat input. Shows searchable procedure
-list or renders specific procedure in read-only mode. No ProceduraProgress
-record created (generic consultation mode).
+Parses slash commands from chat input:
+- /procedura [query] — Shows searchable procedure list (DEV-402)
+- /consigli — Generates insight report (ADR-038)
 """
 
 import re
@@ -16,6 +16,8 @@ from app.services.procedura_service import procedura_service
 
 # Pattern: /procedura [optional query]
 SLASH_PROCEDURA_RE = re.compile(r"^/procedura(?:\s+(.+))?$", re.IGNORECASE)
+# Pattern: /consigli (no arguments)
+SLASH_CONSIGLI_RE = re.compile(r"^/consigli$", re.IGNORECASE)
 
 
 class SlashCommandHandler:
@@ -33,6 +35,9 @@ class SlashCommandHandler:
         if match:
             query = (match.group(1) or "").strip()
             return {"command": "procedura", "query": query}
+
+        if SLASH_CONSIGLI_RE.match(text):
+            return {"command": "consigli"}
 
         return None
 

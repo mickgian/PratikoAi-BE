@@ -1,7 +1,8 @@
 """Usage tracking service for cost monitoring and optimization.
 
 This module provides comprehensive usage tracking, cost calculation,
-and budget management to maintain the €2/user/month target.
+and budget management. Plan-based cost caps are defined in
+config/billing_plans.yaml (ADR-027: Base €10, Pro €30, Premium €60).
 """
 
 import json
@@ -71,9 +72,12 @@ class UsageTracker:
 
     def __init__(self):
         """Initialize the usage tracker."""
+        # Internal admin alert thresholds (not user-facing).
+        # Plan-specific cost limits are enforced by RollingWindowService
+        # and BillingPlanService (ADR-027: Base €25, Pro €75, Premium €150).
         self._alert_thresholds = {
-            "daily_cost": 0.10,  # €0.10 per day warning
-            "monthly_cost": 2.00,  # €2.00 per month target
+            "daily_cost": 0.33,  # €0.33/day ≈ €10/month (Base plan LLM cap)
+            "monthly_cost": 10.00,  # €10.00/month (Base plan LLM cost cap)
             "hourly_requests": 50,  # Rate limit warning
         }
 
@@ -513,8 +517,8 @@ class UsageTracker:
                 quota = UsageQuota(
                     user_id=user_id,
                     daily_requests_limit=100,
-                    daily_cost_limit_eur=0.10,
-                    monthly_cost_limit_eur=2.00,
+                    daily_cost_limit_eur=0.33,  # ADR-027: Base plan ~€10/month ÷ 30 days
+                    monthly_cost_limit_eur=10.00,  # ADR-027: Base plan LLM cost cap
                     daily_token_limit=50000,
                     monthly_token_limit=1000000,
                 )
@@ -888,8 +892,9 @@ class UsageTracker:
                 "total_cost_eur": total_cost,
                 "avg_cost_per_user_eur": avg_cost_per_user,
                 "model_usage": model_usage,
-                "target_cost_per_user_eur": 2.00,
-                "cost_efficiency": (2.00 - avg_cost_per_user) / 2.00 * 100 if avg_cost_per_user < 2.00 else 0,
+                # ADR-027: Base plan LLM cost cap (internal metric)
+                "target_cost_per_user_eur": 10.00,
+                "cost_efficiency": (10.00 - avg_cost_per_user) / 10.00 * 100 if avg_cost_per_user < 10.00 else 0,
             }
 
 

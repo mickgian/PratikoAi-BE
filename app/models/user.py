@@ -1,5 +1,6 @@
 """This file contains the user model for the application."""
 
+from datetime import datetime
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
@@ -41,6 +42,10 @@ class User(BaseModel, table=True):  # type: ignore[call-arg]
         avatar_url: URL to user's profile picture (from OAuth)
         provider: Authentication provider ('email', 'google', 'linkedin')
         provider_id: Unique ID from the OAuth provider (nullable)
+        email_verified: Whether the email has been verified
+        failed_login_attempts: Consecutive failed login attempts (for lockout)
+        account_locked_until: Lockout expiry timestamp
+        totp_enabled: Whether TOTP 2FA is enabled
         created_at: When the user was created (inherited from BaseModel)
         sessions: Relationship to user's chat sessions
     """
@@ -61,6 +66,16 @@ class User(BaseModel, table=True):  # type: ignore[call-arg]
 
     # User role
     role: str = Field(default=UserRole.REGULAR_USER.value, max_length=50, index=True)
+
+    # Email verification (P0)
+    email_verified: bool = Field(default=False)
+
+    # Account lockout (P1)
+    failed_login_attempts: int = Field(default=0)
+    account_locked_until: datetime | None = Field(default=None)
+
+    # TOTP 2FA (P2)
+    totp_enabled: bool = Field(default=False)
 
     # Human-readable account code for Langfuse analytics (DEV-255)
     account_code: str | None = Field(default=None, max_length=20, unique=True, index=True)

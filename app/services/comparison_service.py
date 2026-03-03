@@ -1416,6 +1416,75 @@ class ComparisonService:
             message="Valutazione registrata con successo",
         )
 
+    async def get_unevaluated_sessions(
+        self,
+        user_id: int,
+        db: AsyncSession,
+    ) -> list[ComparisonSessionDetail]:
+        """Get all comparison sessions that have not been voted on yet.
+
+        Returns sessions where winner_model IS NULL, ordered by most recent first.
+
+        Args:
+            user_id: User ID
+            db: Database session
+
+        Returns:
+            List of unevaluated comparison session details with responses
+        """
+        result = await db.execute(
+            select(ModelComparisonSession)
+            .where(
+                ModelComparisonSession.user_id == user_id,
+                ModelComparisonSession.winner_model.is_(None),  # type: ignore[union-attr]
+            )
+            .order_by(ModelComparisonSession.created_at.desc())  # type: ignore[attr-defined]
+        )
+        sessions = result.scalars().all()
+
+        session_details = []
+        for session in sessions:
+            responses_result = await db.execute(
+                select(ModelComparisonResponse).where(
+                    ModelComparisonResponse.session_id == session.id,
+                )
+            )
+            responses = responses_result.scalars().all()
+
+            response_details = [
+                ModelResponseDetail(
+                    response_id=str(r.id),
+                    model_id=f"{r.provider}:{r.model_name}",
+                    provider=r.provider,
+                    model_name=r.model_name,
+                    response_text=r.response_text,
+                    latency_ms=r.latency_ms,
+                    cost_eur=r.cost_eur,
+                    input_tokens=r.input_tokens,
+                    output_tokens=r.output_tokens,
+                    status=r.status,
+                    error_message=r.error_message,
+                    trace_id=r.trace_id,
+                    expert_evaluation=r.expert_evaluation,
+                    expert_evaluation_details=r.expert_evaluation_details,
+                )
+                for r in responses
+            ]
+
+            session_details.append(
+                ComparisonSessionDetail(
+                    batch_id=session.batch_id,
+                    query=session.query_text,
+                    responses=response_details,
+                    created_at=session.created_at,
+                    winner_model=session.winner_model,
+                    vote_comment=session.vote_comment,
+                    vote_timestamp=session.vote_timestamp,
+                )
+            )
+
+        return session_details
+
 
 # Global instance
 _comparison_service: ComparisonService | None = None

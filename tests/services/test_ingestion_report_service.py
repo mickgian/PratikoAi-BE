@@ -16,6 +16,7 @@ from app.services.ingestion_report_service import (
     AlertType,
     DailyIngestionReport,
     DocumentPreview,
+    EmbeddingBackfillResult,
     ErrorSample,
     FilteredContentSample,
     IngestionAlert,
@@ -929,3 +930,75 @@ class TestHTMLReportWithDataQuality:
         html = service._generate_html_report(report)
 
         assert "Data Quality" not in html
+
+
+# =============================================================================
+# Embedding Backfill Result in Report
+# =============================================================================
+
+
+class TestHTMLReportWithBackfillResult:
+    """Tests for HTML report with embedding backfill result section."""
+
+    @pytest.fixture
+    def mock_db_session(self):
+        """Create mock database session."""
+        return MagicMock()
+
+    def test_html_includes_backfill_section_when_present(self, mock_db_session):
+        """Test that HTML includes Embedding Backfill section when result is set."""
+        service = IngestionReportService(mock_db_session)
+
+        backfill = EmbeddingBackfillResult(
+            items_found=10,
+            items_fixed=8,
+            items_failed=2,
+            chunks_found=20,
+            chunks_fixed=18,
+            chunks_failed=2,
+            ran_at="2026-03-03T03:00:00+00:00",
+        )
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            embedding_backfill=backfill,
+        )
+
+        html = service._generate_html_report(report)
+
+        assert "Embedding Backfill" in html
+        assert "Found Missing" in html
+        assert "Fixed" in html
+        assert "Failed" in html
+
+    def test_html_omits_backfill_when_none(self, mock_db_session):
+        """Test that HTML has no Embedding Backfill section when result is None."""
+        service = IngestionReportService(mock_db_session)
+
+        report = DailyIngestionReport(report_date=date.today())
+
+        html = service._generate_html_report(report)
+
+        assert "Embedding Backfill" not in html
+
+    def test_html_backfill_shows_all_clear_when_nothing_to_do(self, mock_db_session):
+        """Test that backfill section shows all-clear when no missing embeddings."""
+        service = IngestionReportService(mock_db_session)
+
+        backfill = EmbeddingBackfillResult(
+            items_found=0,
+            chunks_found=0,
+            ran_at="2026-03-03T03:00:00+00:00",
+        )
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            embedding_backfill=backfill,
+        )
+
+        html = service._generate_html_report(report)
+
+        assert "Embedding Backfill" in html
+
+    def test_report_backfill_default_none(self):
+        """Test that embedding_backfill defaults to None."""
+        report = DailyIngestionReport(report_date=date.today())
+        assert report.embedding_backfill is None

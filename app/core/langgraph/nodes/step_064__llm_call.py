@@ -83,11 +83,39 @@ async def node_step_64(state: RAGState) -> RAGState:
         user_msg, kb_ctx = extract_user_message(state), state.get("context", "") or state.get("kb_context", "")
         cplx_enum = {"simple": QC.SIMPLE, "complex": QC.COMPLEX, "multi_domain": QC.MULTI_DOMAIN}.get(cplx, QC.SIMPLE)
 
+        # Guardrail streaming: if streaming requested and no ToT response,
+        # defer LLM call to graph.py's get_stream_response() for real-time streaming
+        stream_llm = state.get("streaming", {}).get("requested", False)
+
         try:
             # DEV-251: Reuse ToT response if available, avoiding duplicate LLM call
             if tot_used and tot_response is not None:
                 r = tot_response
                 rag_step_log(STEP, "reusing_tot_response", model=r.model_used)
+            elif stream_llm:
+                # Defer LLM call — store params for streaming in get_stream_response()
+                rag_step_log(STEP, "deferring_llm_for_streaming", complexity=cplx)
+                state["stream_llm_pending"] = True
+                state["stream_llm_params"] = {
+                    "query": user_msg,
+                    "kb_context": kb_ctx,
+                    "kb_sources_metadata": state.get("kb_sources_metadata", []),
+                    "complexity": cplx_enum.value,
+                    "conversation_history": state.get("messages", []),
+                    "web_sources_metadata": state.get("web_sources_metadata", []),
+                    "domains": state.get("detected_domains", []),
+                    "is_followup": is_followup,
+                    "is_chitchat": is_chitchat,
+                }
+                logger.info(
+                    "step_064_deferred_for_streaming",
+                    complexity=cplx,
+                    is_chitchat=is_chitchat,
+                    is_followup=is_followup,
+                )
+                # Skip the rest of the LLM call — graph.py will handle streaming
+                rag_step_log(STEP, "exit", llm_success=None, reasoning_type=state.get("reasoning_type"))
+                return state
             else:
                 r = await get_llm_orchestrator().generate_response(
                     query=user_msg,

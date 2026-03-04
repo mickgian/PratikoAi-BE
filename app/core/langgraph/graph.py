@@ -3335,6 +3335,168 @@ class LangGraphAgent:
                 logger.info("unified_graph_cache_hit_streaming", session_id=session_id, cached=True)
                 return
 
+            # =================================================================
+            # GUARDRAIL STREAMING: Real-time LLM streaming with safety filters
+            # When step_064 deferred the LLM call, stream it here with
+            # per-sentence disclaimer filtering and PII deanonymization.
+            # =================================================================
+            if state.get("stream_llm_pending"):
+                stream_params = state.get("stream_llm_params", {})
+                privacy = state.get("privacy") or {}
+                dmap = privacy.get("document_deanonymization_map", {})
+
+                from app.services.llm_orchestrator import QueryComplexity as _QC  # noqa: N814
+
+                cplx_map = {
+                    "simple": _QC.SIMPLE,
+                    "complex": _QC.COMPLEX,
+                    "multi_domain": _QC.MULTI_DOMAIN,
+                }
+                cplx_enum = cplx_map.get(stream_params.get("complexity", "simple"), _QC.SIMPLE)
+
+                logger.info(
+                    "guardrail_streaming_started",
+                    session_id=session_id,
+                    complexity=stream_params.get("complexity"),
+                    is_chitchat=stream_params.get("is_chitchat"),
+                    has_deanonymization=bool(dmap),
+                )
+
+                from app.services.llm_orchestrator import get_llm_orchestrator
+
+                stream_chunk_count = 0
+                collected_stream_content: list[str] = []
+
+                try:
+                    async for sentence in get_llm_orchestrator().generate_response_stream(
+                        query=stream_params.get("query", ""),
+                        kb_context=stream_params.get("kb_context", ""),
+                        kb_sources_metadata=stream_params.get("kb_sources_metadata", []),
+                        complexity=cplx_enum,
+                        conversation_history=stream_params.get("conversation_history", []),
+                        web_sources_metadata=stream_params.get("web_sources_metadata", []),
+                        domains=stream_params.get("domains", []),
+                        is_followup=stream_params.get("is_followup", False),
+                        is_chitchat=stream_params.get("is_chitchat", False),
+                        deanonymization_map=dmap,
+                    ):
+                        if sentence:
+                            yield sentence
+                            collected_stream_content.append(sentence)
+                            stream_chunk_count += 1
+                except Exception as stream_err:
+                    logger.error(
+                        "guardrail_streaming_error",
+                        session_id=session_id,
+                        error=str(stream_err),
+                        error_type=type(stream_err).__name__,
+                        chunks_before_error=stream_chunk_count,
+                        exc_info=True,
+                    )
+                    # If streaming failed partway, yield error message
+                    if stream_chunk_count == 0:
+                        yield (
+                            "Si è verificato un errore nella generazione della risposta. "
+                            "Prova a riformulare la domanda."
+                        )
+
+                logger.info(
+                    "guardrail_streaming_completed",
+                    session_id=session_id,
+                    total_chunks=stream_chunk_count,
+                    total_content_length=sum(len(c) for c in collected_stream_content),
+                )
+
+                # Store collected content in state for metadata yielding below
+                full_streamed = "".join(collected_stream_content)
+                if full_streamed:
+                    # Update state so metadata sections (sources, reasoning, etc.) can work
+                    state.setdefault("llm", {})["success"] = True
+                    state.setdefault("messages", []).append({"role": "assistant", "content": full_streamed})
+
+                # Clear PII map after deanonymization
+                if dmap:
+                    privacy["document_deanonymization_map"] = {}
+                    state["privacy"] = privacy
+
+                # DEV-245: Yield web verification caveats
+                web_verification = state.get("web_verification", {})
+                used_synthesis = web_verification.get("has_synthesized_response", False)
+                if web_verification.get("has_caveats") and not used_synthesis:
+                    caveats = web_verification.get("caveats", [])
+                    for caveat in caveats:
+                        yield f"\n\n{caveat}"
+
+                # Yield metadata markers (same as buffered path)
+                golden_hit = state.get("golden_hit", False)
+                yield f"__RESPONSE_METADATA__:golden_hit={golden_hit}"
+
+                # Reasoning trace
+                reasoning_trace = state.get("reasoning_trace")
+                if reasoning_trace:
+                    import json as _json_rt
+
+                    yield f"__REASONING_TRACE__:{_json_rt.dumps(reasoning_trace)}"
+
+                # Structured sources (skip for chitchat)
+                _routing = state.get("routing_decision", {})
+                _is_chitchat_route = _routing.get("route") == "chitchat"
+
+                structured_sources = state.get("structured_sources")
+                if structured_sources and not _is_chitchat_route:
+                    import json as _json_ss
+
+                    yield f"__STRUCTURED_SOURCES__:{_json_ss.dumps(structured_sources)}"
+
+                # KB source URLs
+                kb_sources = state.get("kb_sources_metadata", [])
+                if _is_chitchat_route:
+                    kb_sources = []
+                if kb_sources:
+                    import json as _json_kb
+
+                    from app.services.context_builder import get_category_label_it, simplify_title
+
+                    url_to_source: dict[str, dict[str, Any]] = {}
+                    for s in kb_sources:
+                        url = s.get("url")
+                        if not url:
+                            continue
+                        title = simplify_title(s.get("title", ""))
+                        if url not in url_to_source:
+                            url_to_source[url] = {
+                                "title": title,
+                                "url": url,
+                                "type": get_category_label_it(s.get("type", "")),
+                                "date": s.get("date") or "",
+                            }
+                        elif len(title) > len(url_to_source[url].get("title", "")):
+                            url_to_source[url]["title"] = title
+                    sources_with_urls = list(url_to_source.values())
+
+                    # Cross-turn dedup
+                    prior_shown_urls = state.get("prior_shown_source_urls") or set()
+                    if prior_shown_urls:
+                        sources_with_urls = [s for s in sources_with_urls if s["url"] not in prior_shown_urls]
+
+                    if sources_with_urls:
+                        yield f"__KB_SOURCE_URLS__:{_json_kb.dumps(sources_with_urls)}"
+
+                # Web verification
+                if web_verification.get("verification_performed") and not _is_chitchat_route:
+                    import json as _json_wv
+
+                    yield f"__WEB_VERIFICATION__:{_json_wv.dumps(web_verification)}"
+
+                # Enriched prompt
+                enriched_prompt = state.get("enriched_prompt")
+                if enriched_prompt:
+                    import json as _json_ep
+
+                    yield f"__ENRICHED_PROMPT__:{_json_ep.dumps(enriched_prompt)}"
+
+                return  # Done — real streaming complete
+
             # FIX: Check for content to stream (from final_response or buffered response)
             content = None
 

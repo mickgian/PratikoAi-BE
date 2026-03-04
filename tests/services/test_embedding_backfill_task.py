@@ -231,6 +231,121 @@ class TestBackfillMissingEmbeddingsTask:
             # Should not raise - task catches all exceptions
             await backfill_missing_embeddings_task()
 
+    async def test_backfill_per_item_update_failure_counts_as_failed(self):
+        """When session.execute fails for UPDATE, item is counted as failed, not lost."""
+        item_rows = [(1, "content 1"), (2, "content 2")]
+        mock_session, mock_session_maker, mock_engine = self._make_session_mocks(item_rows, [])
+        fake_embeddings = [[0.1] * 1536, [0.2] * 1536]
+
+        # Make the UPDATE call fail (session.execute raises on UPDATE)
+        original_execute = mock_session.execute
+        call_count_track = {"count": 0}
+
+        async def execute_with_update_failure(query, params=None):
+            call_count_track["count"] += 1
+            query_str = str(query)
+            if "UPDATE" in query_str:
+                raise Exception("pgvector type mismatch")
+            return await original_execute(query, params)
+
+        mock_session.execute = AsyncMock(side_effect=execute_with_update_failure)
+
+        with (
+            patch("app.services.scheduler_service.settings", self._make_settings()),
+            patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+            patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_maker),
+            patch(
+                "app.core.embed.generate_embeddings_batch",
+                new_callable=AsyncMock,
+                return_value=fake_embeddings,
+            ),
+            patch("app.services.scheduler_service._store_backfill_result") as mock_store,
+        ):
+            await backfill_missing_embeddings_task()
+
+        result = mock_store.call_args[0][0]
+        assert result.items_found == 2
+        assert result.items_failed == 2
+        assert result.items_fixed == 0
+
+    async def test_backfill_chunks_still_run_after_items_error(self):
+        """Chunk processing runs even if all item updates fail."""
+        item_rows = [(1, "content 1")]
+        chunk_rows = [(10, "chunk text")]
+
+        # Use query-text-aware mock instead of call-count-based
+        mock_session = AsyncMock()
+
+        async def mock_execute(query, params=None):
+            query_str = str(query)
+            result = MagicMock()
+            if "knowledge_items" in query_str and "SELECT" in query_str:
+                result.fetchall.return_value = item_rows
+            elif "knowledge_chunks" in query_str and "SELECT" in query_str:
+                result.fetchall.return_value = chunk_rows
+            elif "UPDATE" in query_str:
+                result.rowcount = 1
+            else:
+                result.fetchall.return_value = []
+            return result
+
+        mock_session.execute = AsyncMock(side_effect=mock_execute)
+        mock_session.commit = AsyncMock()
+
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_ctx.__aexit__ = AsyncMock(return_value=False)
+        mock_session_maker = MagicMock(return_value=mock_session_ctx)
+        mock_engine = MagicMock()
+        mock_engine.dispose = AsyncMock()
+
+        embed_call_count = {"count": 0}
+
+        async def mock_embed(texts, batch_size=20):
+            embed_call_count["count"] += 1
+            if embed_call_count["count"] == 1:
+                raise Exception("API error for items")
+            return [[0.3] * 1536] * len(texts)
+
+        with (
+            patch("app.services.scheduler_service.settings", self._make_settings()),
+            patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+            patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_maker),
+            patch(
+                "app.core.embed.generate_embeddings_batch",
+                new_callable=AsyncMock,
+                side_effect=mock_embed,
+            ),
+            patch("app.services.scheduler_service._store_backfill_result") as mock_store,
+        ):
+            await backfill_missing_embeddings_task()
+
+        result = mock_store.call_args[0][0]
+        # Items had an API error
+        assert result.items_found == 1
+        assert result.items_failed == 1
+        # Chunks should still have been processed
+        assert result.chunks_found == 1
+        assert result.chunks_fixed == 1
+
+    async def test_backfill_stores_error_message_on_crash(self):
+        """When backfill crashes, error_message is stored in result."""
+        mock_session, mock_session_maker, mock_engine = self._make_session_mocks([], [])
+        # Make engine creation succeed but session query fail
+        mock_session.execute = AsyncMock(side_effect=Exception("connection reset"))
+
+        with (
+            patch("app.services.scheduler_service.settings", self._make_settings()),
+            patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=mock_engine),
+            patch("sqlalchemy.orm.sessionmaker", return_value=mock_session_maker),
+            patch("app.services.scheduler_service._store_backfill_result") as mock_store,
+        ):
+            await backfill_missing_embeddings_task()
+
+        result = mock_store.call_args[0][0]
+        assert result.error_message
+        assert "connection reset" in result.error_message
+
     async def test_backfill_stores_result_in_redis(self):
         """Task stores backfill results in Redis after completion."""
         item_rows = [(1, "content 1"), (2, "content 2")]
@@ -344,3 +459,11 @@ class TestEmbeddingBackfillResult:
         result = EmbeddingBackfillResult.from_dict({})
         assert result.items_found == 0
         assert result.chunks_found == 0
+
+    def test_error_message_field(self):
+        """error_message captures crash details."""
+        result = EmbeddingBackfillResult(items_found=161, error_message="pgvector type mismatch")
+        d = result.to_dict()
+        assert d["error_message"] == "pgvector type mismatch"
+        reconstructed = EmbeddingBackfillResult.from_dict(d)
+        assert reconstructed.error_message == "pgvector type mismatch"

@@ -84,6 +84,7 @@ class EmbeddingBackfillResult:
     chunks_fixed: int = 0
     chunks_failed: int = 0
     ran_at: str = ""
+    error_message: str = ""
 
     def to_dict(self) -> dict:
         """Serialize to a JSON-safe dictionary."""
@@ -95,6 +96,7 @@ class EmbeddingBackfillResult:
             "chunks_fixed": self.chunks_fixed,
             "chunks_failed": self.chunks_failed,
             "ran_at": self.ran_at,
+            "error_message": self.error_message,
         }
 
     @classmethod
@@ -108,6 +110,7 @@ class EmbeddingBackfillResult:
             chunks_fixed=data.get("chunks_fixed", 0),
             chunks_failed=data.get("chunks_failed", 0),
             ran_at=data.get("ran_at", ""),
+            error_message=data.get("error_message", ""),
         )
 
 
@@ -1496,12 +1499,18 @@ class IngestionReportService:
         total_fixed = bf.items_fixed + bf.chunks_fixed
         total_failed = bf.items_failed + bf.chunks_failed
 
-        if total_found == 0:
+        if bf.error_message:
+            status_text = f'<span style="color: #dc3545;">ERROR: {bf.error_message}</span>'
+        elif total_found == 0:
             status_text = '<span style="color: #28a745;">No missing embeddings found</span>'
-        elif total_failed == 0:
+        elif total_failed == 0 and total_fixed > 0:
             status_text = f'<span style="color: #28a745;">All {total_fixed} fixed</span>'
-        else:
+        elif total_failed > 0:
             status_text = f'<span style="color: #ffc107;">{total_fixed} fixed, {total_failed} failed</span>'
+        else:
+            status_text = (
+                f'<span style="color: #dc3545;">Found {total_found} but 0 fixed/failed — possible crash</span>'
+            )
 
         ran_at_display = bf.ran_at[:19].replace("T", " ") if bf.ran_at else "N/A"
 

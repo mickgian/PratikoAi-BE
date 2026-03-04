@@ -970,6 +970,7 @@ async def backfill_missing_embeddings_task() -> None:
     chunks_found = 0
     chunks_fixed = 0
     chunks_failed = 0
+    error_msg = ""
 
     try:
         postgres_url = settings.POSTGRES_URL
@@ -1004,14 +1005,18 @@ async def backfill_missing_embeddings_task() -> None:
                     batch_fixed = 0
                     for (item_id, _), emb in zip(batch, embeddings, strict=False):
                         if emb is not None:
-                            emb_str = embedding_to_pgvector(emb)
-                            if emb_str:
-                                await session.execute(
-                                    text("UPDATE knowledge_items SET embedding = :emb::vector WHERE id = :id"),
-                                    {"emb": emb_str, "id": item_id},
-                                )
-                                batch_fixed += 1
-                            else:
+                            try:
+                                emb_str = embedding_to_pgvector(emb)
+                                if emb_str:
+                                    await session.execute(
+                                        text("UPDATE knowledge_items SET embedding = :emb::vector WHERE id = :id"),
+                                        {"emb": emb_str, "id": item_id},
+                                    )
+                                    batch_fixed += 1
+                                else:
+                                    items_failed += 1
+                            except Exception as e:
+                                logger.error(f"Failed to update item {item_id}: {e}")
                                 items_failed += 1
                         else:
                             items_failed += 1
@@ -1045,14 +1050,18 @@ async def backfill_missing_embeddings_task() -> None:
                     batch_fixed = 0
                     for (chunk_id, _), emb in zip(batch, embeddings, strict=False):
                         if emb is not None:
-                            emb_str = embedding_to_pgvector(emb)
-                            if emb_str:
-                                await session.execute(
-                                    text("UPDATE knowledge_chunks SET embedding = :emb::vector WHERE id = :id"),
-                                    {"emb": emb_str, "id": chunk_id},
-                                )
-                                batch_fixed += 1
-                            else:
+                            try:
+                                emb_str = embedding_to_pgvector(emb)
+                                if emb_str:
+                                    await session.execute(
+                                        text("UPDATE knowledge_chunks SET embedding = :emb::vector WHERE id = :id"),
+                                        {"emb": emb_str, "id": chunk_id},
+                                    )
+                                    batch_fixed += 1
+                                else:
+                                    chunks_failed += 1
+                            except Exception as e:
+                                logger.error(f"Failed to update chunk {chunk_id}: {e}")
                                 chunks_failed += 1
                         else:
                             chunks_failed += 1
@@ -1076,6 +1085,7 @@ async def backfill_missing_embeddings_task() -> None:
         await engine.dispose()
 
     except Exception as e:
+        error_msg = str(e)
         logger.error(f"Error in embedding backfill task: {e}", exc_info=True)
 
     # Store results in Redis for the ingestion report email
@@ -1087,6 +1097,7 @@ async def backfill_missing_embeddings_task() -> None:
         chunks_fixed=chunks_fixed,
         chunks_failed=chunks_failed,
         ran_at=datetime.now(UTC).isoformat(),
+        error_message=error_msg,
     )
     await _store_backfill_result(backfill_result)
 

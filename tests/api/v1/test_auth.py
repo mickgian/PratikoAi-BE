@@ -266,14 +266,46 @@ class TestSessionLimits:
 
     @pytest.mark.asyncio
     @patch("app.api.v1.auth.db_service")
-    async def test_session_creation_respects_limit(self, mock_db):
-        """Session creation fails when limit is reached."""
+    async def test_session_creation_auto_deletes_oldest_when_at_limit(self, mock_db):
+        """When session limit is reached, oldest session is auto-deleted."""
         from app.api.v1.auth import create_session
 
         mock_user = MagicMock(id=1)
-        # Return 5 existing sessions (at limit)
-        mock_db.get_user_sessions = AsyncMock(return_value=[MagicMock() for _ in range(5)])
+        # Return 5 existing sessions (at limit), ordered by created_at
+        oldest_session = MagicMock(id="oldest-session-id", created_at=datetime(2025, 1, 1))
+        sessions = [oldest_session] + [
+            MagicMock(id=f"session-{i}", created_at=datetime(2025, 6, i + 1)) for i in range(4)
+        ]
+        mock_db.get_user_sessions = AsyncMock(return_value=sessions)
+        mock_created = MagicMock()
+        mock_created.configure_mock(name="", created_at=datetime.now(UTC))
+        mock_db.create_session = AsyncMock(return_value=mock_created)
+        mock_db.delete_session = AsyncMock(return_value=True)
 
-        with pytest.raises(Exception) as exc_info:
-            await create_session(mock_user)
-        assert exc_info.value.status_code == 429
+        await create_session(mock_user)
+
+        # Oldest session should have been deleted
+        mock_db.delete_session.assert_called_once_with("oldest-session-id")
+        # New session should have been created
+        mock_db.create_session.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("app.api.v1.auth.db_service")
+    async def test_session_creation_succeeds_under_limit(self, mock_db):
+        """Session creation succeeds when under the limit."""
+        from app.api.v1.auth import create_session
+
+        mock_user = MagicMock(id=1)
+        # Return 3 existing sessions (under limit)
+        mock_db.get_user_sessions = AsyncMock(return_value=[MagicMock() for _ in range(3)])
+        mock_created = MagicMock()
+        mock_created.configure_mock(name="", created_at=datetime.now(UTC))
+        mock_db.create_session = AsyncMock(return_value=mock_created)
+        mock_db.delete_session = AsyncMock()
+
+        await create_session(mock_user)
+
+        # No session should be deleted
+        mock_db.delete_session.assert_not_called()
+        # New session should be created
+        mock_db.create_session.assert_called_once()

@@ -659,13 +659,17 @@ async def disable_2fa(data: TOTPVerifyRequest, user: User = Depends(get_current_
 async def create_session(user: User = Depends(get_current_user)):
     """Create a new chat session with concurrent session limit (P3)."""
     try:
-        # P3: Enforce concurrent session limit
+        # P3: Enforce concurrent session limit - auto-delete oldest if at limit
         existing_sessions = await db_service.get_user_sessions(user.id)
         if auth_security_service.exceeds_session_limit(len(existing_sessions)):
-            raise HTTPException(
-                status_code=429,
-                detail=f"Limite di {auth_security_service.max_sessions} sessioni simultanee raggiunto. "
-                "Chiudi una sessione esistente.",
+            # Auto-delete oldest session to make room (sessions are ordered by created_at)
+            oldest = existing_sessions[0]
+            await db_service.delete_session(oldest.id)
+            logger.info(
+                "session_auto_deleted_for_limit",
+                deleted_session_id=oldest.id,
+                user_id=user.id,
+                total_sessions=len(existing_sessions),
             )
 
         session_id = str(uuid.uuid4())

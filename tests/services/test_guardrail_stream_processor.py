@@ -207,6 +207,66 @@ class TestGuardrailStreamProcessorStats:
         assert result.disclaimers_removed >= 2
 
 
+class TestGuardrailStreamProcessorXMLStripping:
+    """Test that XML tags are stripped per-sentence to prevent formatting flash."""
+
+    def test_strips_answer_tags_from_sentence(self):
+        """<answer> tags should be stripped during streaming, not at content_cleaned."""
+        from app.services.guardrail_stream_processor import GuardrailStreamProcessor
+
+        processor = GuardrailStreamProcessor()
+        result = processor.process_chunk("<answer>L'aliquota è del 22%.\n")
+
+        assert len(result) >= 1
+        combined = "".join(result)
+        assert "<answer>" not in combined
+        assert "22%" in combined
+
+    def test_strips_closing_answer_tag(self):
+        """</answer> tag should be stripped."""
+        from app.services.guardrail_stream_processor import GuardrailStreamProcessor
+
+        processor = GuardrailStreamProcessor()
+        result = processor.process_chunk("La scadenza è il 30 aprile.</answer>\n")
+
+        assert len(result) >= 1
+        combined = "".join(result)
+        assert "</answer>" not in combined
+        assert "30 aprile" in combined
+
+    def test_strips_suggested_actions_block(self):
+        """<suggested_actions> blocks should be stripped from streamed content."""
+        from app.services.guardrail_stream_processor import GuardrailStreamProcessor
+
+        processor = GuardrailStreamProcessor()
+        result = processor.process_chunk("Risposta valida.\n<suggested_actions>azione1</suggested_actions>\n")
+
+        combined = "".join(result)
+        assert "<suggested_actions>" not in combined
+        assert "Risposta valida." in combined
+
+    def test_strips_caveat_blocks(self):
+        """📌 caveat blocks should be stripped from streamed content."""
+        from app.services.guardrail_stream_processor import GuardrailStreamProcessor
+
+        processor = GuardrailStreamProcessor()
+        result = processor.process_chunk("Informazione utile.\n📌 Nota: verifica i dati.\n")
+
+        combined = "".join(result)
+        assert "📌" not in combined
+        assert "Informazione utile." in combined
+
+    def test_preserves_content_without_xml(self):
+        """Normal content without XML should pass through unchanged."""
+        from app.services.guardrail_stream_processor import GuardrailStreamProcessor
+
+        processor = GuardrailStreamProcessor()
+        result = processor.process_chunk("Contenuto normale senza tag XML.\n")
+
+        assert len(result) >= 1
+        assert "Contenuto normale senza tag XML." in "".join(result)
+
+
 class TestGuardrailStreamProcessorEdgeCases:
     """Test edge cases and error handling."""
 

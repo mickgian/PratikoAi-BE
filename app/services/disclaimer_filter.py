@@ -21,19 +21,34 @@ from app.core.logging import logger
 # Patterns that match prohibited disclaimer phrases in Italian
 # DEV-251: Patterns now remove only the matched phrase, not the entire sentence
 DISCLAIMER_PATTERNS: list[str] = [
-    # "consult an expert" variants
-    r"consult[ai] un (esperto|professionista|commercialista|consulente)",
-    r"rivolg[aei]r?[st]?i a un (esperto|professionista|commercialista)",
-    r"è consigliabile consultare",
+    # "consult an expert" variants — broad catch for any verb + professional role
+    r"consult(?:a(?:re|ndo)?|i|o) (?:un |il )?(?:esperto|professionista|commercialista|consulente|avvocato)",
+    r"rivolg[aei]r?[st]?i a (?:un |il )?(?:esperto|professionista|commercialista|consulente|avvocato)",
+    r"(?:è|e') consigliabile consultare",
     r"si consiglia di consultare",
-    r"verifica (con|presso) (un professionista|fonti ufficiali)",
+    r"verifica (?:con|presso) (?:un professionista|fonti ufficiali)",
+    # "you should consult" variants (dovresti/dovrebbe/è opportuno/sarebbe bene)
+    r"(?:dovresti|dovrebbe|dovrebbero) (?:consultare|contattare|rivolgersi)",
+    r"(?:è|e') (?:opportuno|consigliabile|bene|utile) (?:consultare|contattare|rivolgersi)",
+    r"(?:sarebbe|potrebbe essere) (?:bene|opportuno|utile) (?:consultare|contattare)",
+    # "I recommend consulting" personal/impersonal variants
+    r"(?:ti |vi )?(?:consiglio|suggerisco|raccomando) di (?:consultare|contattare|rivolgerti|rivolgervi)",
+    # Compound professional references with "o" (un commercialista o un consulente del lavoro)
+    r"un (?:commercialista|consulente del lavoro|avvocato|esperto|professionista)"
+    r"(?:\s*o\s*(?:un )?(?:commercialista|consulente del lavoro|avvocato|esperto|professionista))+",
+    # "professional assistance" full phrases
+    r"assistenza (?:di un )?(?:professionale|legale|fiscale|contabile)",
+    r"(?:chiedere|sentire|prendere) (?:il )?(?:parere|consiglio|opinione) (?:di|a) un",
+    r"(?:contattare|interpellare) un (?:commercialista|consulente|avvocato|esperto|professionista)",
+    # "In case of doubt" + consult
+    r"[Ii]n caso di dubbi,? (?:consultare|contattare|rivolgersi)",
     # "check official sources" variants
-    r"verifica sul sito (ufficiale|dell['']Agenzia)",
-    r"per (maggiori informazioni|conferma)[,]? (consulta|verifica|controlla)",
+    r"verifica sul sito (?:ufficiale|dell['']Agenzia)",
+    r"per (?:maggiori informazioni|conferma)[,]? (?:consulta|verifica|controlla)",
     r"per una conferma definitiva",
     # "contact me" variants (inappropriate for AI)
     r"non esit[ai]r?e? a contattarmi",
-    r"se (hai|avete) (domande|dubbi)",
+    r"se (?:hai|avete) (?:domande|dubbi)",
     r"resto a disposizione",
 ]
 

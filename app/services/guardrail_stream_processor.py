@@ -22,6 +22,7 @@ import re
 from dataclasses import dataclass
 
 from app.core.logging import logger
+from app.core.utils.xml_stripper import strip_answer_tags, strip_caveat_blocks, strip_suggested_actions_block
 from app.services.disclaimer_filter import DisclaimerFilter
 
 # Matches sentence-ending punctuation after a letter (not digit).
@@ -172,11 +173,22 @@ class GuardrailStreamProcessor:
     def _apply_sentence_guardrails(self, text: str) -> str:
         """Apply per-sentence safety filters.
 
-        1. Disclaimer removal (regex, <1ms)
-        2. PII deanonymization (string replace, <1ms)
+        1. XML tag stripping (<answer>, <suggested_actions>, caveats)
+        2. Disclaimer removal (regex, <1ms)
+        3. PII deanonymization (string replace, <1ms)
         """
-        # 1. Disclaimer filtering
-        filtered, removed = DisclaimerFilter.filter_response(text)
+        # 1. Strip XML tags so frontend never sees them (prevents content_cleaned flash)
+        # Use individual strippers instead of clean_proactivity_content() to avoid
+        # .strip() which would collapse whitespace between streamed segments.
+        filtered = text
+        if "<" in filtered:
+            filtered = strip_answer_tags(filtered)
+            filtered = strip_suggested_actions_block(filtered)
+        if "📌" in filtered:
+            filtered = strip_caveat_blocks(filtered)
+
+        # 2. Disclaimer filtering
+        filtered, removed = DisclaimerFilter.filter_response(filtered)
         if removed:
             self._disclaimers_removed += len(removed)
             logger.debug(

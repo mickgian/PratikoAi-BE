@@ -411,6 +411,87 @@ La rottamazione quinquies rappresenta un'opportunità significativa per regolari
         assert "per una conferma definitiva" not in cleaned.lower()
 
 
+class TestDisclaimerFilterNewPatterns:
+    """Tests for expanded disclaimer patterns (professional advice variants)."""
+
+    def test_dovresti_consultare(self):
+        """Should catch 'dovresti consultare un commercialista'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Il calcolo è corretto. Dovresti consultare un commercialista per i dettagli specifici."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "dovresti consultare" not in cleaned.lower()
+        assert "Il calcolo è corretto" in cleaned
+        assert len(removed) > 0
+
+    def test_dovrebbe_contattare(self):
+        """Should catch 'dovrebbe contattare un consulente'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La procedura è questa. Il contribuente dovrebbe contattare un consulente del lavoro."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "dovrebbe contattare" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_in_caso_di_dubbi_consultare(self):
+        """Should catch 'In caso di dubbi, consultare un commercialista o un consulente del lavoro'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "La procedura è chiara. In caso di dubbi, consultare un commercialista "
+            "o un consulente del lavoro per evitare errori procedurali."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "in caso di dubbi" not in cleaned.lower()
+        assert "consultare un commercialista" not in cleaned.lower()
+        assert "La procedura è chiara" in cleaned
+        assert len(removed) > 0
+
+    def test_assistenza_professionale(self):
+        """Should catch 'assistenza professionale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Il processo è semplice. Si raccomanda assistenza professionale per i casi complessi."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "assistenza professionale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_e_opportuno_consultare(self):
+        """Should catch 'è opportuno consultare'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Il termine scade il 30 aprile. È opportuno consultare un professionista."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "opportuno consultare" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_compound_professional_with_or(self):
+        """Should catch compound professional list with 'o'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La risposta è chiara. Contattare un commercialista o un consulente del lavoro."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "contattare un commercialista" not in cleaned.lower()
+        assert "La risposta è chiara" in cleaned
+        assert len(removed) > 0
+
+    def test_ti_consiglio_di_consultare(self):
+        """Should catch 'ti consiglio di consultare'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Ecco i dettagli. Ti consiglio di consultare un commercialista per la tua situazione."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "ti consiglio di consultare" not in cleaned.lower()
+        assert len(removed) > 0
+
+
 class TestDisclaimerFilterLogging:
     """DEV-251: Test logging behavior."""
 

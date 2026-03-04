@@ -544,6 +544,10 @@ class LLMOrchestrator:
             config = ModelConfig.for_chitchat()
         else:
             config = ModelConfig.for_complexity(complexity)
+            # Streaming gets 25% more tokens to avoid mid-generation truncation.
+            # Buffered responses are post-processed and trimmed; streaming can't recover
+            # from hitting max_tokens since the truncated tail is already sent.
+            config.max_tokens = int(config.max_tokens * 1.25)
 
         prompt = self._build_response_prompt(
             query=query,

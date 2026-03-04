@@ -30,6 +30,39 @@ from app.services.disclaimer_filter import DisclaimerFilter
 # splitting on "punto." sentence endings. Digits before !? are allowed (e.g., "22%!").
 _SENTENCE_END_AFTER_WORD = re.compile(r"[a-zA-ZÀ-ÿ%\)\"'][.!?]|\d[!?]")
 
+# Common Italian abbreviations that should NOT be treated as sentence endings.
+# These appear frequently in fiscal/legal text and cause false splits.
+_ITALIAN_ABBREVIATIONS = frozenset(
+    {
+        "es",
+        "ecc",
+        "art",
+        "artt",
+        "co",
+        "c",
+        "dott",
+        "sig",
+        "prof",
+        "avv",
+        "ing",
+        "geom",
+        "rag",
+        "n",
+        "nr",
+        "pag",
+        "fig",
+        "tab",
+        "cfr",
+        "vs",
+        "ca",
+        "lett",
+        "comma",
+        "d",
+        "l",
+        "r",
+    }
+)
+
 
 @dataclass
 class FinalizeResult:
@@ -62,6 +95,16 @@ def _find_split_points(text: str) -> list[int]:
         end = m.end()  # Position after the punctuation char
         # Only split if followed by whitespace or at end of text
         if end >= len(text) or text[end] in (" ", "\t", "\n"):
+            # Skip Italian abbreviations (e.g., "es.", "art.", "ecc.")
+            # to avoid false sentence splits in legal/fiscal text.
+            period_pos = end - 1
+            word_start = period_pos - 1
+            while word_start >= 0 and text[word_start].isalpha():
+                word_start -= 1
+            word_start += 1
+            word = text[word_start:period_pos].lower()
+            if word in _ITALIAN_ABBREVIATIONS:
+                continue
             splits.append(end)
 
     return sorted(set(splits))

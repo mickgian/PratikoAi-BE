@@ -22,32 +22,36 @@ from app.core.logging import logger
 # DEV-251: Patterns now remove only the matched phrase, not the entire sentence
 DISCLAIMER_PATTERNS: list[str] = [
     # "consult an expert" variants — broad catch for any verb + professional role
-    r"consult(?:a(?:re|ndo)?|i|o) (?:un |il )?(?:esperto|professionista|commercialista|consulente|avvocato)",
-    r"rivolg[aei]r?[st]?i a (?:un |il )?(?:esperto|professionista|commercialista|consulente|avvocato)",
-    r"(?:è|e') consigliabile consultare",
-    r"si consiglia di consultare",
-    r"verifica (?:con|presso) (?:un professionista|fonti ufficiali)",
+    # Extended with [^.!?\n]* to remove the full clause through the professional reference
+    r"consult(?:a(?:re|ndo)?|i|o) (?:un |il )?(?:esperto|professionista|commercialista|consulente|avvocato)[^.!?\n]*",
+    r"rivolg[aei]r?[st]?i a (?:un |il )?(?:esperto|professionista|commercialista|consulente|avvocato)[^.!?\n]*",
+    r"(?:è|e') consigliabile consultare[^.!?\n]*",
+    r"si consiglia di consultare[^.!?\n]*",
+    r"verifica (?:con|presso) (?:un professionista|fonti ufficiali)[^.!?\n]*",
     # "you should consult" variants (dovresti/dovrebbe/è opportuno/sarebbe bene)
-    r"(?:dovresti|dovrebbe|dovrebbero) (?:consultare|contattare|rivolgersi)",
-    r"(?:è|e') (?:opportuno|consigliabile|bene|utile) (?:consultare|contattare|rivolgersi)",
-    r"(?:sarebbe|potrebbe essere) (?:bene|opportuno|utile) (?:consultare|contattare)",
+    # Extended to eat the full clause including the target professional
+    r"(?:dovresti|dovrebbe|dovrebbero) (?:consultare|contattare|rivolgersi)[^.!?\n]*",
+    r"(?:è|e') (?:opportuno|consigliabile|bene|utile) (?:consultare|contattare|rivolgersi)[^.!?\n]*",
+    r"(?:sarebbe|potrebbe essere) (?:bene|opportuno|utile) (?:consultare|contattare)[^.!?\n]*",
     # "I recommend consulting" personal/impersonal variants
-    r"(?:ti |vi )?(?:consiglio|suggerisco|raccomando) di (?:consultare|contattare|rivolgerti|rivolgervi)",
+    r"(?:ti |vi )?(?:consiglio|suggerisco|raccomando) di (?:consultare|contattare|rivolgerti|rivolgervi)[^.!?\n]*",
     # Compound professional references with "o" (un commercialista o un consulente del lavoro)
     r"un (?:commercialista|consulente del lavoro|avvocato|esperto|professionista)"
     r"(?:\s*o\s*(?:un )?(?:commercialista|consulente del lavoro|avvocato|esperto|professionista))+",
     # "è possibile approfondire con un professionista" variants (MUST be before "assistenza" pattern)
-    r"(?:è|e') possibile approfondire (?:ulteriormente )?(?:con\b[^.!?]*)?",
+    # Fixed: use non-greedy *? to avoid eating entire clauses
+    r"(?:è|e') possibile approfondire (?:ulteriormente )?(?:con\b[^.!?\n]*?)?",
     # "professional assistance" full phrases
     r"(?:con (?:l[''])?)?assistenza (?:di un )?(?:professionista|professionale|legale|fiscale|contabile)",
     r"(?:chiedere|sentire|prendere) (?:il )?(?:parere|consiglio|opinione) (?:di|a) un",
-    r"(?:contattare|interpellare) un (?:commercialista|consulente|avvocato|esperto|professionista)",
+    r"(?:contattare|interpellare) un (?:commercialista|consulente|avvocato|esperto|professionista)[^.!?\n]*",
     # "consulenza di un professionista" (noun form, bypasses verb-based patterns)
     r"(?:si consiglia )?la consulenza di un (?:professionista|esperto|commercialista|consulente|avvocato)",
     # "verificare con un professionista" (imperative without "consult")
-    r"verificare con un (?:professionista|esperto|commercialista|consulente|avvocato)",
+    r"verificare con un (?:professionista|esperto|commercialista|consulente|avvocato)[^.!?\n]*",
     # "In case of doubt" + consult (or orphaned after earlier pattern removal)
-    r"[Ii]n caso di dubbi,?\s*(?:(?:consultare|contattare|rivolgersi)[^.!?]*)?",
+    # Fixed: use non-greedy *? to avoid eating entire clauses
+    r"[Ii]n caso di dubbi,?\s*(?:(?:consultare|contattare|rivolgersi)[^.!?\n]*?)?",
     # "check official sources" variants
     r"verifica sul sito (?:ufficiale|dell['']Agenzia)",
     r"per (?:maggiori informazioni|conferma)[,]? (?:consulta|verifica|controlla)",
@@ -56,6 +60,11 @@ DISCLAIMER_PATTERNS: list[str] = [
     r"non esit[ai]r?e? a contattarmi",
     r"se (?:hai|avete) (?:domande|dubbi)",
     r"resto a disposizione",
+    # Standalone catch-all: "a un professionista abilitato" (orphaned after verb removal
+    # or when the verb and professional are in different streaming segments)
+    r",?\s*a un (?:professionista|commercialista|consulente|esperto|avvocato) abilitato[^.!?\n]*",
+    # Broader catch-all: "professionista abilitato" without preceding article
+    r"(?:professionista|commercialista|consulente|esperto) abilitato[^.!?\n]*",
 ]
 
 # Compile patterns for efficiency

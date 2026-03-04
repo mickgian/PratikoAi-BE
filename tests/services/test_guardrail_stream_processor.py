@@ -327,3 +327,24 @@ class TestGuardrailStreamProcessorEdgeCases:
         # Join all emitted chunks — blank line (\n) must be preserved
         combined = "".join(result)
         assert "\n\n" in combined, f"Blank line missing from emitted chunks — markdown will break. Got: {combined!r}"
+
+    def test_italian_abbreviation_not_split(self):
+        """Italian abbreviations like 'es.' should not cause false sentence splits.
+
+        Without this fix, 'es. cessione' splits into two segments, and the
+        disclaimer filter can remove the verb from one segment while leaving
+        'a un professionista abilitato' orphaned in the next.
+        """
+        from app.services.guardrail_stream_processor import GuardrailStreamProcessor
+
+        processor = GuardrailStreamProcessor()
+        text = "Per situazioni particolari (es. cessione della clientela) si procede."
+        result = processor.process_chunk(text)
+
+        # "es." should NOT split — the full clause stays in one segment
+        combined = "".join(result)
+        assert "es." in combined
+        assert "cessione" in combined
+        # Should be ONE emission (the full sentence), not split at "es."
+        non_empty = [r for r in result if r.strip()]
+        assert len(non_empty) == 1, f"Expected 1 emission but got {len(non_empty)}: {result}"

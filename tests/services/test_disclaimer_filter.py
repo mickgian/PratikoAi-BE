@@ -563,6 +563,60 @@ class TestDisclaimerFilterNewGaps:
         assert not DisclaimerFilter.contains_disclaimer(high_warning)
 
 
+class TestDisclaimerFilterFullClauseRemoval:
+    """Tests for full-clause removal to prevent garbled text after phrase removal."""
+
+    def test_consigliabile_rivolgersi_full_clause(self):
+        """Full 'è consigliabile rivolgersi a un professionista' clause is removed."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Conservare la documentazione per almeno 10 anni. "
+            "È consigliabile rivolgersi a un professionista abilitato "
+            "per evitare errori o sanzioni."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "professionista" not in cleaned
+        assert "Conservare la documentazione" in cleaned
+
+    def test_professionista_abilitato_standalone(self):
+        """Catch-all removes 'professionista abilitato' even without preceding verb."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "cessione della clientela), a un professionista abilitato per evitare errori o sanzioni."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "professionista abilitato" not in cleaned
+        assert len(removed) > 0
+
+    def test_no_garbled_text_after_removal(self):
+        """After disclaimer removal, no orphaned fragments remain."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Regolarizzare i debiti prima della chiusura della Partita IVA. "
+            "Per situazioni particolari (es. cessione della clientela), "
+            "è consigliabile rivolgersi a un professionista abilitato "
+            "per evitare errori o sanzioni."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        # Should not have garbled "IVA.o situazioni" or orphaned "a un professionista"
+        assert "professionista" not in cleaned
+        assert "IVA.o" not in cleaned
+
+    def test_dovrebbe_consultare_full_clause(self):
+        """'dovrebbe consultare un commercialista per la dichiarazione' fully removed."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per questo motivo dovrebbe consultare un commercialista esperto in materia fiscale."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "commercialista" not in cleaned
+        assert "esperto in materia fiscale" not in cleaned
+
+
 class TestDisclaimerFilterLogging:
     """DEV-251: Test logging behavior."""
 

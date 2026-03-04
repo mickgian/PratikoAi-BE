@@ -1,0 +1,281 @@
+flowchart TD
+    %% ============================================================================
+    %% HYBRID ARCHITECTURE DIAGRAM - UNIFIED GRAPH (61 nodes)
+    %% ============================================================================
+    %% Reflects create_graph_unified() in app/core/langgraph/graph.py
+    %% Entry point: InitAgent (validation happens in chatbot.py pre-graph)
+    %%
+    %% Lanes:
+    %%   1: Request/Privacy (pre-graph in chatbot.py + steps 1-10)
+    %%   2: Messages (11-13)
+    %%   2.5: Pre-Proactivity (14) - DEV-200
+    %%   3: Golden/KB (20-30)
+    %%   4: Classification + Query Expansion (31-40)
+    %%   5: Prompt Selection (41-47)
+    %%   6: Provider (48-58)
+    %%   7: Cache/LLM/Tools (59-99)
+    %%   7.5: Post-Proactivity + Web Verification (100) - DEV-245
+    %%   8: Streaming (104-112)
+    %% ============================================================================
+
+    %% ==================== PRE-GRAPH (chatbot.py) ====================
+    Start([User submits query<br/>POST /api/v1/chat/stream]) --> S002[ChatbotController<br/>Validate request + authenticate]
+
+    S002 --> S003{Request valid?}
+    S003 -->|No| S005[Return 400<br/>Bad Request]
+    S003 -->|Yes| S004[GDPRCompliance<br/>record_processing]
+
+    S004 --> S006{PRIVACY_ANONYMIZE<br/>enabled?}
+    S006 -->|No| AttachResolve
+    S006 -->|Yes| S007[Anonymizer.anonymize_text<br/>Strip PII]
+
+    S007 --> S009{PII detected?}
+    S009 -->|Yes| S010[Log PII<br/>anonymization]
+    S009 -->|No| AttachResolve
+    S010 --> AttachResolve
+
+    AttachResolve[Resolve file attachments<br/>from attachment_ids] --> S008
+
+    %% ==================== LANE 1→2: GRAPH ENTRY ====================
+    S008[InitAgent<br/>LangGraphAgent.get_stream_response<br/>Load prior state + topic fields] --> S011[ConvertMessages<br/>Merge prior + current messages]
+
+    S011 --> S012[ExtractQuery<br/>Extract user message]
+    S012 --> S013[MessageExists<br/>Check user message present]
+
+    %% ==================== LANE 2.5: PRE-PROACTIVITY (DEV-200) ====================
+    S013 --> S014[PreProactivity<br/>Check calculable intent<br/>IRPEF / IVA / INPS]
+    S014 --> S014r{Skip RAG?<br/>Missing calc params?}
+    S014r -->|Yes: return question| CollectMetrics
+    S014r -->|No: continue| S020
+
+    %% ==================== LANE 3: GOLDEN FAST-PATH ====================
+    S020{GoldenFastGate<br/>Golden fast-path<br/>eligible?}
+    S020 -->|Yes| S024[GoldenLookup<br/>GoldenSet.match_by_signature<br/>or_semantic]
+    S020 -->|No| S031
+
+    S024 --> S025{GoldenHit<br/>High confidence?<br/>score >= 0.90}
+    S025 -->|No| S031
+    S025 -->|Yes| S026[KBContextCheck<br/>KnowledgeSearch.context_topk<br/>Fetch recent KB]
+
+    S026 --> S027{KBDelta<br/>KB newer than Golden?<br/>Conflicting tags?}
+    S027 -->|No: KB stale| S028[ServeGolden<br/>Return cached answer<br/>with citations]
+    S027 -->|Yes: KB changed| S031
+
+    S028 --> S030[ReturnComplete<br/>Return ChatResponse]
+    S030 --> CollectMetrics
+
+    %% ==================== LANE 4: CLASSIFICATION ====================
+    S031[ClassifyDomain<br/>DomainActionClassifier<br/>Rule-based Italian keywords] --> S032[CalcScores<br/>Domain + action scores]
+    S032 --> S033{ConfidenceCheck<br/>Confidence >= threshold?}
+    S033 -->|Yes| S034
+    S033 -->|No| S035[LLMFallback<br/>GPT classification]
+
+    S035 --> S036{LLMBetter<br/>LLM > rule-based?}
+    S036 -->|Yes| S037[UseLLM result]
+    S036 -->|No| S038[UseRuleBased result]
+    S037 --> S034
+    S038 --> S034
+
+    S034[TrackMetrics<br/>ClassificationMetrics.track]
+
+    %% ==================== LLM ROUTER (DEV-200/251) ====================
+    S034 --> S034a[LLMRouter<br/>HF zero-shot classifier<br/>CHITCHAT / CALCULATOR /<br/>THEORETICAL / TECHNICAL /<br/>NORMATIVE]
+    S034a --> S034a_fb{HF confidence<br/>above threshold?}
+    S034a_fb -->|Yes| S034a_done[Use HF route]
+    S034a_fb -->|No| S034a_gpt[GPT-4o-mini fallback<br/>+ capture for labeling<br/>DEV-253]
+    S034a_gpt --> S034a_done
+    S034a_done --> S039a
+
+    %% ==================== QUERY EXPANSION (DEV-195/200) ====================
+    S039a[MultiQuery<br/>Generate BM25 / vector /<br/>entity query variants<br/>+ semantic expansions] --> S039b[HyDE<br/>Generate hypothetical doc<br/>in Italian bureaucratic style]
+    S039b --> S039c[ParallelRetrieval<br/>BM25 + vector + HyDE<br/>parallel search with<br/>RRF fusion + source authority]
+
+    %% ==================== CONTEXT BUILDING ====================
+    S039c --> S040[BuildContext<br/>Merge KB docs + web docs +<br/>extracted facts<br/>Filter low-relevance sources]
+
+    %% ==================== LANE 5: PROMPT SELECTION ====================
+    S040 --> S041[SelectPrompt<br/>Choose system prompt]
+    S041 --> S042{ClassConfidence<br/>Classification exists<br/>and confidence >= 0.6?}
+    S042 -->|Yes| S043[DomainPrompt<br/>Domain-specific template]
+    S042 -->|No| S044[DefaultSysPrompt<br/>SYSTEM_PROMPT]
+    S043 --> S045{CheckSysMsg<br/>System message exists?}
+    S044 --> S045
+    S045 -->|Yes| S046[ReplaceMsg]
+    S045 -->|No| S047[InsertMsg]
+    S046 --> S048
+    S047 --> S048
+
+    %% ==================== LANE 6: PROVIDER SELECTION ====================
+    S048[SelectProvider<br/>LLMFactory routing] --> S049[RouteStrategy<br/>Apply strategy]
+    S049 --> S050{StrategyType?}
+    S050 -->|COST_OPTIMIZED| S051[CheapProvider]
+    S050 -->|QUALITY_FIRST| S052[BestProvider]
+    S050 -->|BALANCED| S053[BalanceProvider]
+    S050 -->|FAILOVER| S054[PrimaryProvider]
+    S051 --> S055[EstimateCost<br/>CostCalculator.estimate]
+    S052 --> S055
+    S053 --> S055
+    S054 --> S055
+    S055 --> S056{CostCheck<br/>Within budget?}
+    S056 -->|Yes| S057[CreateProvider]
+    S056 -->|No| S058[CheaperProvider]
+    S058 --> S055
+
+    %% ==================== LANE 7: CACHE / LLM / TOOLS ====================
+    S057 --> S059[CheckCache<br/>Query signature + epochs +<br/>doc hashes + versions]
+    S059 --> S062{CacheHit?}
+    S062 -->|Yes| S066[ReturnCached]
+    S062 -->|No| S064[LLMCall<br/>LLMProvider.chat_completion]
+
+    S066 --> S100
+
+    S064 --> S067{LLMSuccess?}
+    S067 -->|Yes| S068[CacheResponse<br/>Store in Redis]
+    S067 -->|No| S069{RetryCheck<br/>Attempts left?}
+    S069 -->|No| EndNode
+    S069 -->|Yes| S070{ProdCheck<br/>Prod + last retry?}
+    S070 -->|Yes| S072[FailoverProvider]
+    S070 -->|No| S073[RetrySame]
+    S072 --> S064
+    S073 --> S064
+
+    S068 --> S074[TrackUsage<br/>UsageTracker.track]
+    S074 --> S075{ToolCheck<br/>Response has tool_calls?}
+    S075 -->|No| S100
+    S075 -->|Yes| S079{ToolType?}
+
+    S079 -->|Knowledge| S080[KBTool<br/>KnowledgeSearchTool]
+    S079 -->|CCNL| S081[CCNLTool<br/>Query labor agreements]
+    S079 -->|Document| S082[DocIngestTool<br/>Process attachments]
+    S079 -->|FAQ| S083[FAQTool<br/>Query Golden Set]
+
+    S080 --> S099[ToolResults<br/>Aggregate tool output]
+    S081 --> S099
+    S082 --> S099
+    S083 --> S099
+
+    S099 --> S100
+
+    %% ==================== LANE 7.5: POST-PROACTIVITY (DEV-200/245) ====================
+    S100[PostProactivity<br/>Web Verification via Brave<br/>Detect contradictions<br/>Generate caveats + synthesis]
+
+    %% ==================== LANE 8: STREAMING ====================
+    S100 --> S104{StreamCheck<br/>Streaming requested?}
+    S104 -->|Yes| S105[StreamSetup<br/>SSE configuration]
+    S104 -->|No| CollectMetrics
+
+    S105 --> S106[AsyncGen<br/>Create async generator]
+    S106 --> S107[SinglePassStream<br/>Prevent double iteration]
+    S107 --> S108[WriteSSE<br/>Format token/metadata/done]
+    S108 --> S109[StreamResponse<br/>Send chunks]
+    S109 --> S110[SendDone<br/>DONE frame]
+    S110 --> CollectMetrics
+
+    CollectMetrics[CollectMetrics<br/>Usage + cost + latency] --> EndNode([End<br/>Return response to user])
+
+    %% ==================== DATABASES ====================
+    GoldenSetDB[(Golden Set<br/>FAQ Store)] -.-> S024
+    GoldenSetDB -.-> S083
+    KnowledgeStore[(Knowledge Base<br/>PostgreSQL + pgvector)] -.-> S039c
+    KnowledgeStore -.-> S026
+    KnowledgeStore -.-> S080
+    RedisCache[(Redis Cache)] -.-> S059
+    RedisCache -.-> S068
+    PostgresDB[(PostgreSQL<br/>CCNL Database)] -.-> S081
+    BraveAPI[(Brave Search API)] -.-> S100
+
+    %% ==================== BACKGROUND: RSS INGESTION ====================
+    subgraph BackgroundIngestion ["Background: RSS + Tiered Ingestion"]
+        RSS132[RSS Monitor<br/>Scheduled] --> RSS133[Fetch + parse feeds]
+        RSS133 --> RSS134[Extract text +<br/>metadata + topics]
+        RSS134 --> RSS135[TieredIngestionService<br/>Tier 1: Article-level parsing<br/>Tier 2: Chunking ~900 tokens<br/>Tier 3: Light indexing]
+        RSS135 --> RSS136[Embed chunks<br/>text-embedding-3-small<br/>1536-d pgvector]
+        RSS136 --> KnowledgeStore
+    end
+
+    %% ==================== ERROR PATHS ====================
+    S005 --> EndNode
+
+    %% ============================================================================
+    %% STYLING
+    %% ============================================================================
+    %% Pre-graph (chatbot.py) = light blue
+    %% Canonical Nodes = dark green border (runtime boundaries with metrics)
+    %% Internal Steps = light green dashed border (pure transforms)
+    %% Databases = purple
+    %% New/Notable = orange accent
+    %% ============================================================================
+
+    classDef preGraph fill:#e8f4f8,stroke:#4a90e2,stroke-width:3px,color:#000000
+    classDef canonicalNode fill:#90EE90,stroke:#228B22,stroke-width:5px,color:#000000
+    classDef internalNode fill:#E0FFE0,stroke:#666666,stroke-width:3px,stroke-dasharray: 5 5,color:#000000
+    classDef databaseNode fill:#E6D5F5,stroke:#8E44AD,stroke-width:3px,color:#000000
+    classDef decisionNode fill:#fff4e6,stroke:#f39c12,stroke-width:3px,color:#000000
+    classDef errorNode fill:#ffe6e6,stroke:#e74c3c,stroke-width:3px,color:#000000
+    classDef newNode fill:#FFF3CD,stroke:#E67E22,stroke-width:4px,color:#000000
+    classDef bgNode fill:#f5f5f5,stroke:#999999,stroke-width:2px,stroke-dasharray: 3 3,color:#000000
+
+    %% Pre-graph nodes (chatbot.py - before LangGraph)
+    class Start,S002,S004,S007,S010,AttachResolve preGraph
+
+    %% Canonical Nodes - Runtime boundaries
+    class S008,S011,S020,S024,S031,S034a,S039c,S040,S048,S059,S064,S075,S079,S080,S081,S082,S083,S100,S104,S105,S109 canonicalNode
+
+    %% New/Notable Nodes - DEV-200, DEV-245, DEV-251
+    class S014,S034a_fb,S034a_gpt,S034a_done,S039a,S039b,S100 newNode
+
+    %% Internal Steps
+    class S012,S013,S026,S028,S030,S032,S034,S035,S037,S038,S041,S043,S044,S046,S047,S049,S051,S052,S053,S054,S055,S057,S058,S066,S068,S072,S073,S074,S099,S106,S107,S108,S110,CollectMetrics internalNode
+
+    %% Decision Points
+    class S003,S006,S009,S014r,S025,S027,S033,S036,S042,S045,S050,S056,S062,S067,S069,S070 decisionNode
+
+    %% Error Nodes
+    class S005 errorNode
+
+    %% Databases
+    class RedisCache,PostgresDB,GoldenSetDB,KnowledgeStore,BraveAPI databaseNode
+
+    %% Background nodes
+    class RSS132,RSS133,RSS134,RSS135,RSS136 bgNode
+
+    %% End
+    class EndNode preGraph
+
+    %% ============================================================================
+    %% LEGEND
+    %% ============================================================================
+    subgraph Legend
+        L1[Blue = Pre-graph chatbot.py]
+        L2[Green = Canonical Node]
+        L3[Light Green Dashed = Internal]
+        L4[Yellow = New DEV-200/245/251]
+        L5{Diamond = Decision Point}
+        L6[(Purple = Database)]
+    end
+
+    style Legend fill:#fafafa,stroke:#666,stroke-width:3px,color:#000000
+    style L1 fill:#e8f4f8,stroke:#4a90e2,stroke-width:3px,color:#000000
+    style L2 fill:#90EE90,stroke:#228B22,stroke-width:5px,color:#000000
+    style L3 fill:#E0FFE0,stroke:#666666,stroke-width:3px,stroke-dasharray: 5 5,color:#000000
+    style L4 fill:#FFF3CD,stroke:#E67E22,stroke-width:4px,color:#000000
+    style L5 fill:#fff4e6,stroke:#f39c12,stroke-width:3px,color:#000000
+    style L6 fill:#E6D5F5,stroke:#8E44AD,stroke-width:3px,color:#000000
+
+    %% ============================================================================
+    %% HYBRID SEARCH WEIGHTS (ADR-002 updated)
+    %% ============================================================================
+    subgraph HybridWeights ["Hybrid Search Scoring"]
+        HW1["45% BM25 (FTS websearch_to_tsquery)"]
+        HW2["30% Vector (pgvector cosine 1536-d)"]
+        HW3["10% Recency (90-day decay)"]
+        HW4["10% Quality (text quality score)"]
+        HW5["5% Source Authority (official boost)"]
+    end
+
+    style HybridWeights fill:#f0f8ff,stroke:#4a90e2,stroke-width:2px,color:#000000
+    style HW1 fill:#e8f4f8,stroke:#4a90e2,stroke-width:1px,color:#000000
+    style HW2 fill:#e8f4f8,stroke:#4a90e2,stroke-width:1px,color:#000000
+    style HW3 fill:#e8f4f8,stroke:#4a90e2,stroke-width:1px,color:#000000
+    style HW4 fill:#e8f4f8,stroke:#4a90e2,stroke-width:1px,color:#000000
+    style HW5 fill:#e8f4f8,stroke:#4a90e2,stroke-width:1px,color:#000000

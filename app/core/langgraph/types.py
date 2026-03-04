@@ -322,6 +322,10 @@ class RAGState(TypedDict, total=False):
     agent_initialized: bool | None  # Step 8: Agent workflow initialized
     workflow_ready: bool | None  # Step 8: Workflow ready to process
 
+    # Guardrail streaming: step_064 defers LLM call for real-time streaming in graph.py
+    stream_llm_pending: bool | None  # True when LLM call deferred for streaming
+    stream_llm_params: dict | None  # Params for deferred generate_response_stream()
+
     # metrics/epochs (always present)
     metrics: dict  # counters/timers; always present (can be {})
     epochs: dict | None  # kb_epoch/golden_epoch/etc.

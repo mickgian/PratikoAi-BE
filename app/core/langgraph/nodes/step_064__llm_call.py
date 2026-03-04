@@ -113,8 +113,12 @@ async def node_step_64(state: RAGState) -> RAGState:
                     is_chitchat=is_chitchat,
                     is_followup=is_followup,
                 )
+                # Mark LLM namespace so downstream nodes (Step 67) don't flag failure
+                llm = ns(state, "llm")
+                llm["success"] = True
+                llm["deferred_for_streaming"] = True
                 # Skip the rest of the LLM call — graph.py will handle streaming
-                rag_step_log(STEP, "exit", llm_success=None, reasoning_type=state.get("reasoning_type"))
+                rag_step_log(STEP, "exit", llm_success=True, reasoning_type=state.get("reasoning_type"))
                 return state
             else:
                 r = await get_llm_orchestrator().generate_response(

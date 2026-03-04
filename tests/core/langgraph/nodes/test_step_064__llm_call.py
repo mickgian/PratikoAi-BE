@@ -199,6 +199,11 @@ class TestStreamingLLMDeferral:
             assert result["stream_llm_params"]["query"] == "test query"
             assert result["stream_llm_params"]["complexity"] == "simple"
 
+            # LLM namespace should indicate success + deferred
+            llm_ns = result.get("llm", {})
+            assert llm_ns.get("success") is True
+            assert llm_ns.get("deferred_for_streaming") is True
+
             # generate_response should NOT have been called
             mock_orch.return_value.generate_response.assert_not_called()
 

@@ -21,16 +21,21 @@ Full analysis of the PratikoAI LangGraph pipeline identified **6 distinct LLM AP
 
 ## Pipeline Architecture
 
-### LLM Call Inventory
+### LLM Call Inventory (Updated Mar 2026)
 
-| # | Step | LLM Call | Model Tier | Purpose |
-|---|------|----------|------------|---------|
-| 1 | 12 | `step_012__extract_query` | BASIC (gpt-4o-mini) | Query extraction from conversation |
-| 2 | 25 | `node_step_25__llm_router` | BASIC (gpt-4o-mini) | Intent routing (chitchat/research/calc) |
-| 3 | 39a | `_run_multi_query` | BASIC (gpt-4o-mini) | Multi-query expansion (BM25/vector/entity variants) |
-| 4 | 39a | `reformulate_short_query_llm` | BASIC (gpt-4o-mini) | Short query expansion with context |
-| 5 | 39b | `_run_hyde` | BASIC (gpt-4o-mini) | Hypothetical Document Embedding generation |
-| 6 | 64 | `node_step_64` | PREMIUM (gpt-4o) / configurable | Final answer generation with Tree-of-Thoughts |
+| # | Step | LLM Call | Model Tier | Purpose | Conditional? |
+|---|------|----------|------------|---------|--------------|
+| 1 | 12 | `step_012__extract_query` | **None** (rule-based) | Query extraction from conversation | N/A — no LLM call |
+| 2 | 34a | `node_step_34a` (HF classifier) | **$0** (local HuggingFace mDeBERTa) | Intent routing — primary path | Always runs (<100ms) |
+| 2b | 34a | `LLMRouterService.route()` | BASIC (gpt-4o-mini) | Intent routing — GPT fallback | Only when HF confidence < 0.5 |
+| 3 | 39ab | `reformulate_short_query_llm` | BASIC (gpt-4o-mini) | Short query expansion with context | Only when query < 5 words |
+| 4 | 39ab | `MultiQueryGeneratorService` | BASIC (gpt-4o-mini) | Multi-query expansion (BM25/vector/entity) | Skipped for chitchat; cached by MD5 |
+| 5 | 39ab | `HyDEGeneratorService` | BASIC (gpt-4o-mini) | Hypothetical Document Embedding generation | Parallel with #4 (S1 optimization) |
+| 6 | 64 | `node_step_64` | PREMIUM (gpt-4o) / configurable | Final answer generation with Tree-of-Thoughts | Always |
+
+**Typical query (5+ words, HF confident):** 3 LLM calls — MultiQuery + HyDE (parallel) + Final Answer
+**Short follow-up (HF confident):** 4 LLM calls — reformulate + MultiQuery + HyDE (parallel) + Final Answer
+**HF uncertain:** +1 GPT-4o-mini fallback call for routing
 
 ### LangGraph Node Flow (After Optimization)
 
@@ -233,14 +238,37 @@ These are no longer wired in `graph.py` but remain importable for backward compa
 
 ## Future Optimizations
 
-### 1. Unified Query Analyzer
-Merge `QueryExtraction` + `LLMRouter` + `MultiQuery` into single LLM call with structured output. Would reduce 4 BASIC-tier LLM calls to 1.
+### ~~1. Unified Query Analyzer~~ — REJECTED (Mar 2026)
+
+**Original Proposal:** Merge `QueryExtraction` + `LLMRouter` + `MultiQuery` into single LLM call with structured output. Claimed to reduce 4 BASIC-tier LLM calls to 1.
+
+**Analysis Result: Not Recommended.** The original claim was based on outdated pipeline data. Detailed code review reveals:
+
+| Component | Actual LLM Call? | When? |
+|-----------|-----------------|-------|
+| `ExtractQuery` (step 12) | **No** — pure rule-based message parsing | Never |
+| `LLMRouter` (step 34a) | **Rarely** — HF classifier handles most queries locally for $0 | Only when HF confidence < 0.5 |
+| `reformulate_short_query` | **Sometimes** | Only when query < 5 words |
+| `MultiQuery` + `HyDE` | **Yes** — but already parallelized (S1) | Always (non-chitchat) |
+
+**Best case (happy path):** 2 parallel LLM calls (MultiQuery + HyDE) — nothing to merge.
+**Worst case:** 4 calls, but merging saves only ~1-2s (router fallback + reformulation are sequential before expansion).
+
+**Reasons for rejection:**
+1. **Would bypass the free HF classifier** — the routing happy path costs $0 and runs in <100ms locally. A merged LLM call would replace this with a paid GPT-4o-mini call on every query.
+2. **Sequential dependency is architectural** — MultiQuery needs routing decision to skip expansion for chitchat/calculator routes. Merging requires either wasting tokens on unnecessary variants or cramming routing + generation into one fragile prompt.
+3. **Short query reformulation depends on conversation context** — it reformulates "e l'IRAP?" using the last assistant response. MultiQuery then works on the reformulated text. One merged call must do reformulation AND variant generation — a harder task that reduces output quality.
+4. **Independent failure domains** — routing fallback (→ TECHNICAL_RESEARCH) and MultiQuery fallback (→ original query) are separate recovery paths. One merged call means one failure breaks everything.
+5. **Industry consensus** — Google, Perplexity, and production RAG systems use staged processing when tasks have sequential dependencies and conditional execution paths.
 
 ### 2. Streaming Answer Generation
-Stream the final answer (step 64) to reduce time-to-first-token.
+Stream the final answer (step 64) to reduce time-to-first-token. Perceived latency drops ~60% even if total time is unchanged. **Low risk, high impact.**
 
 ### 3. Speculative Retrieval
-Start retrieval before routing completes for likely-research queries.
+Start retrieval before routing completes for likely-research queries. Saves ~1-2s but wastes DB resources on chitchat queries. **Medium risk.**
 
 ### 4. Classification Caching
-Cache classification results by normalized query hash (similar to S3 embedding cache).
+Cache classification results by normalized query hash (similar to S3 embedding cache). Saves ~1-2s on repeated routing patterns. **Very low risk.**
+
+### 5. HF Classifier Fine-Tuning (NEW)
+Fine-tune the HuggingFace intent classifier on captured low-confidence predictions (DEV-253 labeling data) to reduce GPT-4o-mini fallback rate. Saves ~1-2s on queries that currently trigger fallback. **Low risk, reduces cost.**

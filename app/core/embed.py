@@ -3,9 +3,13 @@
 Generates vector embeddings using configurable OpenAI embedding models.
 Includes retry logic for transient API errors (rate limit, timeout, connection).
 Tracks embedding API costs as UsageEvents for daily cost reporting.
+PERF-S3: Redis cache by content hash to avoid duplicate API calls.
 """
 
 import asyncio
+import contextlib
+import hashlib
+import json
 import os
 from typing import (
     List,
@@ -34,6 +38,22 @@ _tokenizer = tiktoken.get_encoding("cl100k_base")
 
 # Default EUR/USD rate fallback (used if exchange rate service unavailable)
 _DEFAULT_EUR_USD_RATE = 1.08
+
+# PERF-S3: Embedding cache TTL (24 hours - embeddings are deterministic for same input)
+_EMBEDDING_CACHE_TTL = 86400
+
+
+def _embedding_cache_key(text: str) -> str:
+    """Generate a deterministic cache key for an embedding request.
+
+    Args:
+        text: Input text (already truncated)
+
+    Returns:
+        Cache key with embed: prefix and SHA-256 hash
+    """
+    text_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return f"embed:{EMBED_MODEL}:{text_hash}"
 
 
 def truncate_to_token_limit(text: str, max_tokens: int = _MAX_EMBEDDING_TOKENS) -> str:
@@ -117,6 +137,9 @@ async def _track_embedding_cost(
 async def generate_embedding(text: str) -> list[float] | None:
     """Generate embedding for a single text.
 
+    PERF-S3: Checks Redis cache first by content hash. On cache miss,
+    calls OpenAI API and stores result for 24 hours.
+
     Retries up to 3 times on RateLimitError, APITimeoutError, and
     APIConnectionError with exponential backoff.
 
@@ -132,24 +155,74 @@ async def generate_embedding(text: str) -> list[float] | None:
     try:
         text = truncate_to_token_limit(text)
 
+        # PERF-S3: Check Redis cache first
+        cache_key = _embedding_cache_key(text)
+        cached = await _get_cached_embedding(cache_key)
+        if cached is not None:
+            logger.debug("embedding_cache_hit", cache_key=cache_key[:30])
+            return cached
+
         response = await _create_embedding(model=EMBED_MODEL, input_data=text)
 
         embedding = cast(list[float], response.data[0].embedding)
 
-        # Fire-and-forget cost tracking
-        try:
+        # Fire-and-forget: cache + cost tracking
+        with contextlib.suppress(Exception):
+            await _cache_embedding(cache_key, embedding)
+
+        with contextlib.suppress(Exception):
             await _track_embedding_cost(
                 total_tokens=response.usage.total_tokens,
                 model=EMBED_MODEL,
             )
-        except Exception:
-            pass  # Never block embedding on tracking failure
 
         return embedding
 
     except Exception as e:
         logger.error("Error generating embedding: %s", e, exc_info=True)
         return None
+
+
+async def _get_cached_embedding(cache_key: str) -> list[float] | None:
+    """Retrieve cached embedding from Redis.
+
+    Returns None on cache miss or any error (never blocks main flow).
+    """
+    try:
+        from app.services.cache import cache_service
+
+        if not cache_service.enabled:
+            return None
+
+        redis_client = await cache_service._get_redis()
+        if not redis_client:
+            return None
+
+        data = await redis_client.get(cache_key)
+        if data is None:
+            return None
+
+        return json.loads(data)
+    except Exception:
+        return None
+
+
+async def _cache_embedding(cache_key: str, embedding: list[float]) -> None:
+    """Store embedding in Redis cache (fire-and-forget)."""
+    try:
+        from app.services.cache import cache_service
+
+        if not cache_service.enabled:
+            return
+
+        redis_client = await cache_service._get_redis()
+        if not redis_client:
+            return
+
+        await redis_client.setex(cache_key, _EMBEDDING_CACHE_TTL, json.dumps(embedding))
+        logger.debug("embedding_cached", cache_key=cache_key[:30])
+    except Exception as e:
+        logger.debug("embedding_cache_store_failed", error=str(e))
 
 
 async def generate_embeddings_batch(texts: list[str], batch_size: int = 20) -> list[list[float] | None]:
@@ -179,14 +252,12 @@ async def generate_embeddings_batch(texts: list[str], batch_size: int = 20) -> l
             all_embeddings.extend(batch_embeddings)
 
             # Fire-and-forget cost tracking
-            try:
+            with contextlib.suppress(Exception):
                 await _track_embedding_cost(
                     total_tokens=response.usage.total_tokens,
                     model=EMBED_MODEL,
                     batch_size=len(batch),
                 )
-            except Exception:
-                pass  # Never block embedding on tracking failure
 
         except Exception as e:
             logger.error("Error generating batch embeddings: %s", e, exc_info=True)

@@ -210,20 +210,26 @@ from app.core.langgraph.nodes.step_026__kb_context_check import node_step_26
 from app.core.langgraph.nodes.step_027__kb_delta import node_step_27
 from app.core.langgraph.nodes.step_028__serve_golden import node_step_28
 from app.core.langgraph.nodes.step_030__return_complete import node_step_30
+from app.core.langgraph.nodes.step_031_032__classify_and_score import node_step_31_32
 
 # Phase 4 Classification Node imports
-from app.core.langgraph.nodes.step_031__classify_domain import node_step_31
-from app.core.langgraph.nodes.step_032__calc_scores import node_step_32
+# PERF-S4: Consolidated classification nodes (31+32 → single node, 35-38 → single node)
+from app.core.langgraph.nodes.step_031__classify_domain import node_step_31  # kept for backward compat
+from app.core.langgraph.nodes.step_032__calc_scores import node_step_32  # kept for backward compat
 from app.core.langgraph.nodes.step_033__confidence_check import node_step_33
 from app.core.langgraph.nodes.step_034__track_metrics import node_step_34
 from app.core.langgraph.nodes.step_034a__llm_router import node_step_34a
-from app.core.langgraph.nodes.step_035__llm_fallback import node_step_35
-from app.core.langgraph.nodes.step_036__llm_better import node_step_36
-from app.core.langgraph.nodes.step_037__use_llm import node_step_37
-from app.core.langgraph.nodes.step_038__use_rule_based import node_step_38
+from app.core.langgraph.nodes.step_035_038__llm_fallback_resolve import node_step_35_38
+from app.core.langgraph.nodes.step_035__llm_fallback import node_step_35  # kept for backward compat
+from app.core.langgraph.nodes.step_036__llm_better import node_step_36  # kept for backward compat
+from app.core.langgraph.nodes.step_037__use_llm import node_step_37  # kept for backward compat
+from app.core.langgraph.nodes.step_038__use_rule_based import node_step_38  # kept for backward compat
 from app.core.langgraph.nodes.step_039__kbpre_fetch import node_step_39
-from app.core.langgraph.nodes.step_039a__multi_query import node_step_39a
-from app.core.langgraph.nodes.step_039b__hyde import node_step_39b
+
+# PERF-S1: Parallel expansion replaces sequential MultiQuery → HyDE
+from app.core.langgraph.nodes.step_039a__multi_query import node_step_39a  # kept for backward compat
+from app.core.langgraph.nodes.step_039ab__parallel_expansion import node_step_39ab
+from app.core.langgraph.nodes.step_039b__hyde import node_step_39b  # kept for backward compat
 from app.core.langgraph.nodes.step_039c__parallel_retrieval import node_step_39c
 from app.core.langgraph.nodes.step_040__build_context import node_step_40
 from app.core.langgraph.nodes.step_041__select_prompt import node_step_41
@@ -418,7 +424,7 @@ class LangGraphAgent:
                 decision=EligibilityDecision.NOT_ELIGIBLE,
                 confidence=1.0,
                 reasons=["no_user_message"],
-                next_step="ClassifyDomain",
+                next_step="ClassifyAndScore",
                 allows_golden_lookup=False,
             )
 
@@ -1487,7 +1493,7 @@ class LangGraphAgent:
     def _route_from_golden_fast_gate(state: dict[str, Any]) -> str:
         """Route from GoldenFastGate - check if golden lookup is eligible."""
         eligible = state.get("golden", {}).get("eligible", False)
-        branch = "GoldenLookup" if eligible else "ClassifyDomain"
+        branch = "GoldenLookup" if eligible else "ClassifyAndScore"
         logger.debug(
             "routing_decision",
             from_node="GoldenFastGate",
@@ -1499,13 +1505,13 @@ class LangGraphAgent:
         if eligible:
             return "GoldenLookup"
         else:
-            return "ClassifyDomain"
+            return "ClassifyAndScore"
 
     @staticmethod
     def _route_from_golden_hit(state: dict[str, Any]) -> str:
         """Route from GoldenHit - check if high confidence match found."""
         golden_hit = state.get("golden", {}).get("hit", False)
-        branch = "KBContextCheck" if golden_hit else "ClassifyDomain"
+        branch = "KBContextCheck" if golden_hit else "ClassifyAndScore"
         logger.debug(
             "routing_decision",
             from_node="GoldenHit",
@@ -1517,13 +1523,13 @@ class LangGraphAgent:
         if golden_hit:
             return "KBContextCheck"
         else:
-            return "ClassifyDomain"
+            return "ClassifyAndScore"
 
     @staticmethod
     def _route_from_kb_delta(state: dict[str, Any]) -> str:
         """Route from KBDelta - check if KB is newer than golden."""
         kb_newer = state.get("golden", {}).get("kb_newer", False)
-        branch = "ClassifyDomain" if kb_newer else "ServeGolden"
+        branch = "ClassifyAndScore" if kb_newer else "ServeGolden"
         logger.debug(
             "routing_decision",
             from_node="KBDelta",
@@ -1533,15 +1539,18 @@ class LangGraphAgent:
             reason=f"KB {'newer than golden' if kb_newer else 'not newer'}, {'need fresh LLM response with KB context' if kb_newer else 'golden answer still fresh'}",
         )
         if kb_newer:
-            return "ClassifyDomain"  # Need fresh LLM response with KB context
+            return "ClassifyAndScore"  # Need fresh LLM response with KB context
         else:
             return "ServeGolden"  # Golden answer is still fresh
 
     @staticmethod
     def _route_from_confidence_check(state: dict[str, Any]) -> str:
-        """Route from ConfidenceCheck - check if classification confidence is sufficient."""
+        """Route from ConfidenceCheck - check if classification confidence is sufficient.
+
+        PERF-S4: Routes to LLMFallbackResolve (consolidated node) instead of LLMFallback.
+        """
         confidence_sufficient = state.get("classification", {}).get("confidence_sufficient", False)
-        branch = "TrackMetrics" if confidence_sufficient else "LLMFallback"
+        branch = "TrackMetrics" if confidence_sufficient else "LLMFallbackResolve"
         logger.debug(
             "routing_decision",
             from_node="ConfidenceCheck",
@@ -1553,7 +1562,7 @@ class LangGraphAgent:
         if confidence_sufficient:
             return "TrackMetrics"
         else:
-            return "LLMFallback"
+            return "LLMFallbackResolve"
 
     @staticmethod
     def _route_from_llm_better(state: dict[str, Any]) -> str:
@@ -2257,19 +2266,16 @@ class LangGraphAgent:
             graph_builder.add_node("ReturnComplete", node_step_30)
 
             # Lane 4: Classification nodes
-            graph_builder.add_node("ClassifyDomain", node_step_31)
-            graph_builder.add_node("CalcScores", node_step_32)
+            # PERF-S4: ClassifyAndScore consolidates ClassifyDomain + CalcScores
+            graph_builder.add_node("ClassifyAndScore", node_step_31_32)
             graph_builder.add_node("ConfidenceCheck", node_step_33)
             graph_builder.add_node("TrackMetrics", node_step_34)
             graph_builder.add_node("LLMRouter", node_step_34a)  # DEV-200: Semantic query classification
-            graph_builder.add_node("LLMFallback", node_step_35)
-            graph_builder.add_node("LLMBetter", node_step_36)
-            graph_builder.add_node("UseLLM", node_step_37)
-            graph_builder.add_node("UseRuleBased", node_step_38)
+            # PERF-S4: LLMFallbackResolve consolidates LLMFallback + LLMBetter + UseLLM + UseRuleBased
+            graph_builder.add_node("LLMFallbackResolve", node_step_35_38)
             graph_builder.add_node("KBPreFetch", node_step_39)
-            # DEV-195/200: Query Expansion pipeline
-            graph_builder.add_node("MultiQuery", node_step_39a)
-            graph_builder.add_node("HyDE", node_step_39b)
+            # PERF-S1: ParallelExpansion runs MultiQuery + HyDE concurrently
+            graph_builder.add_node("ParallelExpansion", node_step_39ab)
             graph_builder.add_node("ParallelRetrieval", node_step_39c)
             graph_builder.add_node("BuildContext", node_step_40)
             graph_builder.add_node("SelectPrompt", node_step_41)
@@ -2370,53 +2376,44 @@ class LangGraphAgent:
             graph_builder.add_conditional_edges(
                 "GoldenFastGate",
                 self._route_from_golden_fast_gate,
-                {"GoldenLookup": "GoldenLookup", "ClassifyDomain": "ClassifyDomain"},
+                {"GoldenLookup": "GoldenLookup", "ClassifyAndScore": "ClassifyAndScore"},
             )
             graph_builder.add_edge("GoldenLookup", "GoldenHit")
             graph_builder.add_conditional_edges(
                 "GoldenHit",
                 self._route_from_golden_hit,
-                {"KBContextCheck": "KBContextCheck", "ClassifyDomain": "ClassifyDomain"},
+                {"KBContextCheck": "KBContextCheck", "ClassifyAndScore": "ClassifyAndScore"},
             )
             graph_builder.add_edge("KBContextCheck", "KBDelta")
             graph_builder.add_conditional_edges(
                 "KBDelta",
                 self._route_from_kb_delta,
-                {"ServeGolden": "ServeGolden", "ClassifyDomain": "ClassifyDomain"},
+                {"ServeGolden": "ServeGolden", "ClassifyAndScore": "ClassifyAndScore"},
             )
             graph_builder.add_edge("ServeGolden", "ReturnComplete")
             graph_builder.add_edge("ReturnComplete", "CollectMetrics")
 
             # ========== Wire Lane 4: Classification ==========
-            # Wire classification flow with internal steps
-            graph_builder.add_edge("ClassifyDomain", "CalcScores")
-            graph_builder.add_edge("CalcScores", "ConfidenceCheck")
+            # PERF-S4: Consolidated classification flow (fewer node transitions)
+            # ClassifyAndScore = merged ClassifyDomain + CalcScores
+            graph_builder.add_edge("ClassifyAndScore", "ConfidenceCheck")
 
-            # ConfidenceCheck decision: sufficient confidence → TrackMetrics, else → LLMFallback
+            # ConfidenceCheck decision: sufficient confidence → TrackMetrics, else → LLMFallbackResolve
             graph_builder.add_conditional_edges(
                 "ConfidenceCheck",
                 self._route_from_confidence_check,
-                {"TrackMetrics": "TrackMetrics", "LLMFallback": "LLMFallback"},
+                {"TrackMetrics": "TrackMetrics", "LLMFallbackResolve": "LLMFallbackResolve"},
             )
 
-            # LLMFallback path
-            graph_builder.add_edge("LLMFallback", "LLMBetter")
+            # PERF-S4: LLMFallbackResolve = merged LLMFallback + LLMBetter + UseLLM + UseRuleBased
+            # Single node handles fallback → compare → resolve internally
+            graph_builder.add_edge("LLMFallbackResolve", "TrackMetrics")
 
-            # LLMBetter decision: LLM better → UseLLM, else → UseRuleBased
-            graph_builder.add_conditional_edges(
-                "LLMBetter", self._route_from_llm_better, {"UseLLM": "UseLLM", "UseRuleBased": "UseRuleBased"}
-            )
-
-            # Both paths converge at TrackMetrics
-            graph_builder.add_edge("UseLLM", "TrackMetrics")
-            graph_builder.add_edge("UseRuleBased", "TrackMetrics")
-
-            # DEV-200: LLM Router and Query Expansion pipeline
-            # TrackMetrics → LLMRouter → MultiQuery → HyDE → ParallelRetrieval → BuildContext
+            # PERF-S1: Parallel Query Expansion pipeline
+            # TrackMetrics → LLMRouter → ParallelExpansion → ParallelRetrieval → BuildContext
             graph_builder.add_edge("TrackMetrics", "LLMRouter")
-            graph_builder.add_edge("LLMRouter", "MultiQuery")
-            graph_builder.add_edge("MultiQuery", "HyDE")
-            graph_builder.add_edge("HyDE", "ParallelRetrieval")
+            graph_builder.add_edge("LLMRouter", "ParallelExpansion")
+            graph_builder.add_edge("ParallelExpansion", "ParallelRetrieval")
             graph_builder.add_edge("ParallelRetrieval", "BuildContext")
             # NOTE: KBPreFetch node exists but is bypassed - ParallelRetrieval handles retrieval
             graph_builder.add_edge("BuildContext", "SelectPrompt")

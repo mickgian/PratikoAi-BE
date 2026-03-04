@@ -74,7 +74,12 @@ async def node_step_39c(state: RAGState) -> RAGState:
 
                 async with AsyncSessionLocal() as db_session:
                     search_service = SearchService(db_session=db_session)
-                    service = ParallelRetrievalService(search_service=search_service, embedding_service=None)
+                    # PERF-S2: Pass session_factory for parallel KB searches
+                    service = ParallelRetrievalService(
+                        search_service=search_service,
+                        embedding_service=None,
+                        session_factory=AsyncSessionLocal,
+                    )
 
                     messages = state.get("messages", [])
                     topic_keywords = state.get("topic_keywords")

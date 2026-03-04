@@ -311,3 +311,19 @@ class TestGuardrailStreamProcessorEdgeCases:
         combined = "".join(result)
         assert "Primo punto" in combined
         assert "Secondo punto" in combined
+
+    def test_blank_lines_yielded_for_markdown_paragraphs(self):
+        """Blank lines between markdown sections must be yielded to preserve formatting.
+
+        Without blank lines, the frontend assembles "## Header\nContent" instead of
+        "## Header\n\nContent", breaking markdown paragraph breaks.
+        """
+        from app.services.guardrail_stream_processor import GuardrailStreamProcessor
+
+        processor = GuardrailStreamProcessor()
+        # Simulate LLM output with blank lines between header and content
+        result = processor.process_chunk("## Titolo\n\nContenuto del paragrafo.\n")
+
+        # Join all emitted chunks — blank line (\n) must be preserved
+        combined = "".join(result)
+        assert "\n\n" in combined, f"Blank line missing from emitted chunks — markdown will break. Got: {combined!r}"

@@ -128,7 +128,11 @@ class GuardrailStreamProcessor:
             if not segment:
                 continue
             if not segment.strip():
-                # Preserve whitespace-only segments for markdown formatting
+                # Yield whitespace-only segments (blank lines) so the frontend
+                # can reconstruct proper markdown with paragraph breaks.
+                # Without these, "## Header\n\nContent" becomes "## Header\nContent"
+                # which breaks markdown rendering when the full text is assembled.
+                emitted.append(segment)
                 self._full_text_parts.append(segment)
                 continue
             filtered = self._apply_sentence_guardrails(segment)
@@ -177,10 +181,18 @@ class GuardrailStreamProcessor:
         2. Disclaimer removal (regex, <1ms)
         3. PII deanonymization (string replace, <1ms)
         """
+        # Preserve trailing whitespace (newlines) from the segment boundary.
+        # DisclaimerFilter.filter_response() calls .strip() which removes trailing
+        # newlines, but these are critical for markdown paragraph breaks.
+        trailing_ws = ""
+        stripped_text = text.rstrip()
+        if len(stripped_text) < len(text):
+            trailing_ws = text[len(stripped_text) :]
+
         # 1. Strip XML tags so frontend never sees them (prevents content_cleaned flash)
         # Use individual strippers instead of clean_proactivity_content() to avoid
         # .strip() which would collapse whitespace between streamed segments.
-        filtered = text
+        filtered = stripped_text
         if "<" in filtered:
             filtered = strip_answer_tags(filtered)
             filtered = strip_suggested_actions_block(filtered)
@@ -206,4 +218,5 @@ class GuardrailStreamProcessor:
             ):
                 filtered = filtered.replace(placeholder, original)
 
-        return filtered
+        # Reattach trailing whitespace (newlines) stripped earlier
+        return filtered + trailing_ws

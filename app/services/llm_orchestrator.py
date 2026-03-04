@@ -516,6 +516,92 @@ class LLMOrchestrator:
             )
             raise
 
+    async def generate_response_stream(
+        self,
+        query: str,
+        kb_context: str,
+        kb_sources_metadata: list[dict],
+        complexity: QueryComplexity,
+        conversation_history: list[dict] | None = None,
+        web_sources_metadata: list[dict] | None = None,
+        domains: list[str] | None = None,
+        is_followup: bool = False,
+        is_chitchat: bool = False,
+        deanonymization_map: dict[str, str] | None = None,
+    ):
+        """Stream response with per-sentence guardrail filtering.
+
+        Uses provider.stream_completion() for real-time LLM streaming,
+        with GuardrailStreamProcessor applying disclaimer filtering and
+        PII deanonymization on each sentence before emitting to the client.
+
+        Yields:
+            Filtered sentence chunks ready for SSE delivery.
+        """
+        from app.services.guardrail_stream_processor import GuardrailStreamProcessor
+
+        if is_chitchat:
+            config = ModelConfig.for_chitchat()
+        else:
+            config = ModelConfig.for_complexity(complexity)
+
+        prompt = self._build_response_prompt(
+            query=query,
+            kb_context=kb_context,
+            kb_sources_metadata=kb_sources_metadata,
+            config=config,
+            conversation_history=conversation_history,
+            web_sources_metadata=web_sources_metadata,
+            domains=domains,
+            is_followup=is_followup,
+        )
+
+        provider = self._get_stream_provider(config.model)
+        processor = GuardrailStreamProcessor(deanonymization_map=deanonymization_map)
+        messages = [Message(role="user", content=prompt)]
+
+        logger.info(
+            "llm_stream_started",
+            model=config.model,
+            complexity=complexity.value,
+            is_chitchat=is_chitchat,
+        )
+
+        async for chunk in provider.stream_completion(
+            messages=messages,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+        ):
+            if chunk.done:
+                break
+            if chunk.content:
+                sentences = processor.process_chunk(chunk.content)
+                for sentence in sentences:
+                    yield sentence
+
+        # Finalize: flush buffer and emit remaining
+        result = processor.finalize()
+        if result.remaining_text.strip():
+            yield result.remaining_text
+
+        logger.info(
+            "llm_stream_completed",
+            model=config.model,
+            chunks_processed=result.chunks_processed,
+            disclaimers_removed=result.disclaimers_removed,
+            full_text_length=len(result.full_text),
+        )
+
+    def _get_stream_provider(self, model: str):
+        """Get an LLM provider for streaming."""
+        from app.core.llm.factory import get_llm_factory
+        from app.core.llm.model_registry import get_model_registry
+
+        factory = get_llm_factory()
+        registry = get_model_registry()
+        entry = registry.resolve_production_model()
+        return factory.create_provider(provider_type=entry.provider, model=model)
+
     def get_session_costs(self) -> dict:
         """Get detailed cost breakdown for current session.
 

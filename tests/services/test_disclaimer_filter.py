@@ -492,6 +492,77 @@ class TestDisclaimerFilterNewPatterns:
         assert len(removed) > 0
 
 
+class TestDisclaimerFilterNewGaps:
+    """Tests for disclaimer patterns that were slipping through (DEV-251+)."""
+
+    def test_assistenza_di_un_professionista(self):
+        """Should catch 'con l'assistenza di un professionista' (was missing 'professionista' in alternation)."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Se il cliente ha dubbi specifici (es.trattamento fiscale della cessione "
+            "della clientela, rateizzazione dei debiti, ecc.), è possibile approfondire "
+            "ulteriormente con l'assistenza di un professionista."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "assistenza di un professionista" not in cleaned.lower()
+        assert "è possibile approfondire" not in cleaned.lower()
+        assert "Se il cliente ha dubbi specifici" in cleaned
+        assert len(removed) > 0
+
+    def test_approfondire_con_un_commercialista(self):
+        """Should catch 'è possibile approfondire con un commercialista'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La materia è complessa. È possibile approfondire con un commercialista."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "approfondire con un commercialista" not in cleaned.lower()
+        assert "La materia è complessa" in cleaned
+        assert len(removed) > 0
+
+    def test_consulenza_di_un_professionista(self):
+        """Should catch 'si consiglia la consulenza di un professionista'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Rischi sanzionatori significativi. Si consiglia la consulenza di un professionista."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza di un professionista" not in cleaned.lower()
+        assert "Rischi sanzionatori significativi" in cleaned
+        assert len(removed) > 0
+
+    def test_verificare_con_un_professionista(self):
+        """Should catch 'verificare con un professionista'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Rischi sanzionatori elevati. Verificare con un professionista."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "verificare con un professionista" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_hardcoded_risk_warnings_no_disclaimers(self):
+        """Hardcoded risk warnings should no longer contain disclaimer phrases."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        # These are the new hardcoded risk warnings (after fix)
+        critical_warning = (
+            "Attenzione: questa situazione comporta rischi sanzionatori "
+            "significativi che potrebbero includere sanzioni penali. "
+            "Valutare attentamente le opzioni di regolarizzazione disponibili."
+        )
+        high_warning = (
+            "Attenzione: questa interpretazione comporta potenziali "
+            "rischi sanzionatori elevati. Procedere con cautela e verificare "
+            "la corretta applicazione della normativa."
+        )
+
+        assert not DisclaimerFilter.contains_disclaimer(critical_warning)
+        assert not DisclaimerFilter.contains_disclaimer(high_warning)
+
+
 class TestDisclaimerFilterLogging:
     """DEV-251: Test logging behavior."""
 

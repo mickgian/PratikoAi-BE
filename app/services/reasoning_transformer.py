@@ -93,12 +93,13 @@ ALTERNATIVE_NOTE_TEMPLATE = (
 RISK_WARNING_CRITICAL = (
     "Attenzione: questa situazione comporta rischi sanzionatori "
     "significativi che potrebbero includere sanzioni penali. "
-    "Si consiglia la consulenza di un professionista."
+    "Valutare attentamente le opzioni di regolarizzazione disponibili."
 )
 
 RISK_WARNING_HIGH = (
     "Attenzione: questa interpretazione comporta potenziali "
-    "rischi sanzionatori elevati. Verificare con un professionista."
+    "rischi sanzionatori elevati. Procedere con cautela e verificare "
+    "la corretta applicazione della normativa."
 )
 
 # Source ID pattern for removal

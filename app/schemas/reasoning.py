@@ -478,11 +478,12 @@ def _generate_risk_warning(internal: InternalReasoning) -> str:
         return (
             "Attenzione: questa situazione comporta rischi sanzionatori "
             "significativi che potrebbero includere sanzioni penali. "
-            "Si consiglia la consulenza di un professionista."
+            "Valutare attentamente le opzioni di regolarizzazione disponibili."
         )
     elif internal.risk_level == RiskLevel.HIGH.value:
         return (
             "Attenzione: questa interpretazione comporta potenziali "
-            "rischi sanzionatori elevati. Verificare con un professionista."
+            "rischi sanzionatori elevati. Procedere con cautela e verificare "
+            "la corretta applicazione della normativa."
         )
     return ""

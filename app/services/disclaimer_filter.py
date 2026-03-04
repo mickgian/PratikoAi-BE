@@ -36,12 +36,18 @@ DISCLAIMER_PATTERNS: list[str] = [
     # Compound professional references with "o" (un commercialista o un consulente del lavoro)
     r"un (?:commercialista|consulente del lavoro|avvocato|esperto|professionista)"
     r"(?:\s*o\s*(?:un )?(?:commercialista|consulente del lavoro|avvocato|esperto|professionista))+",
+    # "è possibile approfondire con un professionista" variants (MUST be before "assistenza" pattern)
+    r"(?:è|e') possibile approfondire (?:ulteriormente )?(?:con\b[^.!?]*)?",
     # "professional assistance" full phrases
-    r"assistenza (?:di un )?(?:professionale|legale|fiscale|contabile)",
+    r"(?:con (?:l[''])?)?assistenza (?:di un )?(?:professionista|professionale|legale|fiscale|contabile)",
     r"(?:chiedere|sentire|prendere) (?:il )?(?:parere|consiglio|opinione) (?:di|a) un",
     r"(?:contattare|interpellare) un (?:commercialista|consulente|avvocato|esperto|professionista)",
-    # "In case of doubt" + consult
-    r"[Ii]n caso di dubbi,? (?:consultare|contattare|rivolgersi)",
+    # "consulenza di un professionista" (noun form, bypasses verb-based patterns)
+    r"(?:si consiglia )?la consulenza di un (?:professionista|esperto|commercialista|consulente|avvocato)",
+    # "verificare con un professionista" (imperative without "consult")
+    r"verificare con un (?:professionista|esperto|commercialista|consulente|avvocato)",
+    # "In case of doubt" + consult (or orphaned after earlier pattern removal)
+    r"[Ii]n caso di dubbi,?\s*(?:(?:consultare|contattare|rivolgersi)[^.!?]*)?",
     # "check official sources" variants
     r"verifica sul sito (?:ufficiale|dell['']Agenzia)",
     r"per (?:maggiori informazioni|conferma)[,]? (?:consulta|verifica|controlla)",

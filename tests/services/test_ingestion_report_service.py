@@ -998,6 +998,50 @@ class TestHTMLReportWithBackfillResult:
 
         assert "Embedding Backfill" in html
 
+    def test_html_backfill_shows_error_when_crash(self, mock_db_session):
+        """Status shows error when found > 0 but fixed + failed = 0 (crash scenario)."""
+        service = IngestionReportService(mock_db_session)
+
+        backfill = EmbeddingBackfillResult(
+            items_found=161,
+            items_fixed=0,
+            items_failed=0,
+            chunks_found=0,
+            chunks_fixed=0,
+            chunks_failed=0,
+            error_message="pgvector type mismatch",
+            ran_at="2026-03-04T02:01:01+00:00",
+        )
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            embedding_backfill=backfill,
+        )
+
+        html = service._generate_html_report(report)
+
+        assert "Embedding Backfill" in html
+        # Should show error indication, NOT "All 0 fixed"
+        assert "All 0 fixed" not in html
+        assert "ERROR" in html or "error" in html.lower()
+
+    def test_html_backfill_shows_error_message(self, mock_db_session):
+        """Error message from crash is displayed in backfill section."""
+        service = IngestionReportService(mock_db_session)
+
+        backfill = EmbeddingBackfillResult(
+            items_found=10,
+            error_message="connection reset by peer",
+            ran_at="2026-03-04T02:01:01+00:00",
+        )
+        report = DailyIngestionReport(
+            report_date=date.today(),
+            embedding_backfill=backfill,
+        )
+
+        html = service._generate_html_report(report)
+
+        assert "connection reset by peer" in html
+
     def test_report_backfill_default_none(self):
         """Test that embedding_backfill defaults to None."""
         report = DailyIngestionReport(report_date=date.today())

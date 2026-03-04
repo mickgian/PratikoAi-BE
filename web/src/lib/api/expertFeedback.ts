@@ -29,16 +29,24 @@ const getAuthToken = (): string | null => {
 };
 
 /**
- * Make authenticated API request
+ * Custom error for authentication failures (401/403).
+ * These are expected when the user is not logged in or lacks permissions,
+ * and should be handled silently — not logged as console errors.
  */
+class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
 async function makeRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const token = getAuthToken();
   if (!token) {
-    console.error('❌ [Expert Feedback API] No auth token found');
-    throw new Error('Non autenticato. Effettua il login per continuare.');
+    throw new AuthError('Non autenticato. Effettua il login per continuare.');
   }
 
   const url = `${getBaseUrl()}${endpoint}`;
@@ -46,22 +54,22 @@ async function makeRequest<T>(
   headers.set('Authorization', `Bearer ${token}`);
   headers.set('Content-Type', 'application/json');
 
-  console.log(`🌐 [Expert Feedback API] ${options.method || 'GET'} ${url}`);
-
   try {
     const response = await fetch(url, {
       ...options,
       headers,
     });
 
-    console.log(
-      `📡 [Expert Feedback API] Response: ${response.status} ${response.statusText}`
-    );
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({
         detail: `HTTP ${response.status}: ${response.statusText}`,
       }));
+
+      // 401/403 are expected auth failures — throw AuthError (handled silently)
+      if (response.status === 401 || response.status === 403) {
+        throw new AuthError(errorData.detail || 'Credenziali non valide');
+      }
+
       console.error('❌ [Expert Feedback API] Error response:', errorData);
       throw new Error(errorData.detail || 'Errore durante la richiesta API');
     }
@@ -73,13 +81,14 @@ async function makeRequest<T>(
 
     return response.json();
   } catch (error) {
+    // Re-throw AuthError without wrapping
+    if (error instanceof AuthError) {
+      throw error;
+    }
     if (
       error instanceof TypeError &&
       error.message.includes('Failed to fetch')
     ) {
-      console.error(
-        '❌ [Expert Feedback API] Network error - server unreachable'
-      );
       throw new Error(
         'Impossibile connettersi al server. Verifica la tua connessione.'
       );
@@ -94,8 +103,6 @@ async function makeRequest<T>(
 export async function submitFeedback(
   data: SubmitFeedbackRequest
 ): Promise<SubmitFeedbackResponse> {
-  console.log('📤 [Expert Feedback] Submitting feedback:', data);
-
   // Validate required fields (matching backend FeedbackSubmission schema)
   if (!data.query_id || !data.feedback_type) {
     throw new Error(
@@ -132,36 +139,19 @@ export async function submitFeedback(
     );
   }
 
-  const response = await makeRequest<SubmitFeedbackResponse>(
-    '/api/v1/expert-feedback/submit',
-    {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }
-  );
-
-  console.log(
-    '✅ [Expert Feedback] Feedback submitted successfully:',
-    response
-  );
-  return response;
+  return makeRequest<SubmitFeedbackResponse>('/api/v1/expert-feedback/submit', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 /**
  * Get feedback history for the current expert
  */
 export async function getFeedbackHistory(): Promise<FeedbackHistoryItem[]> {
-  console.log('📥 [Expert Feedback] Fetching feedback history');
-
-  const response = await makeRequest<FeedbackHistoryItem[]>(
-    '/api/v1/expert-feedback/history',
-    {
-      method: 'GET',
-    }
-  );
-
-  console.log(`✅ [Expert Feedback] Fetched ${response.length} feedback items`);
-  return response;
+  return makeRequest<FeedbackHistoryItem[]>('/api/v1/expert-feedback/history', {
+    method: 'GET',
+  });
 }
 
 /**
@@ -170,41 +160,20 @@ export async function getFeedbackHistory(): Promise<FeedbackHistoryItem[]> {
 export async function getFeedbackById(
   feedbackId: string
 ): Promise<SubmitFeedbackResponse> {
-  console.log('📥 [Expert Feedback] Fetching feedback:', feedbackId);
-
-  const response = await makeRequest<SubmitFeedbackResponse>(
+  return makeRequest<SubmitFeedbackResponse>(
     `/api/v1/expert-feedback/${feedbackId}`,
-    {
-      method: 'GET',
-    }
+    { method: 'GET' }
   );
-
-  console.log('✅ [Expert Feedback] Fetched feedback details:', response);
-  return response;
 }
 
 /**
  * Get expert profile (to check role and expert status)
  */
 export async function getExpertProfile(): Promise<ExpertProfile> {
-  const token = getAuthToken();
-  console.log('📥 [Expert Feedback] Fetching expert profile', {
-    hasToken: !!token,
-    tokenPreview: token ? `${token.slice(0, 20)}...` : 'none',
-  });
-
-  const response = await makeRequest<ExpertProfile>(
+  return makeRequest<ExpertProfile>(
     '/api/v1/expert-feedback/experts/me/profile',
-    {
-      method: 'GET',
-    }
+    { method: 'GET' }
   );
-
-  console.log('✅ [Expert Feedback] Expert profile:', {
-    role: response.role,
-    user_id: response.user_id,
-  });
-  return response;
 }
 
 /**
@@ -216,13 +185,12 @@ export async function getExpertProfile(): Promise<ExpertProfile> {
 export async function isUserSuperUser(): Promise<boolean> {
   try {
     const profile = await getExpertProfile();
-    const canProvideFeedback =
-      profile.role === 'super_user' || profile.role === 'admin';
-    console.log(
-      `🔍 [Expert Feedback] User role: ${profile.role}, can provide feedback: ${canProvideFeedback}`
-    );
-    return canProvideFeedback;
+    return profile.role === 'super_user' || profile.role === 'admin';
   } catch (error) {
+    // Auth failures are expected (user not logged in, token expired) — return false silently
+    if (error instanceof AuthError) {
+      return false;
+    }
     console.error('❌ [Expert Feedback] Failed to check user role:', error);
     return false;
   }
@@ -232,8 +200,5 @@ export async function isUserSuperUser(): Promise<boolean> {
  * @deprecated Use isUserSuperUser() instead. This function checks trust_score which is no longer used for authorization.
  */
 export async function isUserExpert(): Promise<boolean> {
-  console.warn(
-    '⚠️ [Expert Feedback] isUserExpert() is deprecated. Use isUserSuperUser() instead.'
-  );
   return isUserSuperUser();
 }

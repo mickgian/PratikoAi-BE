@@ -23,24 +23,15 @@ export function useExpertStatus() {
     let mounted = true;
 
     async function checkSuperUserStatus() {
-      console.log('🔄 [useExpertStatus] Starting super user check...');
       try {
         setIsLoading(true);
         const superUserStatus = await isUserSuperUser();
-
-        console.log(
-          `✅ [useExpertStatus] Check complete: isSuperUser=${superUserStatus}`
-        );
 
         if (mounted) {
           setIsSuperUser(superUserStatus);
           setError(null);
         }
       } catch (err) {
-        console.error(
-          '❌ [useExpertStatus] Failed to check super user status:',
-          err
-        );
         if (mounted) {
           setIsSuperUser(false);
           setError(
@@ -49,7 +40,6 @@ export function useExpertStatus() {
         }
       } finally {
         if (mounted) {
-          console.log('🏁 [useExpertStatus] Setting isLoading=false');
           setIsLoading(false);
         }
       }

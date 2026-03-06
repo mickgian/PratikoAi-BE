@@ -52,8 +52,13 @@ async def node_step_64(state: RAGState) -> RAGState:
 
         tot_used = False
         tot_response = None  # DEV-251: Store ToT response for reuse
+        # Guardrail streaming: when streaming is requested, skip blocking ToT call.
+        # The streaming path (generate_response_stream) already uses the ToT prompt
+        # template for complex/multi_domain queries via ModelConfig.for_complexity().
+        # This avoids ~60s TTFT caused by running the full ToT pipeline before streaming.
+        stream_requested = state.get("streaming", {}).get("requested", False)
         # Chitchat: skip ToT reasoning entirely (saves expensive LLM calls)
-        if not is_chitchat and cplx in ("complex", "multi_domain"):
+        if not is_chitchat and not stream_requested and cplx in ("complex", "multi_domain"):
             try:
                 tot = await use_tree_of_thoughts(state, cplx)
                 state.update(
@@ -77,6 +82,14 @@ async def node_step_64(state: RAGState) -> RAGState:
                     )
             except Exception:
                 state.update(reasoning_type="cot", tot_fallback=True)
+        elif stream_requested and not is_chitchat and cplx in ("complex", "multi_domain"):
+            # Mark reasoning type for metadata even though ToT runs via streaming
+            state["reasoning_type"] = "tot"
+            logger.info(
+                "step_064_tot_deferred_for_streaming",
+                complexity=cplx,
+                reason="guardrail_streaming_enabled_for_tot",
+            )
 
         from app.services.llm_orchestrator import QueryComplexity as QC  # noqa: N817
 

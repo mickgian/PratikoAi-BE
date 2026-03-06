@@ -617,6 +617,57 @@ class TestDisclaimerFilterFullClauseRemoval:
         assert "esperto in materia fiscale" not in cleaned
 
 
+class TestDisclaimerFilterToTMethodologyLeak:
+    """Tests for Tree of Thoughts methodology name leak filtering."""
+
+    def test_filter_applicando_il_metodo_tree_of_thoughts(self):
+        """Should remove 'applicando il metodo Tree of Thoughts' from responses."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Analizziamo la questione relativa alla deducibilità dei compensi "
+            "dell'amministratore di una Srl, applicando il metodo Tree of Thoughts "
+            "per una valutazione completa."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "tree of thoughts" not in cleaned.lower()
+        assert "metodo" not in cleaned.lower() or "metodo tree" not in cleaned.lower()
+        assert "deducibilità dei compensi" in cleaned
+        assert len(removed) > 0
+
+    def test_filter_utilizzando_la_metodologia_tree_of_thoughts(self):
+        """Should remove 'utilizzando la metodologia Tree of Thoughts'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Rispondiamo alla domanda utilizzando la metodologia Tree of Thoughts per garantire completezza."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "tree of thoughts" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_filter_mediante_tree_of_thoughts(self):
+        """Should remove 'mediante Tree of Thoughts'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Procediamo con l'analisi mediante Tree of Thoughts per coprire tutti gli aspetti normativi."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "tree of thoughts" not in cleaned.lower()
+        assert "Procediamo con l'analisi" in cleaned
+        assert len(removed) > 0
+
+    def test_no_false_positive_on_regular_text(self):
+        """Should not remove text that doesn't mention Tree of Thoughts."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La normativa prevede una metodologia specifica per il calcolo delle imposte."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert cleaned.strip() == text.strip()
+        assert removed == []
+
+
 class TestDisclaimerFilterLogging:
     """DEV-251: Test logging behavior."""
 

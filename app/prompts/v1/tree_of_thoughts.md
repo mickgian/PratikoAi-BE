@@ -226,6 +226,7 @@ Quando citi fonti normative, DEVI essere il più specifico possibile:
 
 - Genera il tuo ragionamento mentalmente prima di scrivere
 - La risposta finale deve essere COMPLETA e AUTO-CONTENUTA
+- **DIVIETO ASSOLUTO:** NON menzionare MAI "Tree of Thoughts", "ToT", "metodo di ragionamento", "multi-ipotesi", o qualsiasi riferimento alla metodologia interna. Il lettore NON deve sapere come hai ragionato, solo il RISULTATO finale.
 - NON fare riferimento al processo di ragionamento nella risposta
 - Indica SEMPRE le fonti decisive inline nel testo
 - Documenta le alternative se rilevanti per la completezza

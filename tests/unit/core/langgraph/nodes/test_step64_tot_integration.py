@@ -603,3 +603,169 @@ class TestPerformance:
 
             # With mocks, should be very fast
             assert elapsed_ms < 1000  # Under 1 second with mocks
+
+
+# =============================================================================
+# Tests: Guardrail Streaming Bypasses Blocking ToT (ADR-039)
+# =============================================================================
+
+
+class TestGuardrailStreamingBypassesBlockingToT:
+    """ADR-039: When streaming is requested, skip blocking ToT call.
+
+    The streaming path uses the ToT prompt template directly via
+    ModelConfig.for_complexity(), avoiding the ~60s TTFT caused by
+    running the full ToT pipeline before streaming.
+    """
+
+    @pytest.mark.asyncio
+    async def test_streaming_complex_skips_blocking_tot(self, base_state):
+        """Complex query with streaming=True should NOT call use_tree_of_thoughts."""
+        from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+
+        # Enable streaming
+        base_state["streaming"] = {"requested": True}
+
+        with (
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
+                new_callable=AsyncMock,
+                return_value=("complex", {"complexity": "complex"}),
+            ),
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
+                new_callable=AsyncMock,
+            ) as mock_tot,
+        ):
+            result = await node_step_64(base_state)
+
+            # Blocking ToT should NOT be called
+            mock_tot.assert_not_called()
+            # LLM call should be deferred for streaming
+            assert result.get("stream_llm_pending") is True
+
+    @pytest.mark.asyncio
+    async def test_streaming_multi_domain_skips_blocking_tot(self, base_state):
+        """Multi-domain query with streaming=True should NOT call use_tree_of_thoughts."""
+        from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+
+        base_state["streaming"] = {"requested": True}
+        base_state["detected_domains"] = ["fiscale", "lavoro"]
+
+        with (
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
+                new_callable=AsyncMock,
+                return_value=("multi_domain", {"complexity": "multi_domain"}),
+            ),
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
+                new_callable=AsyncMock,
+            ) as mock_tot,
+        ):
+            result = await node_step_64(base_state)
+
+            mock_tot.assert_not_called()
+            assert result.get("stream_llm_pending") is True
+
+    @pytest.mark.asyncio
+    async def test_streaming_complex_sets_reasoning_type_tot(self, base_state):
+        """Even when streaming bypasses blocking ToT, reasoning_type should be 'tot'."""
+        from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+
+        base_state["streaming"] = {"requested": True}
+
+        with (
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
+                new_callable=AsyncMock,
+                return_value=("complex", {"complexity": "complex"}),
+            ),
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
+                new_callable=AsyncMock,
+            ),
+        ):
+            result = await node_step_64(base_state)
+
+            assert result.get("reasoning_type") == "tot"
+
+    @pytest.mark.asyncio
+    async def test_streaming_simple_does_not_set_tot(self, base_state):
+        """Simple query with streaming should NOT set reasoning_type to 'tot'."""
+        from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+
+        base_state["streaming"] = {"requested": True}
+
+        with (
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
+                new_callable=AsyncMock,
+                return_value=("simple", {"complexity": "simple"}),
+            ),
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
+                new_callable=AsyncMock,
+            ) as mock_tot,
+        ):
+            result = await node_step_64(base_state)
+
+            mock_tot.assert_not_called()
+            # Simple queries use CoT, not ToT
+            assert result.get("reasoning_type") != "tot"
+
+    @pytest.mark.asyncio
+    async def test_non_streaming_complex_still_calls_tot(
+        self, base_state, mock_tot_result, mock_orchestrator_response
+    ):
+        """Without streaming, complex queries should still use blocking ToT."""
+        from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+
+        # No streaming flag (default behavior)
+        base_state.pop("streaming", None)
+
+        with (
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
+                new_callable=AsyncMock,
+                return_value=("complex", {"complexity": "complex"}),
+            ),
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
+                new_callable=AsyncMock,
+                return_value=mock_tot_result,
+            ) as mock_tot,
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.step_64__llmcall",
+                new_callable=AsyncMock,
+                return_value=mock_orchestrator_response,
+            ),
+        ):
+            await node_step_64(base_state)
+
+            # Blocking ToT SHOULD be called when not streaming
+            mock_tot.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_streaming_defers_llm_params_include_complexity(self, base_state):
+        """Deferred streaming params should include correct complexity for ToT prompt selection."""
+        from app.core.langgraph.nodes.step_064__llm_call import node_step_64
+
+        base_state["streaming"] = {"requested": True}
+
+        with (
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.classify_query_complexity",
+                new_callable=AsyncMock,
+                return_value=("complex", {"complexity": "complex"}),
+            ),
+            patch(
+                "app.core.langgraph.nodes.step_064__llm_call.use_tree_of_thoughts",
+                new_callable=AsyncMock,
+            ),
+        ):
+            result = await node_step_64(base_state)
+
+            # Verify stream_llm_params contains correct complexity
+            params = result.get("stream_llm_params", {})
+            assert params.get("complexity") == "complex"

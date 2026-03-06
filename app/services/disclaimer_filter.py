@@ -65,6 +65,12 @@ DISCLAIMER_PATTERNS: list[str] = [
     r",?\s*a un (?:professionista|commercialista|consulente|esperto|avvocato) abilitato[^.!?\n]*",
     # Broader catch-all: "professionista abilitato" without preceding article
     r"(?:professionista|commercialista|consulente|esperto) abilitato[^.!?\n]*",
+    # Internal methodology leak: "Tree of Thoughts" / reasoning method references
+    # The LLM sometimes ignores prompt instructions and exposes the internal
+    # reasoning methodology name in user-facing text.
+    r",?\s*applicando il metodo Tree of Thoughts[^.!?\n]*",
+    r",?\s*(?:utilizzando|usando|con) (?:il metodo|la metodologia) Tree of Thoughts[^.!?\n]*",
+    r",?\s*(?:attraverso|tramite|mediante) (?:il )?(?:metodo |metodologia )?Tree of Thoughts[^.!?\n]*",
 ]
 
 # Compile patterns for efficiency

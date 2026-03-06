@@ -69,6 +69,11 @@ DISCLAIMER_PATTERNS: list[str] = [
     rf",?\s*a un {_ROLES} abilitato[^.!?\n]*",
     # Broader catch-all: "professionista abilitato" without preceding article
     r"(?:professionista|commercialista|consulente|esperto) abilitato[^.!?\n]*",
+    # "valutare/richiedere/ottenere una consulenza legale" (action verb + consulenza)
+    # Catches borderline phrases like "valutare una consulenza legale mirata" while
+    # preserving factual references like "il costo della consulenza legale"
+    r"(?:valutare|richiedere|ottenere|chiedere|prendere in considerazione|considerare|prevedere)"
+    r" (?:una |la )?consulenza (?:legale|fiscale|professionale|specialistica|specializzata)[^.!?\n]*",
     # --- Internal methodology leak: Tree of Thoughts ---
     # The LLM sometimes ignores prompt instructions and exposes the internal
     # reasoning methodology name or structure in user-facing text.

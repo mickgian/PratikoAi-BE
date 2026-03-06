@@ -840,3 +840,68 @@ class TestDisclaimerFilterToTStructuralLeak:
 
         assert "ipotesi" in cleaned.lower()
         assert removed == []
+
+
+class TestDisclaimerFilterConsulenzaLegale:
+    """Tests for 'consulenza legale' patterns — action verb + consulenza is a disclaimer,
+    but factual references to 'consulenza legale' should be preserved."""
+
+    def test_valutare_una_consulenza_legale_mirata(self):
+        """Should catch 'valutare una consulenza legale mirata' (exact production leak)."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per casi complessi (es. segnalazioni anonime), valutare una consulenza legale mirata."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_richiedere_una_consulenza_legale(self):
+        """Should catch 'richiedere una consulenza legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "In queste situazioni è opportuno richiedere una consulenza legale specializzata."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_ottenere_consulenza_professionale(self):
+        """Should catch 'ottenere consulenza professionale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Prima di procedere, ottenere consulenza professionale qualificata."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza professionale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_preserves_factual_consulenza_legale(self):
+        """Should NOT remove 'consulenza legale' when used as factual reference."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Il costo della consulenza legale è deducibile ai fini IRPEF."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza legale" in cleaned.lower()
+        assert removed == []
+
+    def test_preserves_spese_consulenza_legale(self):
+        """Should NOT remove 'spese per consulenza legale' (factual)."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Le spese per consulenza legale sostenute dal datore di lavoro sono deducibili."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza legale" in cleaned.lower()
+        assert removed == []
+
+    def test_considerare_una_consulenza_fiscale(self):
+        """Should catch 'considerare una consulenza fiscale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per questa fattispecie, considerare una consulenza fiscale approfondita."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza fiscale" not in cleaned.lower()
+        assert len(removed) > 0

@@ -83,8 +83,8 @@ export function ChatMessagesArea() {
   // Show typing indicator when the placeholder is hidden
   const showTypingIndicator = Boolean(
     isCurrentlyStreaming &&
-      state.activeStreaming &&
-      !state.activeStreaming.content
+    state.activeStreaming &&
+    !state.activeStreaming.content
   );
 
   // Handle interactive question answer (DEV-155)
@@ -504,7 +504,7 @@ export function ChatMessagesArea() {
           }`}
           aria-label={
             isUserScrolledUp && isCurrentlyStreaming
-              ? 'Nuovi contenuti in arrivo — vai al fondo'
+              ? 'Risposta in corso — vai al fondo'
               : 'Vai al fondo'
           }
         >
@@ -515,7 +515,7 @@ export function ChatMessagesArea() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
               </span>
               <span className="text-sm font-medium whitespace-nowrap">
-                Nuovi contenuti
+                Risposta in corso
               </span>
               <ChevronDown className="w-4 h-4" />
             </>

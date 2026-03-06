@@ -441,10 +441,12 @@ async def ingest_document_with_chunks(
         from sqlalchemy import select
 
         existing = await session.execute(
-            select(KnowledgeItem.id).where(
+            select(KnowledgeItem.id)
+            .where(
                 KnowledgeItem.content_hash == content_hash,
                 KnowledgeItem.status == "active",
             )
+            .limit(1)
         )
         if existing.scalar_one_or_none() is not None:
             logger.info("duplicate_content_skipped", title=title, content_hash=content_hash)
@@ -558,5 +560,5 @@ async def check_document_exists(session: AsyncSession, url: str) -> bool:
     """
     from sqlalchemy import select
 
-    result = await session.execute(select(KnowledgeItem).where(KnowledgeItem.source_url == url))
+    result = await session.execute(select(KnowledgeItem.id).where(KnowledgeItem.source_url == url).limit(1))
     return result.scalar_one_or_none() is not None

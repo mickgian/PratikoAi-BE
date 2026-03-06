@@ -125,11 +125,22 @@ Examples:
                 print("\n" + "=" * 80)
                 sys.exit(0)
 
+            # Snapshot feed data to avoid MissingGreenlet after commits
+            feed_snapshots = [
+                {
+                    "id": feed.id,
+                    "source": feed.source,
+                    "feed_url": feed.feed_url,
+                    "feed_type": feed.feed_type,
+                }
+                for feed in feeds
+            ]
+
             # Run ingestion for each feed
             print("=" * 80)
             print("RSS Feed Ingestion - Database-Driven CLI")
             print("=" * 80)
-            print(f"Feeds to process: {len(feeds)}")
+            print(f"Feeds to process: {len(feed_snapshots)}")
             print(f"Max items per feed: {max_items if max_items else 'ALL'}")
             print("=" * 80)
             print()
@@ -145,21 +156,23 @@ Examples:
                 "total_failed": 0,
             }
 
-            for feed in feeds:
-                print(f"\n📡 Processing feed: [{feed.id}] {feed.source or 'Unknown'}")
-                print(f"   URL: {feed.feed_url}")
+            for snap in feed_snapshots:
+                print(f"\n📡 Processing feed: [{snap['id']}] {snap['source'] or 'Unknown'}")
+                print(f"   URL: {snap['feed_url']}")
                 print()
 
                 try:
                     # Mark feed as checked before attempting ingestion
-                    feed.last_checked = datetime.now(UTC)
-                    session.add(feed)
-                    await session.commit()
+                    feed = await session.get(FeedStatus, snap["id"])
+                    if feed:
+                        feed.last_checked = datetime.now(UTC)
+                        session.add(feed)
+                        await session.commit()
 
                     stats = await run_rss_ingestion(
                         session=session,
-                        feed_url=feed.feed_url,
-                        feed_type=feed.feed_type,  # Pass feed type for source differentiation
+                        feed_url=snap["feed_url"],
+                        feed_type=snap["feed_type"],
                         max_items=max_items,
                     )
 
@@ -174,30 +187,37 @@ Examples:
                     aggregate_stats["total_skipped"] += stats.get("skipped_existing", 0)
                     aggregate_stats["total_failed"] += stats.get("failed", 0)
 
-                    # Update feed_status
-                    feed.items_found = stats.get("total_items", 0)
-                    feed.last_success = datetime.now(UTC)
-                    feed.consecutive_errors = 0
-                    feed.status = "healthy"
-                    # DEV-247: Track filtered items for daily report
-                    feed.items_filtered = stats.get("skipped_filtered", 0)
-                    filtered_samples = stats.get("filtered_samples", [])
-                    if filtered_samples:
-                        feed.filtered_samples = {"titles": filtered_samples}
-                    session.add(feed)
-                    await session.commit()
+                    # Update feed_status with a fresh object
+                    feed = await session.get(FeedStatus, snap["id"])
+                    if feed:
+                        feed.items_found = stats.get("total_items", 0)
+                        feed.last_success = datetime.now(UTC)
+                        feed.consecutive_errors = 0
+                        feed.status = "healthy"
+                        # DEV-247: Track filtered items for daily report
+                        feed.items_filtered = stats.get("skipped_filtered", 0)
+                        filtered_samples = stats.get("filtered_samples", [])
+                        if filtered_samples:
+                            feed.filtered_samples = {"titles": filtered_samples}
+                        session.add(feed)
+                        await session.commit()
 
                 except Exception as e:
                     print(f"❌ Feed failed: {e}")
                     aggregate_stats["feeds_failed"] += 1
 
-                    # Update feed_status with error
-                    feed.consecutive_errors += 1
-                    feed.errors += 1
-                    feed.last_error = str(e)[:500]
-                    feed.status = "error"
-                    session.add(feed)
-                    await session.commit()
+                    try:
+                        feed = await session.get(FeedStatus, snap["id"])
+                        if feed:
+                            feed.consecutive_errors = (feed.consecutive_errors or 0) + 1
+                            feed.errors = (feed.errors or 0) + 1
+                            feed.last_error = str(e)[:500]
+                            feed.last_checked = datetime.now(UTC)
+                            feed.status = "error"
+                            session.add(feed)
+                            await session.commit()
+                    except Exception:
+                        print(f"   ⚠️  Could not update feed status for {snap['id']}")
 
             # Print aggregate results
             print()

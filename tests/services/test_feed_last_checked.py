@@ -45,18 +45,23 @@ def mock_feed_status(stale_last_checked: datetime):
 class TestRunFullIngestionLastChecked:
     """Test that run_full_ingestion.py updates last_checked."""
 
-    @pytest.mark.asyncio
-    async def test_last_checked_set_before_ingestion(self, mock_feed_status, stale_last_checked):
-        """run_full_ingestion should set last_checked before run_rss_ingestion."""
-        from scripts.run_full_ingestion import run_rss_ingestion_all
-
+    def _make_session(self, mock_feed_status):
+        """Create a mock session that returns mock_feed_status from both execute and get."""
         mock_session = AsyncMock()
-
         mock_result = MagicMock()
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = [mock_feed_status]
         mock_result.scalars.return_value = mock_scalars
         mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.get = AsyncMock(return_value=mock_feed_status)
+        return mock_session
+
+    @pytest.mark.asyncio
+    async def test_last_checked_set_before_ingestion(self, mock_feed_status, stale_last_checked):
+        """run_full_ingestion should set last_checked before run_rss_ingestion."""
+        from scripts.run_full_ingestion import run_rss_ingestion_all
+
+        mock_session = self._make_session(mock_feed_status)
 
         with patch(
             "scripts.run_full_ingestion.run_rss_ingestion",
@@ -78,13 +83,7 @@ class TestRunFullIngestionLastChecked:
         """run_full_ingestion should keep last_checked even when feed fails."""
         from scripts.run_full_ingestion import run_rss_ingestion_all
 
-        mock_session = AsyncMock()
-
-        mock_result = MagicMock()
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = [mock_feed_status]
-        mock_result.scalars.return_value = mock_scalars
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session = self._make_session(mock_feed_status)
 
         with patch(
             "scripts.run_full_ingestion.run_rss_ingestion",
@@ -100,13 +99,7 @@ class TestRunFullIngestionLastChecked:
         """last_checked should be set to approximately now, not any other time."""
         from scripts.run_full_ingestion import run_rss_ingestion_all
 
-        mock_session = AsyncMock()
-
-        mock_result = MagicMock()
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = [mock_feed_status]
-        mock_result.scalars.return_value = mock_scalars
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session = self._make_session(mock_feed_status)
 
         before = datetime.now(UTC)
 

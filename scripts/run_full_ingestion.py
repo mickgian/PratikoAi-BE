@@ -61,7 +61,7 @@ async def run_rss_ingestion_all(session: AsyncSession, max_items: int | None = N
     print("RSS FEED INGESTION")
     print("=" * 80)
 
-    # Query all enabled feeds
+    # Query all enabled feeds and snapshot to avoid MissingGreenlet after commits
     query = select(FeedStatus).where(FeedStatus.enabled == True)  # noqa: E712
     result = await session.execute(query)
     feeds = result.scalars().all()
@@ -70,7 +70,18 @@ async def run_rss_ingestion_all(session: AsyncSession, max_items: int | None = N
         print("❌ No RSS feeds found in feed_status table")
         return {"feeds_processed": 0, "success": False}
 
-    print(f"Found {len(feeds)} enabled feeds")
+    # Snapshot feed data before any commits expire the ORM objects
+    feed_snapshots = [
+        {
+            "id": feed.id,
+            "source": feed.source,
+            "feed_url": feed.feed_url,
+            "feed_type": feed.feed_type,
+        }
+        for feed in feeds
+    ]
+
+    print(f"Found {len(feed_snapshots)} enabled feeds")
     print(f"Max items per feed: {max_items if max_items else 'ALL'}")
     print()
 
@@ -84,19 +95,21 @@ async def run_rss_ingestion_all(session: AsyncSession, max_items: int | None = N
         "total_failed": 0,
     }
 
-    for feed in feeds:
-        print(f"📡 Processing feed: [{feed.id}] {feed.source or 'Unknown'}")
+    for snap in feed_snapshots:
+        print(f"📡 Processing feed: [{snap['id']}] {snap['source'] or 'Unknown'}")
 
         try:
             # Mark feed as checked before attempting ingestion
-            feed.last_checked = datetime.now(UTC)
-            session.add(feed)
-            await session.commit()
+            feed = await session.get(FeedStatus, snap["id"])
+            if feed:
+                feed.last_checked = datetime.now(UTC)
+                session.add(feed)
+                await session.commit()
 
             feed_stats = await run_rss_ingestion(
                 session=session,
-                feed_url=feed.feed_url,
-                feed_type=feed.feed_type,
+                feed_url=snap["feed_url"],
+                feed_type=snap["feed_type"],
                 max_items=max_items,
             )
 
@@ -111,13 +124,15 @@ async def run_rss_ingestion_all(session: AsyncSession, max_items: int | None = N
             stats["total_skipped"] += feed_stats.get("skipped_existing", 0)
             stats["total_failed"] += feed_stats.get("failed", 0)
 
-            # Update feed_status
-            feed.items_found = feed_stats.get("total_items", 0)
-            feed.last_success = datetime.now(UTC)
-            feed.consecutive_errors = 0
-            feed.status = "healthy"
-            session.add(feed)
-            await session.commit()
+            # Update feed_status with a fresh object
+            feed = await session.get(FeedStatus, snap["id"])
+            if feed:
+                feed.items_found = feed_stats.get("total_items", 0)
+                feed.last_success = datetime.now(UTC)
+                feed.consecutive_errors = 0
+                feed.status = "healthy"
+                session.add(feed)
+                await session.commit()
 
             print(f"   ✅ New: {feed_stats.get('new_documents', 0)}, Skipped: {feed_stats.get('skipped_existing', 0)}")
 
@@ -125,12 +140,18 @@ async def run_rss_ingestion_all(session: AsyncSession, max_items: int | None = N
             print(f"   ❌ Failed: {e}")
             stats["feeds_failed"] += 1
 
-            feed.consecutive_errors += 1
-            feed.errors += 1
-            feed.last_error = str(e)[:500]
-            feed.status = "error"
-            session.add(feed)
-            await session.commit()
+            try:
+                feed = await session.get(FeedStatus, snap["id"])
+                if feed:
+                    feed.consecutive_errors = (feed.consecutive_errors or 0) + 1
+                    feed.errors = (feed.errors or 0) + 1
+                    feed.last_error = str(e)[:500]
+                    feed.last_checked = datetime.now(UTC)
+                    feed.status = "error"
+                    session.add(feed)
+                    await session.commit()
+            except Exception:
+                print(f"   ⚠️  Could not update feed status for {snap['id']}")
 
     print()
     print(

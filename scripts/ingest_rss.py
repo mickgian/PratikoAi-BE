@@ -151,6 +151,11 @@ Examples:
                 print()
 
                 try:
+                    # Mark feed as checked before attempting ingestion
+                    feed.last_checked = datetime.now(UTC)
+                    session.add(feed)
+                    await session.commit()
+
                     stats = await run_rss_ingestion(
                         session=session,
                         feed_url=feed.feed_url,

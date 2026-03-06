@@ -88,6 +88,11 @@ async def run_rss_ingestion_all(session: AsyncSession, max_items: int | None = N
         print(f"📡 Processing feed: [{feed.id}] {feed.source or 'Unknown'}")
 
         try:
+            # Mark feed as checked before attempting ingestion
+            feed.last_checked = datetime.now(UTC)
+            session.add(feed)
+            await session.commit()
+
             feed_stats = await run_rss_ingestion(
                 session=session,
                 feed_url=feed.feed_url,

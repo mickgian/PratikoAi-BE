@@ -28,17 +28,18 @@ interface UseSmartScrollReturn {
   showScrollToTop: boolean;
   /** Whether to show the "scroll to bottom" button */
   showScrollToBottom: boolean;
+  /** Whether the user has intentionally scrolled away from the bottom */
+  isUserScrolledUp: boolean;
 }
 
 /**
- * Smart scroll hook for chat messages
+ * Smart scroll hook for chat messages — "sticky scroll" pattern.
  *
- * Features:
- * - Auto-scroll to bottom on new messages
- * - Detects user scroll and pauses auto-scroll
- * - Resume auto-scroll when user scrolls to bottom
- * - Smooth scrolling animations
- * - Performance optimized
+ * Industry-standard behavior (ChatGPT, Claude.ai, Slack, Discord):
+ * - Auto-scroll only while "stuck to bottom"
+ * - Instant disengage when user scrolls up (no debounce)
+ * - Re-engage only when user scrolls back to bottom (debounced)
+ * - Programmatic scrolls never trigger disengage
  */
 export function useSmartScroll(
   options: UseSmartScrollOptions = {}
@@ -53,6 +54,7 @@ export function useSmartScroll(
   const [isNearTop, setIsNearTop] = useState(true);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [canScroll, setCanScroll] = useState(false);
+  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
 
   const isAtBottom = useCallback((): boolean => {
     if (!scrollRef.current) return true;
@@ -80,6 +82,12 @@ export function useSmartScroll(
       setTimeout(() => {
         isScrollingProgrammatically.current = false;
       }, 300);
+
+      // Force also re-engages auto-scroll and clears the "scrolled up" state
+      if (force) {
+        autoScrollEnabled.current = true;
+        setIsUserScrolledUp(false);
+      }
     },
     [smooth]
   );
@@ -100,6 +108,7 @@ export function useSmartScroll(
     (enabled: boolean) => {
       autoScrollEnabled.current = enabled;
       if (enabled) {
+        setIsUserScrolledUp(false);
         scrollToBottom(true);
       }
     },
@@ -111,7 +120,7 @@ export function useSmartScroll(
     const container = scrollRef.current;
     if (!container) return;
 
-    let scrollTimeout: NodeJS.Timeout;
+    let reEngageTimeout: NodeJS.Timeout;
 
     const updateScrollState = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
@@ -129,21 +138,24 @@ export function useSmartScroll(
       // Only update auto-scroll ref for user-initiated scrolls
       if (isScrollingProgrammatically.current) return;
 
-      // Clear existing timeout
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
+      // Clear existing re-engage timeout
+      if (reEngageTimeout) {
+        clearTimeout(reEngageTimeout);
       }
 
-      // Debounce scroll detection
-      scrollTimeout = setTimeout(() => {
-        if (isAtBottom()) {
-          // User scrolled to bottom, resume auto-scroll
+      if (isAtBottom()) {
+        // User scrolled back to bottom — debounce re-engage to avoid
+        // false positives from content-growth pushing scroll position
+        reEngageTimeout = setTimeout(() => {
           autoScrollEnabled.current = true;
-        } else {
-          // User scrolled up, pause auto-scroll
-          autoScrollEnabled.current = false;
-        }
-      }, 150);
+          setIsUserScrolledUp(false);
+        }, 150);
+      } else {
+        // User scrolled up — INSTANT disengage, no debounce.
+        // This is the key fix: the user must never fight the auto-scroll.
+        autoScrollEnabled.current = false;
+        setIsUserScrolledUp(true);
+      }
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
@@ -155,8 +167,8 @@ export function useSmartScroll(
 
     return () => {
       container.removeEventListener('scroll', handleScroll);
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
+      if (reEngageTimeout) {
+        clearTimeout(reEngageTimeout);
       }
     };
   }, [isAtBottom, bottomThreshold]);
@@ -170,5 +182,6 @@ export function useSmartScroll(
     setAutoScroll,
     showScrollToTop: canScroll && !isNearTop,
     showScrollToBottom: canScroll && !isNearBottom,
+    isUserScrolledUp,
   };
 }

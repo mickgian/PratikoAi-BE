@@ -49,6 +49,7 @@ export function ChatMessagesArea() {
     setAutoScroll,
     showScrollToTop,
     showScrollToBottom,
+    isUserScrolledUp,
   } = useSmartScroll({
     autoScroll: true,
     bottomThreshold: 50,
@@ -82,8 +83,8 @@ export function ChatMessagesArea() {
   // Show typing indicator when the placeholder is hidden
   const showTypingIndicator = Boolean(
     isCurrentlyStreaming &&
-    state.activeStreaming &&
-    !state.activeStreaming.content
+      state.activeStreaming &&
+      !state.activeStreaming.content
   );
 
   // Handle interactive question answer (DEV-155)
@@ -284,21 +285,23 @@ export function ChatMessagesArea() {
       }
     : null;
 
-  // Auto-scroll behaviors (unchanged)
+  // Sticky scroll: only auto-scroll if user hasn't scrolled up.
+  // scrollToBottom() already checks autoScrollEnabled internally,
+  // so these are no-ops when the user has disengaged.
   useEffect(() => {
     scrollToBottom();
   }, [visibleMessages.length, scrollToBottom]);
 
+  // One-time scroll when streaming begins (user is presumably at bottom)
   useEffect(() => {
     if (isCurrentlyStreaming) scrollToBottom();
   }, [isCurrentlyStreaming, scrollToBottom]);
 
-  useEffect(() => {
-    if (isCurrentlyStreaming && state.activeStreaming?.content) {
-      const t = setTimeout(() => scrollToBottom(), 100);
-      return () => clearTimeout(t);
-    }
-  }, [isCurrentlyStreaming, state.activeStreaming?.content, scrollToBottom]);
+  // NOTE: No content-driven scroll effect here. The old useEffect that
+  // called scrollToBottom() on every streaming chunk caused a race
+  // condition with user scroll detection, making it impossible to
+  // scroll up during streaming. The sticky scroll pattern (ADR-039)
+  // relies solely on the autoScrollEnabled ref checked by scrollToBottom().
 
   // Auto-scroll when interactive question appears (DEV-155)
   useEffect(() => {
@@ -494,10 +497,31 @@ export function ChatMessagesArea() {
       {showScrollToBottom && (
         <button
           onClick={() => scrollToBottom(true)}
-          className="absolute bottom-6 right-6 z-10 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm text-[#2F3E46] border border-[#C4BDB4]/30 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9A8F86] flex items-center justify-center"
-          aria-label="Vai al fondo"
+          className={`absolute bottom-6 right-6 z-10 rounded-full backdrop-blur-sm border shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9A8F86] flex items-center justify-center gap-2 ${
+            isUserScrolledUp && isCurrentlyStreaming
+              ? 'px-4 h-10 bg-[#256cdb]/90 text-white border-[#256cdb]/50'
+              : 'w-10 h-10 bg-white/90 text-[#2F3E46] border-[#C4BDB4]/30'
+          }`}
+          aria-label={
+            isUserScrolledUp && isCurrentlyStreaming
+              ? 'Nuovi contenuti in arrivo — vai al fondo'
+              : 'Vai al fondo'
+          }
         >
-          <ChevronDown className="w-5 h-5" />
+          {isUserScrolledUp && isCurrentlyStreaming ? (
+            <>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+              </span>
+              <span className="text-sm font-medium whitespace-nowrap">
+                Nuovi contenuti
+              </span>
+              <ChevronDown className="w-4 h-4" />
+            </>
+          ) : (
+            <ChevronDown className="w-5 h-5" />
+          )}
         </button>
       )}
     </div>

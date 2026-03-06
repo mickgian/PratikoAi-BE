@@ -66,6 +66,28 @@ describe('ConsigliDialog', () => {
     expect(screen.getByText(/dati sufficienti/i)).toBeInTheDocument();
   });
 
+  it('should render error status from backend', () => {
+    const onClose = jest.fn();
+    const errorReport: ConsigliReport = {
+      status: 'error',
+      message_it: 'Errore nella generazione del report. Riprova più tardi.',
+      html_report: null,
+      stats_summary: null,
+    };
+    render(
+      <ConsigliDialog
+        data={errorReport}
+        error={null}
+        loading={false}
+        onClose={onClose}
+      />
+    );
+
+    expect(
+      screen.getByText(/errore nella generazione del report/i)
+    ).toBeInTheDocument();
+  });
+
   it('should render report iframe when successful', () => {
     const onClose = jest.fn();
     render(

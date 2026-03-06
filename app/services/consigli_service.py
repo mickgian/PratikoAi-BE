@@ -81,7 +81,7 @@ class ConsigliService:
             QueryHistory.timestamp >= ninety_days_ago,
         )
         result = await db.execute(q)
-        rows = result.all()
+        rows = result.scalars().all()
 
         domain_counter: Counter = Counter()
         hourly_counter: Counter = Counter()

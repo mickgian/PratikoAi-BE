@@ -146,7 +146,7 @@ class TestCollectStats:
 
         rows = _make_history_rows(30, days_span=30)
         mock_result = MagicMock()
-        mock_result.all.return_value = rows
+        mock_result.scalars.return_value.all.return_value = rows
         mock_db.execute.return_value = mock_result
 
         stats = await consigli_service.collect_stats(user_id, mock_db)
@@ -162,7 +162,7 @@ class TestCollectStats:
 
         rows = _make_history_rows(30, days_span=30)
         mock_result = MagicMock()
-        mock_result.all.return_value = rows
+        mock_result.scalars.return_value.all.return_value = rows
         mock_db.execute.return_value = mock_result
 
         stats = await consigli_service.collect_stats(user_id, mock_db)
@@ -177,7 +177,7 @@ class TestCollectStats:
 
         rows = _make_history_rows(30, days_span=30)
         mock_result = MagicMock()
-        mock_result.all.return_value = rows
+        mock_result.scalars.return_value.all.return_value = rows
         mock_db.execute.return_value = mock_result
 
         stats = await consigli_service.collect_stats(user_id, mock_db)
@@ -192,7 +192,7 @@ class TestCollectStats:
 
         rows = _make_history_rows(30, days_span=30)
         mock_result = MagicMock()
-        mock_result.all.return_value = rows
+        mock_result.scalars.return_value.all.return_value = rows
         mock_db.execute.return_value = mock_result
 
         stats = await consigli_service.collect_stats(user_id, mock_db)
@@ -210,7 +210,7 @@ class TestCollectStats:
         from app.services.consigli_service import consigli_service
 
         mock_result = MagicMock()
-        mock_result.all.return_value = []
+        mock_result.scalars.return_value.all.return_value = []
         mock_db.execute.return_value = mock_result
 
         stats = await consigli_service.collect_stats(user_id, mock_db)
@@ -715,7 +715,7 @@ class TestCollectStatsEdgeCases:
             ),
         ]
         mock_result = MagicMock()
-        mock_result.all.return_value = rows
+        mock_result.scalars.return_value.all.return_value = rows
         mock_db.execute.return_value = mock_result
 
         stats = await consigli_service.collect_stats(user_id, mock_db)
@@ -738,7 +738,7 @@ class TestCollectStatsEdgeCases:
             ),
         ]
         mock_result = MagicMock()
-        mock_result.all.return_value = rows
+        mock_result.scalars.return_value.all.return_value = rows
         mock_db.execute.return_value = mock_result
 
         stats = await consigli_service.collect_stats(user_id, mock_db)

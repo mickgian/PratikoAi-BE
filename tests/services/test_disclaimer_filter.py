@@ -411,6 +411,263 @@ La rottamazione quinquies rappresenta un'opportunità significativa per regolari
         assert "per una conferma definitiva" not in cleaned.lower()
 
 
+class TestDisclaimerFilterNewPatterns:
+    """Tests for expanded disclaimer patterns (professional advice variants)."""
+
+    def test_dovresti_consultare(self):
+        """Should catch 'dovresti consultare un commercialista'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Il calcolo è corretto. Dovresti consultare un commercialista per i dettagli specifici."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "dovresti consultare" not in cleaned.lower()
+        assert "Il calcolo è corretto" in cleaned
+        assert len(removed) > 0
+
+    def test_dovrebbe_contattare(self):
+        """Should catch 'dovrebbe contattare un consulente'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La procedura è questa. Il contribuente dovrebbe contattare un consulente del lavoro."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "dovrebbe contattare" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_in_caso_di_dubbi_consultare(self):
+        """Should catch 'In caso di dubbi, consultare un commercialista o un consulente del lavoro'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "La procedura è chiara. In caso di dubbi, consultare un commercialista "
+            "o un consulente del lavoro per evitare errori procedurali."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "in caso di dubbi" not in cleaned.lower()
+        assert "consultare un commercialista" not in cleaned.lower()
+        assert "La procedura è chiara" in cleaned
+        assert len(removed) > 0
+
+    def test_assistenza_professionale(self):
+        """Should catch 'assistenza professionale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Il processo è semplice. Si raccomanda assistenza professionale per i casi complessi."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "assistenza professionale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_e_opportuno_consultare(self):
+        """Should catch 'è opportuno consultare'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Il termine scade il 30 aprile. È opportuno consultare un professionista."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "opportuno consultare" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_compound_professional_with_or(self):
+        """Should catch compound professional list with 'o'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La risposta è chiara. Contattare un commercialista o un consulente del lavoro."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "contattare un commercialista" not in cleaned.lower()
+        assert "La risposta è chiara" in cleaned
+        assert len(removed) > 0
+
+    def test_ti_consiglio_di_consultare(self):
+        """Should catch 'ti consiglio di consultare'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Ecco i dettagli. Ti consiglio di consultare un commercialista per la tua situazione."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "ti consiglio di consultare" not in cleaned.lower()
+        assert len(removed) > 0
+
+
+class TestDisclaimerFilterNewGaps:
+    """Tests for disclaimer patterns that were slipping through (DEV-251+)."""
+
+    def test_assistenza_di_un_professionista(self):
+        """Should catch 'con l'assistenza di un professionista' (was missing 'professionista' in alternation)."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Se il cliente ha dubbi specifici (es.trattamento fiscale della cessione "
+            "della clientela, rateizzazione dei debiti, ecc.), è possibile approfondire "
+            "ulteriormente con l'assistenza di un professionista."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "assistenza di un professionista" not in cleaned.lower()
+        assert "è possibile approfondire" not in cleaned.lower()
+        assert "Se il cliente ha dubbi specifici" in cleaned
+        assert len(removed) > 0
+
+    def test_approfondire_con_un_commercialista(self):
+        """Should catch 'è possibile approfondire con un commercialista'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La materia è complessa. È possibile approfondire con un commercialista."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "approfondire con un commercialista" not in cleaned.lower()
+        assert "La materia è complessa" in cleaned
+        assert len(removed) > 0
+
+    def test_consulenza_di_un_professionista(self):
+        """Should catch 'si consiglia la consulenza di un professionista'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Rischi sanzionatori significativi. Si consiglia la consulenza di un professionista."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza di un professionista" not in cleaned.lower()
+        assert "Rischi sanzionatori significativi" in cleaned
+        assert len(removed) > 0
+
+    def test_verificare_con_un_professionista(self):
+        """Should catch 'verificare con un professionista'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Rischi sanzionatori elevati. Verificare con un professionista."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "verificare con un professionista" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_hardcoded_risk_warnings_no_disclaimers(self):
+        """Hardcoded risk warnings should no longer contain disclaimer phrases."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        # These are the new hardcoded risk warnings (after fix)
+        critical_warning = (
+            "Attenzione: questa situazione comporta rischi sanzionatori "
+            "significativi che potrebbero includere sanzioni penali. "
+            "Valutare attentamente le opzioni di regolarizzazione disponibili."
+        )
+        high_warning = (
+            "Attenzione: questa interpretazione comporta potenziali "
+            "rischi sanzionatori elevati. Procedere con cautela e verificare "
+            "la corretta applicazione della normativa."
+        )
+
+        assert not DisclaimerFilter.contains_disclaimer(critical_warning)
+        assert not DisclaimerFilter.contains_disclaimer(high_warning)
+
+
+class TestDisclaimerFilterFullClauseRemoval:
+    """Tests for full-clause removal to prevent garbled text after phrase removal."""
+
+    def test_consigliabile_rivolgersi_full_clause(self):
+        """Full 'è consigliabile rivolgersi a un professionista' clause is removed."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Conservare la documentazione per almeno 10 anni. "
+            "È consigliabile rivolgersi a un professionista abilitato "
+            "per evitare errori o sanzioni."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "professionista" not in cleaned
+        assert "Conservare la documentazione" in cleaned
+
+    def test_professionista_abilitato_standalone(self):
+        """Catch-all removes 'professionista abilitato' even without preceding verb."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "cessione della clientela), a un professionista abilitato per evitare errori o sanzioni."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "professionista abilitato" not in cleaned
+        assert len(removed) > 0
+
+    def test_no_garbled_text_after_removal(self):
+        """After disclaimer removal, no orphaned fragments remain."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Regolarizzare i debiti prima della chiusura della Partita IVA. "
+            "Per situazioni particolari (es. cessione della clientela), "
+            "è consigliabile rivolgersi a un professionista abilitato "
+            "per evitare errori o sanzioni."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        # Should not have garbled "IVA.o situazioni" or orphaned "a un professionista"
+        assert "professionista" not in cleaned
+        assert "IVA.o" not in cleaned
+
+    def test_dovrebbe_consultare_full_clause(self):
+        """'dovrebbe consultare un commercialista per la dichiarazione' fully removed."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per questo motivo dovrebbe consultare un commercialista esperto in materia fiscale."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "commercialista" not in cleaned
+        assert "esperto in materia fiscale" not in cleaned
+
+
+class TestDisclaimerFilterToTMethodologyLeak:
+    """Tests for Tree of Thoughts methodology name leak filtering."""
+
+    def test_filter_applicando_il_metodo_tree_of_thoughts(self):
+        """Should remove 'applicando il metodo Tree of Thoughts' from responses."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Analizziamo la questione relativa alla deducibilità dei compensi "
+            "dell'amministratore di una Srl, applicando il metodo Tree of Thoughts "
+            "per una valutazione completa."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "tree of thoughts" not in cleaned.lower()
+        assert "metodo" not in cleaned.lower() or "metodo tree" not in cleaned.lower()
+        assert "deducibilità dei compensi" in cleaned
+        assert len(removed) > 0
+
+    def test_filter_utilizzando_la_metodologia_tree_of_thoughts(self):
+        """Should remove 'utilizzando la metodologia Tree of Thoughts'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Rispondiamo alla domanda utilizzando la metodologia Tree of Thoughts per garantire completezza."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "tree of thoughts" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_filter_mediante_tree_of_thoughts(self):
+        """Should remove 'mediante Tree of Thoughts'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Procediamo con l'analisi mediante Tree of Thoughts per coprire tutti gli aspetti normativi."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "tree of thoughts" not in cleaned.lower()
+        assert "Procediamo con l'analisi" in cleaned
+        assert len(removed) > 0
+
+    def test_no_false_positive_on_regular_text(self):
+        """Should not remove text that doesn't mention Tree of Thoughts."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La normativa prevede una metodologia specifica per il calcolo delle imposte."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert cleaned.strip() == text.strip()
+        assert removed == []
+
+
 class TestDisclaimerFilterLogging:
     """DEV-251: Test logging behavior."""
 
@@ -428,3 +685,223 @@ class TestDisclaimerFilterLogging:
         # Check that info log was emitted (we can check caplog.records)
         # Note: structlog may not appear in caplog depending on configuration
         # This test verifies the code path executes without error
+
+
+class TestDisclaimerFilterLegale:
+    """Tests for 'legale' as a professional role (was missing from alternations)."""
+
+    def test_consultare_un_legale(self):
+        """Should catch 'Consultare un legale' — 'legale' was missing from role list."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Consultare un legale: Prima di procedere con il licenziamento, per valutare i rischi."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consultare un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_numbered_consultare_un_legale(self):
+        """Should catch '4. Consultare un legale:' in numbered list."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "1. Documentare tutto: Conservare prove.\n"
+            "2. Coinvolgere il sindacato.\n"
+            "3. Valutare la gravità.\n"
+            "4. Consultare un legale: Prima di procedere con il licenziamento, per valutare i rischi."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consultare un legale" not in cleaned.lower()
+        assert "Documentare tutto" in cleaned
+        assert len(removed) > 0
+
+    def test_rivolgersi_a_un_legale(self):
+        """Should catch 'rivolgersi a un legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per una valutazione completa, rivolgersi a un legale specializzato."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "rivolgersi a un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_dovrebbe_consultare_un_legale(self):
+        """Should catch 'dovrebbe consultare un legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La cooperativa dovrebbe consultare un legale prima di procedere."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consultare un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_contattare_un_legale(self):
+        """Should catch 'contattare un legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "È opportuno contattare un legale per verificare la procedura."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "contattare un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_assistenza_di_un_legale(self):
+        """Should catch 'assistenza di un legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per questa situazione è necessaria l'assistenza di un legale specializzato."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "assistenza di un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+
+class TestDisclaimerFilterToTStructuralLeak:
+    """Tests for Tree of Thoughts structural leaks (methodology exposure beyond name)."""
+
+    def test_tot_opening_with_methodology_description(self):
+        """Should catch 'utilizzando il metodo Tree of Thoughts, generando multiple ipotesi'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Analizziamo la query utilizzando il metodo Tree of Thoughts, "
+            "generando multiple ipotesi interpretative e valutandole alla luce "
+            "delle fonti normative italiane applicabili."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "tree of thoughts" not in cleaned.lower()
+        assert "multiple ipotesi interpretative" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_generando_multiple_ipotesi(self):
+        """Should catch 'generando multiple ipotesi interpretative' even without ToT name."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Analizziamo il caso generando multiple ipotesi interpretative e valutandole."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "multiple ipotesi interpretative" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_multi_ipotesi_reference(self):
+        """Should catch 'multi-ipotesi' or 'analisi multi-ipotesi'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Procediamo con un'analisi multi-ipotesi per valutare tutti gli scenari."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "multi-ipotesi" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_valutazione_delle_ipotesi_header(self):
+        """Should catch 'Valutazione delle Ipotesi' as section header (ToT evaluation step)."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "## 2. Valutazione delle Ipotesi\n\nIpotesiVantaggiRischiSupporto Normativo"
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "valutazione delle ipotesi" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_ipotesi_numbered_section_headers(self):
+        """Should catch 'Ipotesi 1:', 'Ipotesi 2:' etc. as methodology leak headers."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "## Ipotesi 1: Licenziamento Disciplinare Immediato\n\n"
+            "Contenuto della prima ipotesi.\n\n"
+            "## Ipotesi 2: Necessità di Procedimento Formale\n\n"
+            "Contenuto della seconda ipotesi."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "ipotesi 1:" not in cleaned.lower()
+        assert "ipotesi 2:" not in cleaned.lower()
+        assert len(removed) >= 2
+
+    def test_metodo_di_ragionamento_reference(self):
+        """Should catch 'metodo di ragionamento' without Tree of Thoughts name."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Utilizziamo un metodo di ragionamento strutturato per analizzare il caso."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "metodo di ragionamento" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_preserves_legitimate_ipotesi_usage(self):
+        """Should NOT remove 'ipotesi' when used in normal legal context."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Nell'ipotesi di dimissioni volontarie, il lavoratore perde il diritto alla NASpI."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "ipotesi" in cleaned.lower()
+        assert removed == []
+
+
+class TestDisclaimerFilterConsulenzaLegale:
+    """Tests for 'consulenza legale' patterns — action verb + consulenza is a disclaimer,
+    but factual references to 'consulenza legale' should be preserved."""
+
+    def test_valutare_una_consulenza_legale_mirata(self):
+        """Should catch 'valutare una consulenza legale mirata' (exact production leak)."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per casi complessi (es. segnalazioni anonime), valutare una consulenza legale mirata."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_richiedere_una_consulenza_legale(self):
+        """Should catch 'richiedere una consulenza legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "In queste situazioni è opportuno richiedere una consulenza legale specializzata."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_ottenere_consulenza_professionale(self):
+        """Should catch 'ottenere consulenza professionale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Prima di procedere, ottenere consulenza professionale qualificata."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza professionale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_preserves_factual_consulenza_legale(self):
+        """Should NOT remove 'consulenza legale' when used as factual reference."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Il costo della consulenza legale è deducibile ai fini IRPEF."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza legale" in cleaned.lower()
+        assert removed == []
+
+    def test_preserves_spese_consulenza_legale(self):
+        """Should NOT remove 'spese per consulenza legale' (factual)."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Le spese per consulenza legale sostenute dal datore di lavoro sono deducibili."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza legale" in cleaned.lower()
+        assert removed == []
+
+    def test_considerare_una_consulenza_fiscale(self):
+        """Should catch 'considerare una consulenza fiscale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per questa fattispecie, considerare una consulenza fiscale approfondita."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consulenza fiscale" not in cleaned.lower()
+        assert len(removed) > 0

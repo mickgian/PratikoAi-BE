@@ -223,15 +223,19 @@ class ParallelRetrievalService:
         self,
         search_service: Any,
         embedding_service: Any,
+        session_factory: Any | None = None,
     ):
         """Initialize the parallel retrieval service.
 
         Args:
-            search_service: Service for BM25/text search
+            search_service: Service for BM25/text search (used as fallback)
             embedding_service: Service for vector embeddings
+            session_factory: Async session factory for creating independent DB sessions
+                per search task. When provided, enables true parallel KB searches.
         """
         self._search_service = search_service
         self._embedding_service = embedding_service
+        self._session_factory = session_factory
 
     async def retrieve(
         self,
@@ -434,21 +438,105 @@ class ParallelRetrievalService:
             search_types=["bm25", "vector", "hyde", "authority", "brave"],
         )
 
-        # DEV-244 FIX: Run KB searches SEQUENTIALLY to avoid SQLAlchemy session concurrency error
-        # The AsyncSession doesn't support concurrent operations from the same session.
-        # Brave search can run in parallel since it only uses HTTP (no DB session).
+        # PERF-S2: Run ALL searches in parallel using independent DB sessions.
+        # Previously KB searches ran sequentially because they shared one AsyncSession.
+        # Now each search gets its own session via session_factory, enabling true parallelism.
+        # Saves ~8-12s by overlapping 4 sequential DB queries + 1 HTTP call.
 
+        if self._session_factory:
+            return await self._execute_parallel_searches_with_sessions(
+                queries, hyde, messages, topic_keywords, user_id, session_id
+            )
+
+        # Fallback: sequential execution when no session factory (backward compat)
+        return await self._execute_sequential_searches(queries, hyde, messages, topic_keywords, user_id, session_id)
+
+    async def _execute_parallel_searches_with_sessions(
+        self,
+        queries: QueryVariants,
+        hyde: HyDEResult,
+        messages: list[dict] | None = None,
+        topic_keywords: list[str] | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
+    ) -> list[list[dict[str, Any]]]:
+        """Execute all searches in parallel with independent DB sessions.
+
+        Each KB search gets its own AsyncSession so they can run concurrently
+        without SQLAlchemy session concurrency errors.
+        """
+        from app.services.search_service import SearchService
+
+        async def _safe_search(search_type: str, coro) -> list[dict[str, Any]]:
+            """Wrapper that catches errors per search type."""
+            try:
+                return await coro
+            except Exception as e:
+                logger.warning("search_task_failed", search_type=search_type, error=str(e))
+                return []
+
+        async def _kb_search_with_session(search_type: str, search_fn, *args, **kwargs):
+            """Create independent session and run search."""
+            async with self._session_factory() as session:
+                svc = SearchService(db_session=session)
+                # Temporarily swap search service for this search
+                temp_service = ParallelRetrievalService(search_service=svc, embedding_service=self._embedding_service)
+                return await search_fn(temp_service, *args, **kwargs)
+
+        # Launch all 5 searches concurrently
+        results = await asyncio.gather(
+            _safe_search("bm25", _kb_search_with_session("bm25", ParallelRetrievalService._search_bm25, queries)),
+            _safe_search(
+                "vector", _kb_search_with_session("vector", ParallelRetrievalService._search_vector, queries)
+            ),
+            _safe_search("hyde", _kb_search_with_session("hyde", ParallelRetrievalService._search_hyde, hyde)),
+            _safe_search(
+                "authority",
+                _kb_search_with_session("authority", ParallelRetrievalService._search_authority_sources, queries),
+            ),
+            _safe_search(
+                "brave",
+                self._search_brave(
+                    queries, messages=messages, topic_keywords=topic_keywords, user_id=user_id, session_id=session_id
+                ),
+            ),
+        )
+
+        source_counts = {
+            name: len(r) for name, r in zip(["bm25", "vector", "hyde", "authority", "brave"], results, strict=True)
+        }
+        logger.info(
+            "parallel_searches_complete",
+            source_counts=source_counts,
+            total_raw_results=sum(source_counts.values()),
+            brave_results=source_counts.get("brave", 0),
+            kb_results=source_counts.get("bm25", 0) + source_counts.get("vector", 0) + source_counts.get("hyde", 0),
+            parallel_mode=True,
+        )
+
+        return list(results)
+
+    async def _execute_sequential_searches(
+        self,
+        queries: QueryVariants,
+        hyde: HyDEResult,
+        messages: list[dict] | None = None,
+        topic_keywords: list[str] | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
+    ) -> list[list[dict[str, Any]]]:
+        """Fallback: sequential KB searches when no session factory available.
+
+        Preserves original DEV-244 behavior for backward compatibility.
+        """
         # Start Brave search in background (doesn't use DB session)
-        # DEV-245 Phase 3.9: Pass messages for context-aware keyword ordering
-        # DEV-245 Phase 5.3: Pass topic_keywords for long conversation support
-        # DEV-257: Pass user_id/session_id for cost tracking
         brave_task = asyncio.create_task(
             self._search_brave(
                 queries, messages=messages, topic_keywords=topic_keywords, user_id=user_id, session_id=session_id
             )
         )
 
-        # Run KB searches sequentially
+        # Run KB searches sequentially (shared session)
         source_counts: dict[str, int] = {}
         processed: list[list[dict[str, Any]]] = []
 
@@ -482,7 +570,7 @@ class ParallelRetrievalService:
             processed.append([])
             source_counts["hyde"] = 0
 
-        # 4. Authority search (already runs sequentially internally)
+        # 4. Authority search
         try:
             authority_results = await self._search_authority_sources(queries)
             processed.append(authority_results)
@@ -492,7 +580,7 @@ class ParallelRetrievalService:
             processed.append([])
             source_counts["authority"] = 0
 
-        # 5. Wait for Brave search (was running in parallel)
+        # 5. Wait for Brave search
         try:
             brave_results = await brave_task
             processed.append(brave_results)
@@ -502,7 +590,6 @@ class ParallelRetrievalService:
             processed.append([])
             source_counts["brave"] = 0
 
-        # DEV-245: Log source distribution for Docker debugging
         logger.info(
             "parallel_searches_complete",
             source_counts=source_counts,

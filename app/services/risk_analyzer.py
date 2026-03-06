@@ -110,14 +110,14 @@ LOW_KEYWORDS = [
 # =============================================================================
 
 CRITICAL_MITIGATION_ACTIONS = [
-    "Consultare immediatamente un avvocato tributarista o penalista",
-    "Non procedere con l'operazione senza parere legale",
+    "Valutare immediatamente le implicazioni penali tributarie dell'operazione",
+    "Non procedere con l'operazione senza un'analisi approfondita dei rischi",
     "Valutare la possibilità di autodenuncia (disclosure)",
 ]
 
 HIGH_MITIGATION_ACTIONS = [
     "Valutare il ravvedimento operoso per ridurre le sanzioni",
-    "Consultare un commercialista per la regolarizzazione",
+    "Valutare le opzioni di regolarizzazione disponibili",
     "Verificare i termini per la sanatoria",
 ]
 

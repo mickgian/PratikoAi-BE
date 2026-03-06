@@ -20,21 +20,77 @@ from app.core.logging import logger
 
 # Patterns that match prohibited disclaimer phrases in Italian
 # DEV-251: Patterns now remove only the matched phrase, not the entire sentence
+# Shared professional role alternation — used across multiple patterns.
+# IMPORTANT: when adding a new role, add it HERE so all patterns are updated.
+_ROLES = r"(?:esperto|professionista|commercialista|consulente|avvocato|legale)"
+
 DISCLAIMER_PATTERNS: list[str] = [
-    # "consult an expert" variants
-    r"consult[ai] un (esperto|professionista|commercialista|consulente)",
-    r"rivolg[aei]r?[st]?i a un (esperto|professionista|commercialista)",
-    r"è consigliabile consultare",
-    r"si consiglia di consultare",
-    r"verifica (con|presso) (un professionista|fonti ufficiali)",
+    # "consult an expert" variants — broad catch for any verb + professional role
+    # Extended with [^.!?\n]* to remove the full clause through the professional reference
+    rf"consult(?:a(?:re|ndo)?|i|o) (?:un |il )?{_ROLES}[^.!?\n]*",
+    rf"rivolg[aei]r?[st]?i a (?:un |il )?{_ROLES}[^.!?\n]*",
+    r"(?:è|e') consigliabile consultare[^.!?\n]*",
+    r"si consiglia di consultare[^.!?\n]*",
+    r"verifica (?:con|presso) (?:un professionista|fonti ufficiali)[^.!?\n]*",
+    # "you should consult" variants (dovresti/dovrebbe/è opportuno/sarebbe bene)
+    # Extended to eat the full clause including the target professional
+    r"(?:dovresti|dovrebbe|dovrebbero) (?:consultare|contattare|rivolgersi)[^.!?\n]*",
+    r"(?:è|e') (?:opportuno|consigliabile|bene|utile) (?:consultare|contattare|rivolgersi)[^.!?\n]*",
+    r"(?:sarebbe|potrebbe essere) (?:bene|opportuno|utile) (?:consultare|contattare)[^.!?\n]*",
+    # "I recommend consulting" personal/impersonal variants
+    r"(?:ti |vi )?(?:consiglio|suggerisco|raccomando) di (?:consultare|contattare|rivolgerti|rivolgervi)[^.!?\n]*",
+    # Compound professional references with "o" (un commercialista o un consulente del lavoro)
+    r"un (?:commercialista|consulente del lavoro|avvocato|esperto|professionista|legale)"
+    r"(?:\s*o\s*(?:un )?(?:commercialista|consulente del lavoro|avvocato|esperto|professionista|legale))+",
+    # "è possibile approfondire con un professionista" variants (MUST be before "assistenza" pattern)
+    # Fixed: use non-greedy *? to avoid eating entire clauses
+    r"(?:è|e') possibile approfondire (?:ulteriormente )?(?:con\b[^.!?\n]*?)?",
+    # "professional assistance" full phrases
+    r"(?:con (?:l[''])?)?assistenza (?:di un )?(?:professionista|professionale|legale|fiscale|contabile)",
+    r"(?:chiedere|sentire|prendere) (?:il )?(?:parere|consiglio|opinione) (?:di|a) un",
+    rf"(?:contattare|interpellare) un {_ROLES}[^.!?\n]*",
+    # "consulenza di un professionista" (noun form, bypasses verb-based patterns)
+    rf"(?:si consiglia )?la consulenza di un {_ROLES}",
+    # "verificare con un professionista" (imperative without "consult")
+    rf"verificare con un {_ROLES}[^.!?\n]*",
+    # "In case of doubt" + consult (or orphaned after earlier pattern removal)
+    # Fixed: use non-greedy *? to avoid eating entire clauses
+    r"[Ii]n caso di dubbi,?\s*(?:(?:consultare|contattare|rivolgersi)[^.!?\n]*?)?",
     # "check official sources" variants
-    r"verifica sul sito (ufficiale|dell['']Agenzia)",
-    r"per (maggiori informazioni|conferma)[,]? (consulta|verifica|controlla)",
+    r"verifica sul sito (?:ufficiale|dell['']Agenzia)",
+    r"per (?:maggiori informazioni|conferma)[,]? (?:consulta|verifica|controlla)",
     r"per una conferma definitiva",
     # "contact me" variants (inappropriate for AI)
     r"non esit[ai]r?e? a contattarmi",
-    r"se (hai|avete) (domande|dubbi)",
+    r"se (?:hai|avete) (?:domande|dubbi)",
     r"resto a disposizione",
+    # Standalone catch-all: "a un professionista abilitato" (orphaned after verb removal
+    # or when the verb and professional are in different streaming segments)
+    rf",?\s*a un {_ROLES} abilitato[^.!?\n]*",
+    # Broader catch-all: "professionista abilitato" without preceding article
+    r"(?:professionista|commercialista|consulente|esperto) abilitato[^.!?\n]*",
+    # "valutare/richiedere/ottenere una consulenza legale" (action verb + consulenza)
+    # Catches borderline phrases like "valutare una consulenza legale mirata" while
+    # preserving factual references like "il costo della consulenza legale"
+    r"(?:valutare|richiedere|ottenere|chiedere|prendere in considerazione|considerare|prevedere)"
+    r" (?:una |la )?consulenza (?:legale|fiscale|professionale|specialistica|specializzata)[^.!?\n]*",
+    # --- Internal methodology leak: Tree of Thoughts ---
+    # The LLM sometimes ignores prompt instructions and exposes the internal
+    # reasoning methodology name or structure in user-facing text.
+    r",?\s*applicando il metodo Tree of Thoughts[^.!?\n]*",
+    r",?\s*(?:utilizzando|usando|con) (?:il metodo|la metodologia) Tree of Thoughts[^.!?\n]*",
+    r",?\s*(?:attraverso|tramite|mediante) (?:il )?(?:metodo |metodologia )?Tree of Thoughts[^.!?\n]*",
+    # ToT structural leaks: methodology terminology that exposes the reasoning process
+    # "generando multiple ipotesi interpretative" / "multi-ipotesi"
+    r",?\s*generando multiple ipotesi interpretative[^.!?\n]*",
+    r"(?:analisi |approccio )?multi-ipotesi[^.!?\n]*",
+    # "metodo di ragionamento" (generic methodology reference forbidden by prompt)
+    r"(?:un |il )?metodo di ragionamento[^.!?\n]*",
+    # "Valutazione delle Ipotesi" as section header (ToT evaluation step)
+    r"#*\s*\d*\.?\s*Valutazione delle Ipotesi[^.!?\n]*",
+    # "Ipotesi N:" numbered headers (ToT hypothesis labeling)
+    # Only matches "Ipotesi" followed by a number and colon — not "nell'ipotesi di" (legal usage)
+    r"#*\s*Ipotesi \d+\s*:[^\n]*",
 ]
 
 # Compile patterns for efficiency

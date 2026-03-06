@@ -52,8 +52,13 @@ async def node_step_64(state: RAGState) -> RAGState:
 
         tot_used = False
         tot_response = None  # DEV-251: Store ToT response for reuse
+        # Guardrail streaming: when streaming is requested, skip blocking ToT call.
+        # The streaming path (generate_response_stream) already uses the ToT prompt
+        # template for complex/multi_domain queries via ModelConfig.for_complexity().
+        # This avoids ~60s TTFT caused by running the full ToT pipeline before streaming.
+        stream_requested = state.get("streaming", {}).get("requested", False)
         # Chitchat: skip ToT reasoning entirely (saves expensive LLM calls)
-        if not is_chitchat and cplx in ("complex", "multi_domain"):
+        if not is_chitchat and not stream_requested and cplx in ("complex", "multi_domain"):
             try:
                 tot = await use_tree_of_thoughts(state, cplx)
                 state.update(
@@ -77,17 +82,57 @@ async def node_step_64(state: RAGState) -> RAGState:
                     )
             except Exception:
                 state.update(reasoning_type="cot", tot_fallback=True)
+        elif stream_requested and not is_chitchat and cplx in ("complex", "multi_domain"):
+            # Mark reasoning type for metadata even though ToT runs via streaming
+            state["reasoning_type"] = "tot"
+            logger.info(
+                "step_064_tot_deferred_for_streaming",
+                complexity=cplx,
+                reason="guardrail_streaming_enabled_for_tot",
+            )
 
         from app.services.llm_orchestrator import QueryComplexity as QC  # noqa: N817
 
         user_msg, kb_ctx = extract_user_message(state), state.get("context", "") or state.get("kb_context", "")
         cplx_enum = {"simple": QC.SIMPLE, "complex": QC.COMPLEX, "multi_domain": QC.MULTI_DOMAIN}.get(cplx, QC.SIMPLE)
 
+        # Guardrail streaming: if streaming requested and no ToT response,
+        # defer LLM call to graph.py's get_stream_response() for real-time streaming
+        stream_llm = state.get("streaming", {}).get("requested", False)
+
         try:
             # DEV-251: Reuse ToT response if available, avoiding duplicate LLM call
             if tot_used and tot_response is not None:
                 r = tot_response
                 rag_step_log(STEP, "reusing_tot_response", model=r.model_used)
+            elif stream_llm:
+                # Defer LLM call — store params for streaming in get_stream_response()
+                rag_step_log(STEP, "deferring_llm_for_streaming", complexity=cplx)
+                state["stream_llm_pending"] = True
+                state["stream_llm_params"] = {
+                    "query": user_msg,
+                    "kb_context": kb_ctx,
+                    "kb_sources_metadata": state.get("kb_sources_metadata", []),
+                    "complexity": cplx_enum.value,
+                    "conversation_history": state.get("messages", []),
+                    "web_sources_metadata": state.get("web_sources_metadata", []),
+                    "domains": state.get("detected_domains", []),
+                    "is_followup": is_followup,
+                    "is_chitchat": is_chitchat,
+                }
+                logger.info(
+                    "step_064_deferred_for_streaming",
+                    complexity=cplx,
+                    is_chitchat=is_chitchat,
+                    is_followup=is_followup,
+                )
+                # Mark LLM namespace so downstream nodes (Step 67) don't flag failure
+                llm = ns(state, "llm")
+                llm["success"] = True
+                llm["deferred_for_streaming"] = True
+                # Skip the rest of the LLM call — graph.py will handle streaming
+                rag_step_log(STEP, "exit", llm_success=True, reasoning_type=state.get("reasoning_type"))
+                return state
             else:
                 r = await get_llm_orchestrator().generate_response(
                     query=user_msg,

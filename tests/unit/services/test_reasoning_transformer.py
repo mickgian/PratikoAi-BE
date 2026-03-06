@@ -347,7 +347,7 @@ class TestRiskWarningGeneration:
         )
         warning = transformer.generate_risk_warning(internal)
         assert warning is not None
-        assert "penale" in warning.lower() or "professionista" in warning.lower()
+        assert "penal" in warning.lower() or "sanzion" in warning.lower()
 
     def test_no_warning_for_medium_risk(self):
         """Should not generate warning for medium risk."""

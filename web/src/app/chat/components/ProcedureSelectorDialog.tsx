@@ -247,7 +247,7 @@ export function ProcedureSelectorDialog({
                             {step.checklist.map((item, ci) => (
                               <li
                                 key={ci}
-                                className="text-xs text-[#1E293B]/60 flex items-center space-x-1"
+                                className="text-xs text-[#1E293B]/60 flex items-center space-x-1 before:content-none !p-0 !m-0"
                               >
                                 <span className="text-[#2A5D67]">•</span>
                                 <span>{item}</span>

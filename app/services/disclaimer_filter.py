@@ -20,11 +20,15 @@ from app.core.logging import logger
 
 # Patterns that match prohibited disclaimer phrases in Italian
 # DEV-251: Patterns now remove only the matched phrase, not the entire sentence
+# Shared professional role alternation — used across multiple patterns.
+# IMPORTANT: when adding a new role, add it HERE so all patterns are updated.
+_ROLES = r"(?:esperto|professionista|commercialista|consulente|avvocato|legale)"
+
 DISCLAIMER_PATTERNS: list[str] = [
     # "consult an expert" variants — broad catch for any verb + professional role
     # Extended with [^.!?\n]* to remove the full clause through the professional reference
-    r"consult(?:a(?:re|ndo)?|i|o) (?:un |il )?(?:esperto|professionista|commercialista|consulente|avvocato)[^.!?\n]*",
-    r"rivolg[aei]r?[st]?i a (?:un |il )?(?:esperto|professionista|commercialista|consulente|avvocato)[^.!?\n]*",
+    rf"consult(?:a(?:re|ndo)?|i|o) (?:un |il )?{_ROLES}[^.!?\n]*",
+    rf"rivolg[aei]r?[st]?i a (?:un |il )?{_ROLES}[^.!?\n]*",
     r"(?:è|e') consigliabile consultare[^.!?\n]*",
     r"si consiglia di consultare[^.!?\n]*",
     r"verifica (?:con|presso) (?:un professionista|fonti ufficiali)[^.!?\n]*",
@@ -36,19 +40,19 @@ DISCLAIMER_PATTERNS: list[str] = [
     # "I recommend consulting" personal/impersonal variants
     r"(?:ti |vi )?(?:consiglio|suggerisco|raccomando) di (?:consultare|contattare|rivolgerti|rivolgervi)[^.!?\n]*",
     # Compound professional references with "o" (un commercialista o un consulente del lavoro)
-    r"un (?:commercialista|consulente del lavoro|avvocato|esperto|professionista)"
-    r"(?:\s*o\s*(?:un )?(?:commercialista|consulente del lavoro|avvocato|esperto|professionista))+",
+    r"un (?:commercialista|consulente del lavoro|avvocato|esperto|professionista|legale)"
+    r"(?:\s*o\s*(?:un )?(?:commercialista|consulente del lavoro|avvocato|esperto|professionista|legale))+",
     # "è possibile approfondire con un professionista" variants (MUST be before "assistenza" pattern)
     # Fixed: use non-greedy *? to avoid eating entire clauses
     r"(?:è|e') possibile approfondire (?:ulteriormente )?(?:con\b[^.!?\n]*?)?",
     # "professional assistance" full phrases
     r"(?:con (?:l[''])?)?assistenza (?:di un )?(?:professionista|professionale|legale|fiscale|contabile)",
     r"(?:chiedere|sentire|prendere) (?:il )?(?:parere|consiglio|opinione) (?:di|a) un",
-    r"(?:contattare|interpellare) un (?:commercialista|consulente|avvocato|esperto|professionista)[^.!?\n]*",
+    rf"(?:contattare|interpellare) un {_ROLES}[^.!?\n]*",
     # "consulenza di un professionista" (noun form, bypasses verb-based patterns)
-    r"(?:si consiglia )?la consulenza di un (?:professionista|esperto|commercialista|consulente|avvocato)",
+    rf"(?:si consiglia )?la consulenza di un {_ROLES}",
     # "verificare con un professionista" (imperative without "consult")
-    r"verificare con un (?:professionista|esperto|commercialista|consulente|avvocato)[^.!?\n]*",
+    rf"verificare con un {_ROLES}[^.!?\n]*",
     # "In case of doubt" + consult (or orphaned after earlier pattern removal)
     # Fixed: use non-greedy *? to avoid eating entire clauses
     r"[Ii]n caso di dubbi,?\s*(?:(?:consultare|contattare|rivolgersi)[^.!?\n]*?)?",
@@ -62,15 +66,26 @@ DISCLAIMER_PATTERNS: list[str] = [
     r"resto a disposizione",
     # Standalone catch-all: "a un professionista abilitato" (orphaned after verb removal
     # or when the verb and professional are in different streaming segments)
-    r",?\s*a un (?:professionista|commercialista|consulente|esperto|avvocato) abilitato[^.!?\n]*",
+    rf",?\s*a un {_ROLES} abilitato[^.!?\n]*",
     # Broader catch-all: "professionista abilitato" without preceding article
     r"(?:professionista|commercialista|consulente|esperto) abilitato[^.!?\n]*",
-    # Internal methodology leak: "Tree of Thoughts" / reasoning method references
+    # --- Internal methodology leak: Tree of Thoughts ---
     # The LLM sometimes ignores prompt instructions and exposes the internal
-    # reasoning methodology name in user-facing text.
+    # reasoning methodology name or structure in user-facing text.
     r",?\s*applicando il metodo Tree of Thoughts[^.!?\n]*",
     r",?\s*(?:utilizzando|usando|con) (?:il metodo|la metodologia) Tree of Thoughts[^.!?\n]*",
     r",?\s*(?:attraverso|tramite|mediante) (?:il )?(?:metodo |metodologia )?Tree of Thoughts[^.!?\n]*",
+    # ToT structural leaks: methodology terminology that exposes the reasoning process
+    # "generando multiple ipotesi interpretative" / "multi-ipotesi"
+    r",?\s*generando multiple ipotesi interpretative[^.!?\n]*",
+    r"(?:analisi |approccio )?multi-ipotesi[^.!?\n]*",
+    # "metodo di ragionamento" (generic methodology reference forbidden by prompt)
+    r"(?:un |il )?metodo di ragionamento[^.!?\n]*",
+    # "Valutazione delle Ipotesi" as section header (ToT evaluation step)
+    r"#*\s*\d*\.?\s*Valutazione delle Ipotesi[^.!?\n]*",
+    # "Ipotesi N:" numbered headers (ToT hypothesis labeling)
+    # Only matches "Ipotesi" followed by a number and colon — not "nell'ipotesi di" (legal usage)
+    r"#*\s*Ipotesi \d+\s*:[^\n]*",
 ]
 
 # Compile patterns for efficiency

@@ -685,3 +685,158 @@ class TestDisclaimerFilterLogging:
         # Check that info log was emitted (we can check caplog.records)
         # Note: structlog may not appear in caplog depending on configuration
         # This test verifies the code path executes without error
+
+
+class TestDisclaimerFilterLegale:
+    """Tests for 'legale' as a professional role (was missing from alternations)."""
+
+    def test_consultare_un_legale(self):
+        """Should catch 'Consultare un legale' — 'legale' was missing from role list."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Consultare un legale: Prima di procedere con il licenziamento, per valutare i rischi."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consultare un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_numbered_consultare_un_legale(self):
+        """Should catch '4. Consultare un legale:' in numbered list."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "1. Documentare tutto: Conservare prove.\n"
+            "2. Coinvolgere il sindacato.\n"
+            "3. Valutare la gravità.\n"
+            "4. Consultare un legale: Prima di procedere con il licenziamento, per valutare i rischi."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consultare un legale" not in cleaned.lower()
+        assert "Documentare tutto" in cleaned
+        assert len(removed) > 0
+
+    def test_rivolgersi_a_un_legale(self):
+        """Should catch 'rivolgersi a un legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per una valutazione completa, rivolgersi a un legale specializzato."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "rivolgersi a un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_dovrebbe_consultare_un_legale(self):
+        """Should catch 'dovrebbe consultare un legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "La cooperativa dovrebbe consultare un legale prima di procedere."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "consultare un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_contattare_un_legale(self):
+        """Should catch 'contattare un legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "È opportuno contattare un legale per verificare la procedura."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "contattare un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_assistenza_di_un_legale(self):
+        """Should catch 'assistenza di un legale'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Per questa situazione è necessaria l'assistenza di un legale specializzato."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "assistenza di un legale" not in cleaned.lower()
+        assert len(removed) > 0
+
+
+class TestDisclaimerFilterToTStructuralLeak:
+    """Tests for Tree of Thoughts structural leaks (methodology exposure beyond name)."""
+
+    def test_tot_opening_with_methodology_description(self):
+        """Should catch 'utilizzando il metodo Tree of Thoughts, generando multiple ipotesi'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "Analizziamo la query utilizzando il metodo Tree of Thoughts, "
+            "generando multiple ipotesi interpretative e valutandole alla luce "
+            "delle fonti normative italiane applicabili."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "tree of thoughts" not in cleaned.lower()
+        assert "multiple ipotesi interpretative" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_generando_multiple_ipotesi(self):
+        """Should catch 'generando multiple ipotesi interpretative' even without ToT name."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Analizziamo il caso generando multiple ipotesi interpretative e valutandole."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "multiple ipotesi interpretative" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_multi_ipotesi_reference(self):
+        """Should catch 'multi-ipotesi' or 'analisi multi-ipotesi'."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Procediamo con un'analisi multi-ipotesi per valutare tutti gli scenari."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "multi-ipotesi" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_valutazione_delle_ipotesi_header(self):
+        """Should catch 'Valutazione delle Ipotesi' as section header (ToT evaluation step)."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "## 2. Valutazione delle Ipotesi\n\nIpotesiVantaggiRischiSupporto Normativo"
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "valutazione delle ipotesi" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_ipotesi_numbered_section_headers(self):
+        """Should catch 'Ipotesi 1:', 'Ipotesi 2:' etc. as methodology leak headers."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = (
+            "## Ipotesi 1: Licenziamento Disciplinare Immediato\n\n"
+            "Contenuto della prima ipotesi.\n\n"
+            "## Ipotesi 2: Necessità di Procedimento Formale\n\n"
+            "Contenuto della seconda ipotesi."
+        )
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "ipotesi 1:" not in cleaned.lower()
+        assert "ipotesi 2:" not in cleaned.lower()
+        assert len(removed) >= 2
+
+    def test_metodo_di_ragionamento_reference(self):
+        """Should catch 'metodo di ragionamento' without Tree of Thoughts name."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Utilizziamo un metodo di ragionamento strutturato per analizzare il caso."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "metodo di ragionamento" not in cleaned.lower()
+        assert len(removed) > 0
+
+    def test_preserves_legitimate_ipotesi_usage(self):
+        """Should NOT remove 'ipotesi' when used in normal legal context."""
+        from app.services.disclaimer_filter import DisclaimerFilter
+
+        text = "Nell'ipotesi di dimissioni volontarie, il lavoratore perde il diritto alla NASpI."
+        cleaned, removed = DisclaimerFilter.filter_response(text)
+
+        assert "ipotesi" in cleaned.lower()
+        assert removed == []

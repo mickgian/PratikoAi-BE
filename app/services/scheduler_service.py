@@ -602,6 +602,13 @@ async def collect_rss_feeds_task() -> None:
                 )
 
                 async with async_session_maker() as session:
+                    # Mark feed as checked before attempting ingestion
+                    feed_pre = await session.get(FeedStatus, snap["id"])
+                    if feed_pre:
+                        feed_pre.last_checked = datetime.now(UTC)
+                        session.add(feed_pre)
+                        await session.commit()
+
                     # Run database-driven ingestion
                     stats = await run_rss_ingestion(
                         session=session,
@@ -661,6 +668,7 @@ async def collect_rss_feeds_task() -> None:
                     async with async_session_maker() as err_session:
                         feed = await err_session.get(FeedStatus, snap["id"])
                         if feed:
+                            feed.last_checked = datetime.now(UTC)
                             feed.consecutive_errors = (feed.consecutive_errors or 0) + 1
                             feed.errors = (feed.errors or 0) + 1
                             feed.last_error = str(e)[:500]

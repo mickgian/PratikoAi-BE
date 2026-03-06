@@ -765,9 +765,10 @@ class TestCollectRssFeedsTask:
         assert session_count == 3
         # Both feeds processed
         assert mock_ingest.call_count == 2
-        # Each per-feed session got the feed for status update
-        mock_feed_session_1.get.assert_called_once()
-        mock_feed_session_2.get.assert_called_once()
+        # Each per-feed session gets the feed twice: once for last_checked pre-update,
+        # once for status update after ingestion
+        assert mock_feed_session_1.get.call_count == 2
+        assert mock_feed_session_2.get.call_count == 2
 
     @pytest.mark.asyncio
     @patch("app.core.config.settings")

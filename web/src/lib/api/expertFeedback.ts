@@ -200,5 +200,6 @@ export async function isUserSuperUser(): Promise<boolean> {
  * @deprecated Use isUserSuperUser() instead. This function checks trust_score which is no longer used for authorization.
  */
 export async function isUserExpert(): Promise<boolean> {
+  console.warn('isUserExpert is deprecated. Use isUserSuperUser() instead.');
   return isUserSuperUser();
 }

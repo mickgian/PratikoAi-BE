@@ -208,8 +208,13 @@ class TestStreamingLLMDeferral:
             mock_orch.return_value.generate_response.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_does_not_defer_when_tot_used(self, streaming_state: dict, mock_unified_response: MagicMock) -> None:
-        """Should NOT defer if ToT already produced a response."""
+    async def test_does_not_defer_when_tot_used(self, mock_state: dict, mock_unified_response: MagicMock) -> None:
+        """Should NOT defer if ToT already produced a response (non-streaming path).
+
+        Note: ToT is only invoked when streaming is NOT requested (guardrail streaming
+        skips blocking ToT to avoid ~60s TTFT). This test verifies the non-streaming
+        path where ToT runs and its response is reused directly.
+        """
         # Create mock ToT result
         mock_tot = MagicMock()
         mock_tot.reasoning_trace = {"tema_identificato": "test"}
@@ -219,7 +224,7 @@ class TestStreamingLLMDeferral:
         mock_tot.total_latency_ms = 500
         mock_tot.llm_response = mock_unified_response
 
-        streaming_state["routing_decision"] = {"route": "technical_research", "is_followup": False}
+        mock_state["routing_decision"] = {"route": "technical_research", "is_followup": False}
 
         with (
             patch(
@@ -256,9 +261,9 @@ class TestStreamingLLMDeferral:
         ):
             from app.core.langgraph.nodes.step_064__llm_call import node_step_64
 
-            result = await node_step_64(streaming_state)
+            result = await node_step_64(mock_state)
 
-            # ToT response should be used, NOT deferred
+            # ToT response should be reused, NOT deferred for streaming
             assert result.get("stream_llm_pending") is not True
             # generate_response should NOT have been called (ToT reuse)
             mock_orch.return_value.generate_response.assert_not_called()

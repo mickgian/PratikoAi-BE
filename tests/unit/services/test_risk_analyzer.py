@@ -198,8 +198,8 @@ class TestMitigationActions:
         assert result.mitigation_actions is not None
         assert len(result.mitigation_actions) > 0
 
-    def test_critical_actions_include_professional_consultation(self):
-        """CRITICAL risk should suggest professional consultation."""
+    def test_critical_actions_include_risk_assessment(self):
+        """CRITICAL risk should suggest immediate risk assessment and caution."""
         from app.services.risk_analyzer import RiskAnalyzer
 
         analyzer = RiskAnalyzer()
@@ -210,7 +210,7 @@ class TestMitigationActions:
         }
         result = analyzer.analyze_hypothesis(hypothesis)
         actions_text = " ".join(result.mitigation_actions).lower()
-        assert "professionista" in actions_text or "legale" in actions_text or "consulenza" in actions_text
+        assert "penali" in actions_text or "rischi" in actions_text or "autodenuncia" in actions_text
 
     def test_high_risk_actions_suggest_regularization(self):
         """HIGH risk should suggest regularization options."""

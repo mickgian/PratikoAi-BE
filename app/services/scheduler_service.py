@@ -563,8 +563,12 @@ async def collect_rss_feeds_task() -> None:
             "total_failed": 0,
         }
 
+        # Load feed data upfront to avoid MissingGreenlet errors.
+        # After session.commit(), accessing ORM attributes triggers lazy-loading
+        # through the sync session path, which fails outside a greenlet context.
+        # Snapshot plain values here, then use a fresh session per feed.
+        feed_snapshots: list[dict] = []
         async with async_session_maker() as session:
-            # Query all enabled feeds
             query = select(FeedStatus).where(FeedStatus.enabled == True)  # noqa: E712
             result = await session.execute(query)
             feeds = result.scalars().all()
@@ -574,24 +578,35 @@ async def collect_rss_feeds_task() -> None:
                 await engine.dispose()
                 return
 
-            logger.info("rss_feed_collection_processing_feeds", feed_count=len(feeds))
+            for f in feeds:
+                feed_snapshots.append(
+                    {
+                        "id": f.id,
+                        "source": f.source,
+                        "feed_type": f.feed_type,
+                        "feed_url": f.feed_url,
+                    }
+                )
 
-            # Process each feed
-            for feed in feeds:
-                try:
-                    logger.info(
-                        "rss_feed_collection_processing_feed",
-                        feed_id=feed.id,
-                        source=feed.source,
-                        feed_type=feed.feed_type,
-                        feed_url=feed.feed_url,
-                    )
+        logger.info("rss_feed_collection_processing_feeds", feed_count=len(feed_snapshots))
 
+        # Process each feed with its own session to avoid cross-feed state issues
+        for snap in feed_snapshots:
+            try:
+                logger.info(
+                    "rss_feed_collection_processing_feed",
+                    feed_id=snap["id"],
+                    source=snap["source"],
+                    feed_type=snap["feed_type"],
+                    feed_url=snap["feed_url"],
+                )
+
+                async with async_session_maker() as session:
                     # Run database-driven ingestion
                     stats = await run_rss_ingestion(
                         session=session,
-                        feed_url=feed.feed_url,
-                        feed_type=feed.feed_type,
+                        feed_url=snap["feed_url"],
+                        feed_type=snap["feed_type"],
                         max_items=None,  # Process all items
                     )
 
@@ -607,45 +622,57 @@ async def collect_rss_feeds_task() -> None:
                     aggregate_stats["total_skipped"] += stats.get("skipped_existing", 0)
                     aggregate_stats["total_failed"] += stats.get("failed", 0)
 
-                    # Update feed_status
-                    feed.items_found = stats.get("total_items", 0)
-                    feed.last_success = datetime.now(UTC)
-                    feed.consecutive_errors = 0
-                    feed.status = "healthy"
-                    # DEV-247: Track filtered items for daily report
-                    feed.items_filtered = stats.get("skipped_filtered", 0)
-                    filtered_samples = stats.get("filtered_samples", [])
-                    if filtered_samples:
-                        feed.filtered_samples = {"titles": filtered_samples}
-                    session.add(feed)
-                    await session.commit()
+                    # Update feed_status with a fresh object from this session
+                    feed = await session.get(FeedStatus, snap["id"])
+                    if feed:
+                        feed.items_found = stats.get("total_items", 0)
+                        feed.last_success = datetime.now(UTC)
+                        feed.consecutive_errors = 0
+                        feed.status = "healthy"
+                        # DEV-247: Track filtered items for daily report
+                        feed.items_filtered = stats.get("skipped_filtered", 0)
+                        filtered_samples = stats.get("filtered_samples", [])
+                        if filtered_samples:
+                            feed.filtered_samples = {"titles": filtered_samples}
+                        session.add(feed)
+                        await session.commit()
 
-                    logger.info(
-                        "rss_feed_collection_feed_completed",
-                        feed_id=feed.id,
-                        source=feed.source,
-                        total_items=stats.get("total_items", 0),
-                        new_documents=stats.get("new_documents", 0),
-                        skipped=stats.get("skipped_existing", 0),
-                    )
+                logger.info(
+                    "rss_feed_collection_feed_completed",
+                    feed_id=snap["id"],
+                    source=snap["source"],
+                    total_items=stats.get("total_items", 0),
+                    new_documents=stats.get("new_documents", 0),
+                    skipped=stats.get("skipped_existing", 0),
+                )
 
-                except Exception as e:
+            except Exception as e:
+                logger.error(
+                    "rss_feed_collection_feed_failed",
+                    feed_id=snap["id"],
+                    source=snap["source"],
+                    error=str(e),
+                    exc_info=True,
+                )
+                aggregate_stats["feeds_failed"] += 1
+
+                # Update feed_status with error in a fresh session
+                try:
+                    async with async_session_maker() as err_session:
+                        feed = await err_session.get(FeedStatus, snap["id"])
+                        if feed:
+                            feed.consecutive_errors = (feed.consecutive_errors or 0) + 1
+                            feed.errors = (feed.errors or 0) + 1
+                            feed.last_error = str(e)[:500]
+                            feed.status = "error"
+                            err_session.add(feed)
+                            await err_session.commit()
+                except Exception as update_err:
                     logger.error(
-                        "rss_feed_collection_feed_failed",
-                        feed_id=feed.id,
-                        source=feed.source,
-                        error=str(e),
-                        exc_info=True,
+                        "rss_feed_collection_feed_status_update_failed",
+                        feed_id=snap["id"],
+                        error=str(update_err),
                     )
-                    aggregate_stats["feeds_failed"] += 1
-
-                    # Update feed_status with error
-                    feed.consecutive_errors += 1
-                    feed.errors += 1
-                    feed.last_error = str(e)[:500]
-                    feed.status = "error"
-                    session.add(feed)
-                    await session.commit()
 
         # Dispose engine
         await engine.dispose()

@@ -674,3 +674,211 @@ class TestThreadPoolExecution:
         )
 
         assert task.run_in_thread is False
+
+
+class TestCollectRssFeedsTask:
+    """Tests for collect_rss_feeds_task — session-per-feed pattern."""
+
+    @pytest.mark.asyncio
+    @patch("app.core.config.settings")
+    async def test_processes_all_feeds_with_separate_sessions(self, mock_settings):
+        """Each feed should be processed in its own session to avoid MissingGreenlet."""
+        mock_settings.POSTGRES_URL = "postgresql+asyncpg://test:test@localhost/test"
+
+        # Track session creation count
+        session_count = 0
+
+        # Mock feed data
+        mock_feed_1 = Mock()
+        mock_feed_1.id = 1
+        mock_feed_1.source = "source_a"
+        mock_feed_1.feed_type = "news"
+        mock_feed_1.feed_url = "https://example.com/feed1"
+
+        mock_feed_2 = Mock()
+        mock_feed_2.id = 2
+        mock_feed_2.source = "source_b"
+        mock_feed_2.feed_type = "normativa"
+        mock_feed_2.feed_url = "https://example.com/feed2"
+
+        # Mock the query session (first session for loading feeds)
+        mock_query_session = AsyncMock()
+        mock_result = Mock()
+        mock_result.scalars.return_value.all.return_value = [mock_feed_1, mock_feed_2]
+        mock_query_session.execute = AsyncMock(return_value=mock_result)
+
+        # Mock per-feed sessions
+        mock_feed_session_1 = AsyncMock()
+        mock_feed_obj_1 = Mock()
+        mock_feed_obj_1.consecutive_errors = 0
+        mock_feed_session_1.get = AsyncMock(return_value=mock_feed_obj_1)
+
+        mock_feed_session_2 = AsyncMock()
+        mock_feed_obj_2 = Mock()
+        mock_feed_obj_2.consecutive_errors = 0
+        mock_feed_session_2.get = AsyncMock(return_value=mock_feed_obj_2)
+
+        sessions = [mock_query_session, mock_feed_session_1, mock_feed_session_2]
+
+        class MockSessionContext:
+            def __init__(self):
+                nonlocal session_count
+                self.session = sessions[session_count]
+                session_count += 1
+
+            async def __aenter__(self):
+                return self.session
+
+            async def __aexit__(self, *args):
+                pass
+
+        mock_engine = AsyncMock()
+
+        with (
+            patch(
+                "sqlalchemy.ext.asyncio.create_async_engine",
+                return_value=mock_engine,
+            ),
+            patch(
+                "sqlalchemy.orm.sessionmaker",
+                return_value=Mock(side_effect=lambda: MockSessionContext()),
+            ),
+            patch(
+                "app.ingest.rss_normativa.run_rss_ingestion",
+                new_callable=AsyncMock,
+                return_value={
+                    "status": "success",
+                    "total_items": 5,
+                    "new_documents": 2,
+                    "skipped_existing": 3,
+                    "failed": 0,
+                    "skipped_filtered": 0,
+                    "filtered_samples": [],
+                },
+            ) as mock_ingest,
+        ):
+            from app.services.scheduler_service import collect_rss_feeds_task
+
+            await collect_rss_feeds_task()
+
+        # Verify: 1 query session + 2 per-feed sessions = 3 total
+        assert session_count == 3
+        # Both feeds processed
+        assert mock_ingest.call_count == 2
+        # Each per-feed session got the feed for status update
+        mock_feed_session_1.get.assert_called_once()
+        mock_feed_session_2.get.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("app.core.config.settings")
+    async def test_feed_error_uses_separate_session(self, mock_settings):
+        """Error handler should use a fresh session, not the failed one."""
+        mock_settings.POSTGRES_URL = "postgresql+asyncpg://test:test@localhost/test"
+
+        session_count = 0
+
+        mock_feed = Mock()
+        mock_feed.id = 1
+        mock_feed.source = "source_a"
+        mock_feed.feed_type = "news"
+        mock_feed.feed_url = "https://example.com/feed1"
+
+        mock_query_session = AsyncMock()
+        mock_result = Mock()
+        mock_result.scalars.return_value.all.return_value = [mock_feed]
+        mock_query_session.execute = AsyncMock(return_value=mock_result)
+
+        # The ingestion session will raise an error
+        mock_feed_session = AsyncMock()
+
+        # The error-handler session
+        mock_err_session = AsyncMock()
+        mock_err_feed = Mock()
+        mock_err_feed.consecutive_errors = 2
+        mock_err_feed.errors = 5
+        mock_err_session.get = AsyncMock(return_value=mock_err_feed)
+
+        sessions = [mock_query_session, mock_feed_session, mock_err_session]
+
+        class MockSessionContext:
+            def __init__(self):
+                nonlocal session_count
+                self.session = sessions[session_count]
+                session_count += 1
+
+            async def __aenter__(self):
+                return self.session
+
+            async def __aexit__(self, *args):
+                pass
+
+        mock_engine = AsyncMock()
+
+        with (
+            patch(
+                "sqlalchemy.ext.asyncio.create_async_engine",
+                return_value=mock_engine,
+            ),
+            patch(
+                "sqlalchemy.orm.sessionmaker",
+                return_value=Mock(side_effect=lambda: MockSessionContext()),
+            ),
+            patch(
+                "app.ingest.rss_normativa.run_rss_ingestion",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("Connection lost"),
+            ),
+        ):
+            from app.services.scheduler_service import collect_rss_feeds_task
+
+            await collect_rss_feeds_task()
+
+        # 1 query + 1 feed (fails) + 1 error handler = 3 sessions
+        assert session_count == 3
+        # Error handler session should update the feed status
+        mock_err_session.get.assert_called_once()
+        mock_err_session.commit.assert_called_once()
+        assert mock_err_feed.status == "error"
+        assert mock_err_feed.consecutive_errors == 3
+        assert mock_err_feed.errors == 6
+
+    @pytest.mark.asyncio
+    @patch("app.core.config.settings")
+    async def test_no_feeds_returns_early(self, mock_settings):
+        """Task should exit cleanly when no enabled feeds exist."""
+        mock_settings.POSTGRES_URL = "postgresql+asyncpg://test:test@localhost/test"
+
+        mock_query_session = AsyncMock()
+        mock_result = Mock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_query_session.execute = AsyncMock(return_value=mock_result)
+
+        class MockSessionContext:
+            async def __aenter__(self):
+                return mock_query_session
+
+            async def __aexit__(self, *args):
+                pass
+
+        mock_engine = AsyncMock()
+
+        with (
+            patch(
+                "sqlalchemy.ext.asyncio.create_async_engine",
+                return_value=mock_engine,
+            ),
+            patch(
+                "sqlalchemy.orm.sessionmaker",
+                return_value=Mock(return_value=MockSessionContext()),
+            ),
+            patch(
+                "app.ingest.rss_normativa.run_rss_ingestion",
+                new_callable=AsyncMock,
+            ) as mock_ingest,
+        ):
+            from app.services.scheduler_service import collect_rss_feeds_task
+
+            await collect_rss_feeds_task()
+
+        mock_ingest.assert_not_called()
+        mock_engine.dispose.assert_called_once()

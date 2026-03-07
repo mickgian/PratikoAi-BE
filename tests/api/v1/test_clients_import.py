@@ -59,6 +59,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=None,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )
@@ -87,6 +88,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=None,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )
@@ -108,6 +110,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=None,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )
@@ -133,6 +136,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=mapping_json,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )
@@ -186,6 +190,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=None,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )

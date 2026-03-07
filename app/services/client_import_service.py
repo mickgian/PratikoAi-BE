@@ -536,6 +536,7 @@ class ClientImportService:
         studio_id: UUID,
         file_content: bytes,
         column_mapping: dict[str, str] | None = None,
+        profile_overrides: dict[str, dict[str, str]] | None = None,
     ) -> ImportReport:
         """Parse an Excel workbook and import rows."""
         _headers, records = self.parse_excel(file_content)
@@ -554,6 +555,7 @@ class ClientImportService:
             studio_id=studio_id,
             records=records,
             column_mapping=column_mapping,
+            profile_overrides=profile_overrides,
         )
 
     async def import_from_csv(
@@ -563,6 +565,7 @@ class ClientImportService:
         studio_id: UUID,
         file_content: bytes,
         column_mapping: dict[str, str] | None = None,
+        profile_overrides: dict[str, dict[str, str]] | None = None,
     ) -> ImportReport:
         """Parse a CSV file and import rows."""
         _headers, records = self.parse_csv(file_content)
@@ -581,6 +584,7 @@ class ClientImportService:
             studio_id=studio_id,
             records=records,
             column_mapping=column_mapping,
+            profile_overrides=profile_overrides,
         )
 
     async def import_from_pdf(
@@ -590,6 +594,7 @@ class ClientImportService:
         studio_id: UUID,
         file_content: bytes,
         column_mapping: dict[str, str] | None = None,
+        profile_overrides: dict[str, dict[str, str]] | None = None,
     ) -> ImportReport:
         """Parse a PDF table and import rows."""
         _headers, records = self.parse_pdf(file_content)
@@ -608,6 +613,7 @@ class ClientImportService:
             studio_id=studio_id,
             records=records,
             column_mapping=column_mapping,
+            profile_overrides=profile_overrides,
         )
 
     async def import_from_records(
@@ -617,6 +623,7 @@ class ClientImportService:
         studio_id: UUID,
         records: list[dict],
         column_mapping: dict[str, str] | None = None,
+        profile_overrides: dict[str, dict[str, str]] | None = None,
     ) -> ImportReport:
         """Import clients from a list of dicts.
 
@@ -627,9 +634,16 @@ class ClientImportService:
 
         If *column_mapping* is provided (source→target), record keys are
         remapped before processing.
+
+        If *profile_overrides* is provided (keyed by codice_fiscale),
+        profile fields are merged into matching records for per-client
+        profile creation.
         """
         if column_mapping:
             records = self._apply_column_mapping(records, column_mapping)
+
+        if profile_overrides:
+            records = self._apply_profile_overrides(records, profile_overrides)
 
         report = ImportReport(total=len(records))
         seen_cf: set[str] = set()
@@ -791,6 +805,26 @@ class ClientImportService:
     ) -> list[dict]:
         """Remap record keys using source→target mapping."""
         return [{column_mapping.get(k, k): v for k, v in record.items()} for record in records]
+
+    @staticmethod
+    def _apply_profile_overrides(
+        records: list[dict],
+        profile_overrides: dict[str, dict[str, str]],
+    ) -> list[dict]:
+        """Merge per-client profile overrides into records, keyed by codice_fiscale."""
+        result = []
+        for record in records:
+            cf = str(record.get("codice_fiscale", "")).strip()
+            override = profile_overrides.get(cf) if cf else None
+            if override:
+                merged = dict(record)
+                for key, value in override.items():
+                    if value and str(value).strip():
+                        merged[key] = value
+                result.append(merged)
+            else:
+                result.append(record)
+        return result
 
     @staticmethod
     def _missing_required_fields(record: dict) -> set[str]:

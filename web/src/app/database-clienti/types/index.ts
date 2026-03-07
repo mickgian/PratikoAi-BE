@@ -68,3 +68,14 @@ export interface ColumnMapping {
   confidence?: number; // 0.0–1.0 from auto-detection
   matchMethod?: 'exact_alias' | 'fuzzy' | 'data_pattern';
 }
+
+export interface ProfileOverride {
+  regime_fiscale: string;
+  codice_ateco_principale: string;
+  data_inizio_attivita: string;
+  n_dipendenti: string;
+  ccnl_applicato: string;
+}
+
+/** Per-client profile overrides keyed by codice_fiscale. */
+export type ProfileOverrides = Record<string, ProfileOverride>;

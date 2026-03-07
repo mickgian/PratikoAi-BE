@@ -257,7 +257,8 @@ export async function previewImport(
  */
 export async function importClients(
   file: File,
-  columnMapping?: Record<string, string>
+  columnMapping?: Record<string, string>,
+  profileOverrides?: Record<string, Record<string, string>>
 ): Promise<ClientImportResult> {
   const url = buildStudioUrl('/api/v1/clients/import');
 
@@ -273,6 +274,9 @@ export async function importClients(
   formData.append('file', file);
   if (columnMapping) {
     formData.append('column_mapping', JSON.stringify(columnMapping));
+  }
+  if (profileOverrides) {
+    formData.append('profile_overrides', JSON.stringify(profileOverrides));
   }
 
   const response = await fetch(url, {

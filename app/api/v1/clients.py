@@ -122,6 +122,7 @@ async def import_clients(
     studio_id: UUID = Query(..., description="ID dello studio"),
     file: UploadFile = File(...),
     column_mapping: str | None = Form(default=None),
+    profile_overrides: str | None = Form(default=None),
     x_user_id: int | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> ClientImportResponse:
@@ -136,6 +137,13 @@ async def import_clients(
         except (json.JSONDecodeError, TypeError):
             raise HTTPException(status_code=400, detail="column_mapping non è un JSON valido.")
 
+    parsed_profile_overrides: dict[str, dict[str, str]] | None = None
+    if profile_overrides:
+        try:
+            parsed_profile_overrides = json.loads(profile_overrides)
+        except (json.JSONDecodeError, TypeError):
+            raise HTTPException(status_code=400, detail="profile_overrides non è un JSON valido.")
+
     try:
         if filename.endswith((".xlsx", ".xls")):
             report = await client_import_service.import_from_excel(
@@ -143,6 +151,7 @@ async def import_clients(
                 studio_id=studio_id,
                 file_content=content,
                 column_mapping=mapping,
+                profile_overrides=parsed_profile_overrides,
             )
         elif filename.endswith(".csv"):
             report = await client_import_service.import_from_csv(
@@ -150,6 +159,7 @@ async def import_clients(
                 studio_id=studio_id,
                 file_content=content,
                 column_mapping=mapping,
+                profile_overrides=parsed_profile_overrides,
             )
         elif filename.endswith(".pdf"):
             report = await client_import_service.import_from_pdf(
@@ -157,6 +167,7 @@ async def import_clients(
                 studio_id=studio_id,
                 file_content=content,
                 column_mapping=mapping,
+                profile_overrides=parsed_profile_overrides,
             )
         else:
             raise HTTPException(

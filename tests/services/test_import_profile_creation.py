@@ -333,3 +333,188 @@ class TestProfileFieldAutoDetection:
         for field in headers:
             assert field in result, f"Missing auto-detection for {field}"
             assert result[field].confidence == 1.0
+
+
+class TestProfileOverrides:
+    """Per-client profile overrides keyed by codice_fiscale."""
+
+    @pytest.mark.asyncio
+    async def test_overrides_applied_per_client(self, svc, studio_id) -> None:
+        """Each client gets their own profile data via codice_fiscale key."""
+        mock_db = AsyncMock()
+        client1 = MagicMock()
+        client1.id = 1
+        client2 = MagicMock()
+        client2.id = 2
+
+        records = [
+            {
+                "codice_fiscale": "RSSMRA85M01H501Z",
+                "nome": "Mario Rossi",
+                "comune": "Roma",
+                "provincia": "RM",
+            },
+            {
+                "codice_fiscale": "BNCLGU90A01F205X",
+                "nome": "Luigi Bianchi",
+                "comune": "Milano",
+                "provincia": "MI",
+            },
+        ]
+
+        profile_overrides = {
+            "RSSMRA85M01H501Z": {
+                "regime_fiscale": "ordinario",
+                "codice_ateco_principale": "62.01.00",
+                "data_inizio_attivita": "2020-01-15",
+            },
+            "BNCLGU90A01F205X": {
+                "regime_fiscale": "forfettario",
+                "codice_ateco_principale": "47.11.40",
+                "data_inizio_attivita": "2019-06-01",
+            },
+        }
+
+        with (
+            patch.object(svc, "_client_service") as mock_cs,
+            patch("app.services.client_import_service.client_profile_service") as mock_ps,
+        ):
+            mock_cs.create = AsyncMock(side_effect=[client1, client2])
+            mock_ps.create = AsyncMock()
+            report = await svc.import_from_records(
+                db=mock_db,
+                studio_id=studio_id,
+                records=records,
+                profile_overrides=profile_overrides,
+            )
+
+        assert report.success_count == 2
+        assert report.profiles_created == 2
+        # Check that different ATECO codes were used
+        calls = mock_ps.create.call_args_list
+        assert calls[0].kwargs["codice_ateco_principale"] == "62.01.00"
+        assert calls[1].kwargs["codice_ateco_principale"] == "47.11.40"
+
+    @pytest.mark.asyncio
+    async def test_override_only_for_matching_cf(self, svc, studio_id) -> None:
+        """Only clients with a matching override get profiles; others don't."""
+        mock_db = AsyncMock()
+        client1 = MagicMock()
+        client1.id = 1
+        client2 = MagicMock()
+        client2.id = 2
+
+        records = [
+            {
+                "codice_fiscale": "RSSMRA85M01H501Z",
+                "nome": "Mario Rossi",
+                "comune": "Roma",
+                "provincia": "RM",
+            },
+            {
+                "codice_fiscale": "BNCLGU90A01F205X",
+                "nome": "Luigi Bianchi",
+                "comune": "Milano",
+                "provincia": "MI",
+            },
+        ]
+
+        profile_overrides = {
+            "RSSMRA85M01H501Z": {
+                "regime_fiscale": "ordinario",
+                "codice_ateco_principale": "62.01.00",
+                "data_inizio_attivita": "2020-01-15",
+            },
+            # No override for BNCLGU90A01F205X
+        }
+
+        with (
+            patch.object(svc, "_client_service") as mock_cs,
+            patch("app.services.client_import_service.client_profile_service") as mock_ps,
+        ):
+            mock_cs.create = AsyncMock(side_effect=[client1, client2])
+            mock_ps.create = AsyncMock()
+            report = await svc.import_from_records(
+                db=mock_db,
+                studio_id=studio_id,
+                records=records,
+                profile_overrides=profile_overrides,
+            )
+
+        assert report.success_count == 2
+        assert report.profiles_created == 1
+
+    @pytest.mark.asyncio
+    async def test_overrides_with_optional_fields(self, svc, studio_id) -> None:
+        """Per-client overrides can include optional fields."""
+        mock_db = AsyncMock()
+        mock_client = MagicMock()
+        mock_client.id = 42
+
+        records = [
+            {
+                "codice_fiscale": "RSSMRA85M01H501Z",
+                "nome": "Mario Rossi",
+                "comune": "Roma",
+                "provincia": "RM",
+            },
+        ]
+
+        profile_overrides = {
+            "RSSMRA85M01H501Z": {
+                "regime_fiscale": "semplificato",
+                "codice_ateco_principale": "62.01.00",
+                "data_inizio_attivita": "2020-01-15",
+                "n_dipendenti": "3",
+                "ccnl_applicato": "COMMERCIO",
+            },
+        }
+
+        with (
+            patch.object(svc, "_client_service") as mock_cs,
+            patch("app.services.client_import_service.client_profile_service") as mock_ps,
+        ):
+            mock_cs.create = AsyncMock(return_value=mock_client)
+            mock_ps.create = AsyncMock()
+            report = await svc.import_from_records(
+                db=mock_db,
+                studio_id=studio_id,
+                records=records,
+                profile_overrides=profile_overrides,
+            )
+
+        assert report.profiles_created == 1
+        call_kwargs = mock_ps.create.call_args.kwargs
+        assert call_kwargs["n_dipendenti"] == 3
+        assert call_kwargs["ccnl_applicato"] == "COMMERCIO"
+
+    @pytest.mark.asyncio
+    async def test_no_overrides_no_profile_created(self, svc, studio_id) -> None:
+        """Without overrides and without profile fields in file, no profile is created."""
+        mock_db = AsyncMock()
+        mock_client = MagicMock()
+        mock_client.id = 42
+
+        records = [
+            {
+                "codice_fiscale": "RSSMRA85M01H501Z",
+                "nome": "Mario Rossi",
+                "comune": "Roma",
+                "provincia": "RM",
+            },
+        ]
+
+        with (
+            patch.object(svc, "_client_service") as mock_cs,
+            patch("app.services.client_import_service.client_profile_service") as mock_ps,
+        ):
+            mock_cs.create = AsyncMock(return_value=mock_client)
+            report = await svc.import_from_records(
+                db=mock_db,
+                studio_id=studio_id,
+                records=records,
+            )
+
+        assert report.success_count == 1
+        assert report.profiles_created == 0
+        mock_ps.create.assert_not_called()

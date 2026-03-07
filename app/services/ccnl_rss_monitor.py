@@ -148,7 +148,7 @@ class RSSFeedMonitor:
     async def initialize_session(self):
         """Initialize HTTP session."""
         if not self.session or self.session.closed:
-            timeout = aiohttp.ClientTimeout(total=30)
+            timeout = aiohttp.ClientTimeout(total=60)
             self.session = aiohttp.ClientSession(
                 timeout=timeout,
                 headers={

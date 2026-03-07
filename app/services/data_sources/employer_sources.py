@@ -274,7 +274,7 @@ class EmployerSourceMixin:
             if hasattr(self, "session") and self.session and not self.session.closed:
                 await self.session.close()
 
-            timeout = aiohttp.ClientTimeout(total=30)
+            timeout = aiohttp.ClientTimeout(total=360)
             self.session = aiohttp.ClientSession(
                 timeout=timeout,
                 headers={

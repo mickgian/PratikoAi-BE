@@ -209,7 +209,16 @@ async def fetch_rss_feed(feed_url: str = FEED_URL) -> list[dict[str, Any]]:
     try:
         # Get appropriate SSL context (relaxed for some government sites)
         ssl_context = _get_ssl_context(feed_url)
-        async with httpx.AsyncClient(timeout=30.0, verify=ssl_context) as client:
+        async with httpx.AsyncClient(
+            timeout=60.0,
+            verify=ssl_context,
+            follow_redirects=True,
+            headers={
+                "User-Agent": "PratikoAI Legal Research Bot/1.0 (+https://pratiko.ai)",
+                "Accept": "application/rss+xml,application/xml,text/xml;q=0.9",
+                "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
+            },
+        ) as client:
             response = await client.get(feed_url)
             response.raise_for_status()
 

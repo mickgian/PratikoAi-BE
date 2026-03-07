@@ -67,7 +67,7 @@ class MinistryOfLaborDataSource(BaseDataSource):
         """Connect to Ministry of Labor data source."""
         try:
             if not self.session:
-                timeout = aiohttp.ClientTimeout(total=45)
+                timeout = aiohttp.ClientTimeout(total=360)
                 headers = {
                     "User-Agent": "PratikoAI CCNL Integration Bot/1.0 (contact: support@pratikoai.com)",
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -539,7 +539,7 @@ class INPSDataSource(BaseDataSource):
         """Connect to INPS data source."""
         try:
             if not self.session:
-                timeout = aiohttp.ClientTimeout(total=30)
+                timeout = aiohttp.ClientTimeout(total=360)
                 headers = {
                     "User-Agent": "PratikoAI CCNL Integration Bot/1.0",
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

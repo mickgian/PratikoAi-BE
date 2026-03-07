@@ -44,7 +44,7 @@ class RSSFeedMonitor:
     No hardcoded URLs.
     """
 
-    def __init__(self, timeout: int = 30, db_session=None):
+    def __init__(self, timeout: int = 60, db_session=None):
         """Initialize RSS feed monitor.
 
         Args:

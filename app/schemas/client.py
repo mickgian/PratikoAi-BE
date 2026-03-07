@@ -102,10 +102,19 @@ class ImportPreviewRow(BaseModel):
     errors: list[str]
 
 
+class SuggestedColumnMappingSchema(BaseModel):
+    """Auto-detected mapping suggestion for a single target field."""
+
+    file_column: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    match_method: str  # "exact_alias" | "fuzzy" | "data_pattern"
+
+
 class ImportPreviewResponse(BaseModel):
     """Server-side preview of an uploaded import file."""
 
     detected_columns: list[str]
+    suggested_mappings: dict[str, SuggestedColumnMappingSchema] = Field(default_factory=dict)
     total_rows: int
     valid_rows: int
     invalid_rows: int

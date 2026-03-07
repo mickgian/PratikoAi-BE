@@ -65,4 +65,6 @@ export interface ColumnMapping {
   ourField: string;
   yourColumn: string;
   required: boolean;
+  confidence?: number; // 0.0–1.0 from auto-detection
+  matchMethod?: 'exact_alias' | 'fuzzy' | 'data_pattern';
 }

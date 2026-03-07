@@ -11,6 +11,7 @@ import {
   importClients,
   previewImport,
   type ImportPreviewResponse,
+  type SuggestedMapping,
 } from '@/lib/api/clients';
 import type { ColumnMapping } from '../types';
 import { ourFields } from '../data/constants';
@@ -26,6 +27,50 @@ const STEP_LABELS: Record<Step, string> = {
   3: 'Anteprima e Conferma',
 };
 
+/** Map backend target field names to frontend ourField values. */
+const BACKEND_TO_FRONTEND: Record<string, string> = {
+  nome: 'denominazione',
+  codice_fiscale: 'codiceFiscale',
+  partita_iva: 'partitaIva',
+  tipo_cliente: 'tipoSoggetto',
+  comune: 'comune',
+  provincia: 'provincia',
+  indirizzo: 'indirizzo',
+  cap: 'cap',
+};
+
+const AUTO_SKIP_CONFIDENCE = 0.7;
+
+function applyAutoMappings(
+  suggested: Record<string, SuggestedMapping>,
+  detectedColumns: string[],
+): ColumnMapping[] {
+  return ourFields.map(field => {
+    const backendField = Object.entries(BACKEND_TO_FRONTEND).find(
+      ([, fe]) => fe === field.value,
+    )?.[0];
+    const suggestion = backendField ? suggested[backendField] : undefined;
+    const hasMatch =
+      suggestion && detectedColumns.includes(suggestion.file_column);
+    return {
+      ourField: field.value,
+      yourColumn: hasMatch ? suggestion.file_column : '',
+      required: field.required,
+      confidence: hasMatch ? suggestion.confidence : undefined,
+      matchMethod: hasMatch ? suggestion.match_method : undefined,
+    };
+  });
+}
+
+/** Only check required fields the backend can auto-detect (have a BACKEND_TO_FRONTEND entry). */
+const MAPPABLE_FIELDS = new Set(Object.values(BACKEND_TO_FRONTEND));
+
+function canAutoSkip(mappings: ColumnMapping[]): boolean {
+  return mappings
+    .filter(m => m.required && MAPPABLE_FIELDS.has(m.ourField))
+    .every(m => m.yourColumn && (m.confidence ?? 0) >= AUTO_SKIP_CONFIDENCE);
+}
+
 export function ClientImportView() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -33,6 +78,7 @@ export function ClientImportView() {
   const [dragActive, setDragActive] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [preview, setPreview] = useState<ImportPreviewResponse | null>(null);
+  const [autoMapped, setAutoMapped] = useState(false);
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>(
     ourFields.map(field => ({
       ourField: field.value,
@@ -78,6 +124,7 @@ export function ClientImportView() {
     ) {
       setUploadedFile(file);
       setPreview(null);
+      setAutoMapped(false);
       toast.success(`File "${file.name}" caricato con successo`);
     } else {
       toast.error(
@@ -96,12 +143,36 @@ export function ClientImportView() {
         toast.error('Carica un file prima di procedere');
         return;
       }
-      // Call preview API when moving from step 1 to step 2
       setIsLoadingPreview(true);
       try {
         const result = await previewImport(uploadedFile);
         setPreview(result);
-        setCurrentStep(2);
+
+        // Auto-detect column mappings from backend suggestions
+        const suggested = result.suggested_mappings ?? {};
+        const newMappings = applyAutoMappings(
+          suggested,
+          result.detected_columns,
+        );
+        setColumnMappings(newMappings);
+
+        // Auto-skip step 2 if all required fields are confidently mapped
+        if (canAutoSkip(newMappings)) {
+          setAutoMapped(true);
+          toast.success('Colonne riconosciute automaticamente', {
+            description:
+              'Puoi modificare la mappatura dalla schermata di anteprima.',
+          });
+          setCurrentStep(3);
+        } else {
+          const mappedCount = newMappings.filter(m => m.yourColumn).length;
+          if (mappedCount > 0) {
+            toast.info(
+              `${mappedCount} colonne riconosciute automaticamente. Completa le rimanenti.`,
+            );
+          }
+          setCurrentStep(2);
+        }
       } catch (err) {
         toast.error(
           err instanceof Error
@@ -124,7 +195,10 @@ export function ClientImportView() {
   };
 
   const handleBack = () => {
-    if (currentStep > 1) setCurrentStep((currentStep - 1) as Step);
+    if (currentStep > 1) {
+      setAutoMapped(false);
+      setCurrentStep((currentStep - 1) as Step);
+    }
   };
 
   const [isImporting, setIsImporting] = useState(false);
@@ -176,7 +250,11 @@ export function ClientImportView() {
 
   const updateMapping = (ourField: string, yourColumn: string) => {
     setColumnMappings(prev =>
-      prev.map(m => (m.ourField === ourField ? { ...m, yourColumn } : m))
+      prev.map(m =>
+        m.ourField === ourField
+          ? { ...m, yourColumn, confidence: undefined, matchMethod: undefined }
+          : m
+      )
     );
   };
 
@@ -242,6 +320,7 @@ export function ClientImportView() {
               onRemoveFile={() => {
                 setUploadedFile(null);
                 setPreview(null);
+                setAutoMapped(false);
               }}
             />
           )}
@@ -253,11 +332,31 @@ export function ClientImportView() {
             />
           )}
           {currentStep === 3 && preview && (
-            <ClientImportPreviewStep
-              rows={preview.rows}
-              validRows={validRows}
-              invalidRows={invalidRows}
-            />
+            <>
+              {autoMapped && (
+                <div className="mx-8 mt-6 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                  <span className="text-sm text-emerald-800">
+                    Mappatura colonne confermata automaticamente
+                  </span>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => {
+                      setAutoMapped(false);
+                      setCurrentStep(2);
+                    }}
+                    className="text-emerald-700 underline text-sm h-auto p-0"
+                  >
+                    Modifica mappatura
+                  </Button>
+                </div>
+              )}
+              <ClientImportPreviewStep
+                rows={preview.rows}
+                validRows={validRows}
+                invalidRows={invalidRows}
+              />
+            </>
           )}
 
           <div className="px-8 pb-8 flex justify-between">

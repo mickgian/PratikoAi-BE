@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from uuid import UUID
 
 from app.core.logging import logger
@@ -36,6 +38,92 @@ ALL_COLUMNS = REQUIRED_COLUMNS | {"tipo_cliente", "partita_iva", "email", "phone
 # Mapping from user-facing tipo_cliente strings to the enum (case-insensitive).
 _TIPO_CLIENTE_MAP: dict[str, TipoCliente] = {t.value.lower(): t for t in TipoCliente}
 
+# ---------------------------------------------------------------------------
+# Auto-detection: Tier 1 — known aliases per target field
+# ---------------------------------------------------------------------------
+_COLUMN_ALIASES: dict[str, list[str]] = {
+    "nome": [
+        "nome",
+        "denominazione",
+        "ragione_sociale",
+        "ragione sociale",
+        "rag_sociale",
+        "rag sociale",
+        "denominazione/ragione sociale",
+        "nome_completo",
+        "nome completo",
+        "nome cliente",
+    ],
+    "codice_fiscale": [
+        "codice_fiscale",
+        "codice fiscale",
+        "cf",
+        "cod_fiscale",
+        "cod fiscale",
+        "cod. fiscale",
+        "c.f.",
+        "c.f",
+    ],
+    "partita_iva": [
+        "partita_iva",
+        "partita iva",
+        "p_iva",
+        "p.iva",
+        "piva",
+        "p. iva",
+        "p iva",
+        "partitaiva",
+    ],
+    "tipo_cliente": [
+        "tipo_cliente",
+        "tipo cliente",
+        "tipo_soggetto",
+        "tipo soggetto",
+        "tipologia",
+        "tipo",
+    ],
+    "comune": ["comune", "citta", "città", "city"],
+    "provincia": ["provincia", "prov", "prov."],
+    "email": ["email", "e-mail", "mail", "pec", "indirizzo_email", "indirizzo email"],
+    "phone": [
+        "phone",
+        "telefono",
+        "tel",
+        "tel.",
+        "cellulare",
+        "cell",
+        "cell.",
+        "numero_telefono",
+        "numero telefono",
+    ],
+    "indirizzo": ["indirizzo", "via", "address", "sede", "indirizzo_sede"],
+    "cap": ["cap", "codice_postale", "codice postale", "zip", "zipcode"],
+}
+
+# Flattened reverse lookup: normalised alias → target field.
+_ALIAS_LOOKUP: dict[str, str] = {}
+for _field, _aliases in _COLUMN_ALIASES.items():
+    for _alias in _aliases:
+        _ALIAS_LOOKUP[_alias.lower().strip()] = _field
+
+# All alias strings for fuzzy matching (grouped by target field).
+_FUZZY_CANDIDATES: dict[str, list[str]] = {
+    _field: [a.lower().strip() for a in _aliases] for _field, _aliases in _COLUMN_ALIASES.items()
+}
+
+# ---------------------------------------------------------------------------
+# Auto-detection: Tier 3 — data-pattern regexes
+# ---------------------------------------------------------------------------
+_CF_PERSONA_RE = re.compile(r"^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$", re.IGNORECASE)
+_PIVA_RE = re.compile(r"^\d{11}$")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_CAP_RE = re.compile(r"^\d{5}$")
+_PROVINCIA_RE = re.compile(r"^[A-Z]{2}$")
+_PHONE_RE = re.compile(r"^(\+39[\s]?)?\d[\d\s]{6,14}$")
+
+# Minimum fraction of non-null sample values that must match a pattern.
+_PATTERN_THRESHOLD = 0.5
+
 
 @dataclass
 class ImportRowError:
@@ -54,6 +142,15 @@ class PreviewRow:
     data: dict[str, str | None]
     is_valid: bool
     errors: list[str]
+
+
+@dataclass
+class SuggestedColumnMapping:
+    """Auto-detected mapping of a file column to a target field."""
+
+    file_column: str
+    confidence: float  # 0.0–1.0
+    match_method: str  # "exact_alias" | "fuzzy" | "data_pattern"
 
 
 @dataclass
@@ -181,6 +278,139 @@ class ClientImportService:
             records.append(record)
 
         return headers, records
+
+    # ------------------------------------------------------------------
+    # Auto-detection of column mappings
+    # ------------------------------------------------------------------
+
+    def auto_detect_column_mapping(
+        self,
+        headers: list[str],
+        sample_rows: list[dict],
+    ) -> dict[str, SuggestedColumnMapping]:
+        """Auto-detect column mapping using a 3-tier strategy.
+
+        Returns a dict of target_field → SuggestedColumnMapping.
+        Each file column is assigned to at most one target field.
+        """
+        if not headers:
+            return {}
+
+        result: dict[str, SuggestedColumnMapping] = {}
+        used_columns: set[str] = set()  # track assigned file columns
+        headers_lower = [h.lower().strip() for h in headers]
+
+        # --- Tier 1: exact alias matching ---
+        for h_lower, h_orig in zip(headers_lower, headers, strict=True):
+            target = _ALIAS_LOOKUP.get(h_lower)
+            if target and target not in result and h_lower not in used_columns:
+                result[target] = SuggestedColumnMapping(
+                    file_column=h_orig,
+                    confidence=1.0,
+                    match_method="exact_alias",
+                )
+                used_columns.add(h_lower)
+
+        # --- Tier 2: fuzzy matching for remaining headers ---
+        unmatched_headers = [
+            (h_lower, h_orig)
+            for h_lower, h_orig in zip(headers_lower, headers, strict=True)
+            if h_lower not in used_columns
+        ]
+        unmatched_fields = [f for f in ALL_COLUMNS if f not in result]
+
+        for h_lower, h_orig in unmatched_headers:
+            best_field: str | None = None
+            best_score = 0.0
+            for target_field in unmatched_fields:
+                if target_field in result:
+                    continue
+                for alias in _FUZZY_CANDIDATES.get(target_field, []):
+                    score = SequenceMatcher(None, h_lower, alias).ratio()
+                    if score > best_score:
+                        best_score = score
+                        best_field = target_field
+            if best_field and best_score >= 0.6 and best_field not in result:
+                result[best_field] = SuggestedColumnMapping(
+                    file_column=h_orig,
+                    confidence=round(best_score, 2),
+                    match_method="fuzzy",
+                )
+                used_columns.add(h_lower)
+
+        # --- Tier 3: data-pattern analysis for remaining fields ---
+        # Order matters: check more specific patterns first (P.IVA before phone).
+        _PATTERN_FIELD_ORDER = [
+            "codice_fiscale",
+            "partita_iva",
+            "email",
+            "cap",
+            "provincia",
+            "phone",
+        ]
+        if sample_rows:
+            remaining_fields = [f for f in _PATTERN_FIELD_ORDER if f not in result]
+            remaining_headers = [
+                (h_lower, h_orig)
+                for h_lower, h_orig in zip(headers_lower, headers, strict=True)
+                if h_lower not in used_columns
+            ]
+            for target_field in remaining_fields:
+                best_col: tuple[str, str] | None = None
+                best_match_rate = 0.0
+                for h_lower, h_orig in remaining_headers:
+                    if h_lower in used_columns:
+                        continue
+                    match_rate = self._check_data_pattern(
+                        target_field,
+                        h_lower,
+                        sample_rows,
+                    )
+                    if match_rate > best_match_rate:
+                        best_match_rate = match_rate
+                        best_col = (h_lower, h_orig)
+
+                if best_col and best_match_rate >= _PATTERN_THRESHOLD:
+                    result[target_field] = SuggestedColumnMapping(
+                        file_column=best_col[1],
+                        confidence=round(min(best_match_rate * 0.9, 0.85), 2),
+                        match_method="data_pattern",
+                    )
+                    used_columns.add(best_col[0])
+
+        return result
+
+    @staticmethod
+    def _check_data_pattern(
+        target_field: str,
+        header_lower: str,
+        sample_rows: list[dict],
+    ) -> float:
+        """Check what fraction of sample values match the expected pattern for target_field."""
+        values = [
+            str(row.get(header_lower, "")).strip()
+            for row in sample_rows
+            if row.get(header_lower) and str(row[header_lower]).strip()
+        ]
+        if not values:
+            return 0.0
+
+        pattern_map: dict[str, list[re.Pattern]] = {  # type: ignore[type-arg]
+            # Only match the 16-char persona fisica CF by data pattern.
+            # 11-digit società CF is identical to P.IVA; use alias matching for that.
+            "codice_fiscale": [_CF_PERSONA_RE],
+            "partita_iva": [_PIVA_RE],
+            "email": [_EMAIL_RE],
+            "cap": [_CAP_RE],
+            "provincia": [_PROVINCIA_RE],
+            "phone": [_PHONE_RE],
+        }
+        patterns = pattern_map.get(target_field)
+        if not patterns:
+            return 0.0
+
+        matches = sum(1 for v in values if any(p.match(v) for p in patterns))
+        return matches / len(values)
 
     # ------------------------------------------------------------------
     # Validation (preview without DB writes)

@@ -21,6 +21,7 @@ from app.schemas.client import (
     ClientUpdate,
     ImportPreviewResponse,
     ImportPreviewRow,
+    SuggestedColumnMappingSchema,
 )
 from app.services.client_import_service import client_import_service
 from app.services.client_service import client_service
@@ -86,8 +87,21 @@ async def preview_import(
     preview_rows = client_import_service.validate_records(records)
     valid_count = sum(1 for r in preview_rows if r.is_valid)
 
+    # Auto-detect column mappings (Tier 1: aliases, Tier 2: fuzzy, Tier 3: data patterns)
+    sample_rows = records[:10] if records else []
+    suggested = client_import_service.auto_detect_column_mapping(headers, sample_rows)
+    suggested_schemas = {
+        field: SuggestedColumnMappingSchema(
+            file_column=m.file_column,
+            confidence=m.confidence,
+            match_method=m.match_method,
+        )
+        for field, m in suggested.items()
+    }
+
     return ImportPreviewResponse(
         detected_columns=headers,
+        suggested_mappings=suggested_schemas,
         total_rows=len(preview_rows),
         valid_rows=valid_count,
         invalid_rows=len(preview_rows) - valid_count,

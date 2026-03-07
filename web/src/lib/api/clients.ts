@@ -172,8 +172,15 @@ export interface ImportPreviewRow {
   errors: string[];
 }
 
+export interface SuggestedMapping {
+  file_column: string;
+  confidence: number; // 0.0–1.0
+  match_method: 'exact_alias' | 'fuzzy' | 'data_pattern';
+}
+
 export interface ImportPreviewResponse {
   detected_columns: string[];
+  suggested_mappings: Record<string, SuggestedMapping>;
   total_rows: number;
   valid_rows: number;
   invalid_rows: number;

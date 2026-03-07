@@ -93,6 +93,7 @@ async def run_rss_ingestion_all(session: AsyncSession, max_items: int | None = N
         "total_new_documents": 0,
         "total_skipped": 0,
         "total_failed": 0,
+        "feed_diagnostics": [],  # Per-feed error diagnostics for reporting
     }
 
     for snap in feed_snapshots:
@@ -114,10 +115,22 @@ async def run_rss_ingestion_all(session: AsyncSession, max_items: int | None = N
             )
 
             stats["feeds_processed"] += 1
+            fetch_error_type = feed_stats.get("fetch_error_type")
+
             if feed_stats.get("status") == "success":
                 stats["feeds_succeeded"] += 1
             else:
                 stats["feeds_failed"] += 1
+                # Track diagnostic info for failed feeds
+                if fetch_error_type:
+                    stats["feed_diagnostics"].append(
+                        {
+                            "source": snap["source"] or "unknown",
+                            "feed_url": snap["feed_url"],
+                            "error_type": fetch_error_type,
+                            "error_message": feed_stats.get("error", "")[:200],
+                        }
+                    )
 
             stats["total_items"] += feed_stats.get("total_items", 0)
             stats["total_new_documents"] += feed_stats.get("new_documents", 0)
@@ -127,25 +140,45 @@ async def run_rss_ingestion_all(session: AsyncSession, max_items: int | None = N
             # Update feed_status with a fresh object
             feed = await session.get(FeedStatus, snap["id"])
             if feed:
-                feed.items_found = feed_stats.get("total_items", 0)
-                feed.last_success = datetime.now(UTC)
-                feed.consecutive_errors = 0
-                feed.status = "healthy"
+                if fetch_error_type:
+                    # Feed fetch failed — store classified error
+                    feed.consecutive_errors = (feed.consecutive_errors or 0) + 1
+                    feed.errors = (feed.errors or 0) + 1
+                    feed.last_error = f"[{fetch_error_type}] {feed_stats.get('error', '')}".strip()[:500]
+                    feed.last_error_at = datetime.now(UTC)
+                    feed.status = "error"
+                else:
+                    feed.items_found = feed_stats.get("total_items", 0)
+                    feed.last_success = datetime.now(UTC)
+                    feed.consecutive_errors = 0
+                    feed.status = "healthy"
                 session.add(feed)
                 await session.commit()
 
-            print(f"   ✅ New: {feed_stats.get('new_documents', 0)}, Skipped: {feed_stats.get('skipped_existing', 0)}")
+            if not fetch_error_type:
+                print(
+                    f"   ✅ New: {feed_stats.get('new_documents', 0)}, Skipped: {feed_stats.get('skipped_existing', 0)}"
+                )
 
         except Exception as e:
             print(f"   ❌ Failed: {e}")
             stats["feeds_failed"] += 1
+            stats["feed_diagnostics"].append(
+                {
+                    "source": snap["source"] or "unknown",
+                    "feed_url": snap["feed_url"],
+                    "error_type": "EXCEPTION",
+                    "error_message": str(e)[:200],
+                }
+            )
 
             try:
                 feed = await session.get(FeedStatus, snap["id"])
                 if feed:
                     feed.consecutive_errors = (feed.consecutive_errors or 0) + 1
                     feed.errors = (feed.errors or 0) + 1
-                    feed.last_error = str(e)[:500]
+                    feed.last_error = f"[EXCEPTION] {e}"[:500]
+                    feed.last_error_at = datetime.now(UTC)
                     feed.last_checked = datetime.now(UTC)
                     feed.status = "error"
                     session.add(feed)
@@ -206,6 +239,24 @@ async def run_gazzetta_scraping(
             print(f"   Errors: {result.errors}")
             print(f"   Duration: {result.duration_seconds}s")
 
+            # Classify scraper diagnostic
+            diagnostic = None
+            if result.documents_found == 0 and result.errors == 0:
+                diagnostic = {
+                    "error_type": "EMPTY_RESPONSE",
+                    "message": "No documents found (site may be blocking or empty)",
+                }
+            elif result.errors > 0 and result.documents_found == 0:
+                diagnostic = {
+                    "error_type": "TIMEOUT",
+                    "message": f"Scraping failed with {result.errors} errors after {result.duration_seconds}s",
+                }
+            elif result.errors > 0:
+                diagnostic = {
+                    "error_type": "PARTIAL_FAILURE",
+                    "message": f"{result.errors} errors out of {result.documents_found} documents",
+                }
+
             return {
                 "success": result.errors == 0,
                 "documents_found": result.documents_found,
@@ -213,11 +264,16 @@ async def run_gazzetta_scraping(
                 "documents_saved": result.documents_saved,
                 "errors": result.errors,
                 "duration_seconds": result.duration_seconds,
+                "scraper_diagnostic": diagnostic,
             }
 
     except Exception as e:
         print(f"❌ Gazzetta scraping failed: {e}")
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "error": str(e),
+            "scraper_diagnostic": {"error_type": "EXCEPTION", "message": str(e)[:200]},
+        }
 
 
 async def run_cassazione_scraping(
@@ -278,6 +334,24 @@ async def run_cassazione_scraping(
             print(f"   Errors: {result.errors}")
             print(f"   Duration: {result.duration_seconds}s")
 
+            # Classify scraper diagnostic
+            diagnostic = None
+            if result.decisions_found == 0 and result.errors == 0:
+                diagnostic = {
+                    "error_type": "EMPTY_RESPONSE",
+                    "message": "No decisions found (site may be blocking or empty)",
+                }
+            elif result.errors > 0 and result.decisions_found == 0:
+                diagnostic = {
+                    "error_type": "TIMEOUT",
+                    "message": f"Scraping failed with {result.errors} errors after {result.duration_seconds}s",
+                }
+            elif result.errors > 0:
+                diagnostic = {
+                    "error_type": "PARTIAL_FAILURE",
+                    "message": f"{result.errors} errors out of {result.decisions_found} decisions",
+                }
+
             return {
                 "success": result.errors == 0,
                 "documents_found": result.decisions_found,
@@ -285,11 +359,16 @@ async def run_cassazione_scraping(
                 "documents_saved": result.decisions_saved,
                 "errors": result.errors,
                 "duration_seconds": result.duration_seconds,
+                "scraper_diagnostic": diagnostic,
             }
 
     except Exception as e:
         print(f"❌ Cassazione scraping failed: {e}")
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "error": str(e),
+            "scraper_diagnostic": {"error_type": "EXCEPTION", "message": str(e)[:200]},
+        }
 
 
 async def main():
@@ -440,6 +519,13 @@ Examples:
                 print(f"   Status: {'✅ Success' if success else '❌ Failed'}")
                 total_documents += stats.get("total_items", 0)
                 total_saved += stats.get("total_new_documents", 0)
+
+                # Show RSS feed diagnostics
+                feed_diags = stats.get("feed_diagnostics", [])
+                if feed_diags:
+                    print(f"   ⚠️  Feed issues ({len(feed_diags)}):")
+                    for diag in feed_diags:
+                        print(f"      - [{diag['error_type']}] {diag['source']}: {diag['error_message']}")
             else:
                 emoji = "📜" if source == "gazzetta" else "⚖️"
                 print(f"\n{emoji} {source.title()}:")
@@ -450,6 +536,11 @@ Examples:
                 total_documents += stats.get("documents_found", 0)
                 total_saved += stats.get("documents_saved", 0)
                 total_errors += stats.get("errors", 0)
+
+                # Show scraper diagnostic
+                scraper_diag = stats.get("scraper_diagnostic")
+                if scraper_diag:
+                    print(f"   ⚠️  [{scraper_diag['error_type']}] {scraper_diag['message']}")
 
         print()
         print("=" * 80)

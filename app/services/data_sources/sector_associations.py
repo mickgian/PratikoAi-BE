@@ -56,7 +56,7 @@ class FedermeccanicaDataSource(BaseDataSource):
         """Connect to Federmeccanica data source."""
         try:
             if not self.session:
-                timeout = aiohttp.ClientTimeout(total=30)
+                timeout = aiohttp.ClientTimeout(total=360)
                 headers = {
                     "User-Agent": "PratikoAI CCNL Integration Bot/1.0",
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -309,7 +309,7 @@ class FederchimicaDataSource(BaseDataSource):
         """Generic connection method for sector associations."""
         try:
             if not self.session:
-                timeout = aiohttp.ClientTimeout(total=30)
+                timeout = aiohttp.ClientTimeout(total=360)
                 headers = {
                     "User-Agent": "PratikoAI CCNL Integration Bot/1.0",
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

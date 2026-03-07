@@ -220,6 +220,54 @@ class FilteredContentSample:
 
 
 @dataclass
+class SourceHealthDiagnostic:
+    """Diagnostic info for a source's fetch/scrape health.
+
+    Tracks whether a source is experiencing timeouts, blocks, redirects,
+    or connection errors so operators can quickly identify infrastructure issues.
+    """
+
+    source_name: str
+    source_type: str  # "rss" or "scraper"
+    status: str  # "ok", "timeout", "blocked", "redirect", "connection_error", "error"
+    error_type: str | None = None  # TIMEOUT, BLOCKED, REDIRECT, CONNECTION_ERROR, etc.
+    error_message: str | None = None
+    consecutive_errors: int = 0
+    last_error_at: datetime | None = None
+    feed_url: str | None = None
+
+    @property
+    def status_icon(self) -> str:
+        """Get status icon for display."""
+        icons = {
+            "ok": "&#x2705;",  # green check
+            "timeout": "&#x23F0;",  # alarm clock
+            "blocked": "&#x1F6AB;",  # no entry
+            "redirect": "&#x21AA;",  # redirect arrow
+            "redirect_loop": "&#x1F504;",  # loop
+            "connection_error": "&#x1F50C;",  # plug
+            "http_error": "&#x26A0;",  # warning
+            "error": "&#x274C;",  # red cross
+        }
+        return icons.get(self.status, "&#x2753;")  # question mark fallback
+
+    @property
+    def status_color(self) -> str:
+        """Get color for status display."""
+        colors = {
+            "ok": "#28a745",
+            "timeout": "#fd7e14",
+            "blocked": "#dc3545",
+            "redirect": "#6f42c1",
+            "redirect_loop": "#6f42c1",
+            "connection_error": "#dc3545",
+            "http_error": "#ffc107",
+            "error": "#dc3545",
+        }
+        return colors.get(self.status, "#666")
+
+
+@dataclass
 class SourceStats:
     """Statistics for a single source (RSS feed or scraper)."""
 
@@ -287,6 +335,9 @@ class DailyIngestionReport:
 
     # Embedding backfill results (from 03:00 scheduled task)
     embedding_backfill: EmbeddingBackfillResult | None = None
+
+    # Source health diagnostics (timeouts, blocks, redirects)
+    source_health: list[SourceHealthDiagnostic] = field(default_factory=list)
 
     @property
     def total_documents_processed(self) -> int:
@@ -417,6 +468,12 @@ class IngestionReportService:
             report.alerts.extend(quality_alerts)
         except Exception as e:
             self.logger.warning(f"Data quality audit failed (non-fatal): {e}")
+
+        # Collect source health diagnostics (non-fatal)
+        try:
+            report.source_health = await self._get_source_health_diagnostics()
+        except Exception as e:
+            self.logger.warning(f"Source health diagnostics failed (non-fatal): {e}")
 
         # Fetch embedding backfill results from Redis (non-fatal)
         try:
@@ -790,6 +847,83 @@ class IngestionReportService:
             )
 
         return stale_list
+
+    def _parse_error_type_from_last_error(self, last_error: str | None) -> str | None:
+        """Extract the classified error type from a FeedStatus.last_error string.
+
+        Error format: "[ERROR_TYPE] message..."
+        """
+        if not last_error:
+            return None
+        if last_error.startswith("[") and "]" in last_error:
+            return last_error[1 : last_error.index("]")]
+        return None
+
+    def _error_type_to_status(self, error_type: str | None) -> str:
+        """Map an error type to a diagnostic status label."""
+        mapping = {
+            "TIMEOUT": "timeout",
+            "BLOCKED": "blocked",
+            "REDIRECT": "redirect",
+            "REDIRECT_LOOP": "redirect_loop",
+            "CONNECTION_ERROR": "connection_error",
+            "HTTP_ERROR": "http_error",
+            "EXCEPTION": "error",
+            "UNKNOWN": "error",
+        }
+        if not error_type:
+            return "error"
+        return mapping.get(error_type, "error")
+
+    async def _get_source_health_diagnostics(self) -> list[SourceHealthDiagnostic]:
+        """Get health diagnostics for all sources (RSS feeds and scrapers).
+
+        Reads FeedStatus.last_error (with [ERROR_TYPE] prefix) to classify
+        each source as ok, timeout, blocked, redirect, or connection_error.
+
+        Returns:
+            List of SourceHealthDiagnostic for sources with issues
+        """
+        diagnostics: list[SourceHealthDiagnostic] = []
+
+        # Query all enabled feeds
+        query = select(FeedStatus).where(FeedStatus.enabled == True)  # noqa: E712
+        result = await self.db.execute(query)
+        feeds = result.scalars().all()
+
+        for feed in feeds:
+            source_name = feed.source or feed.feed_type or "unknown"
+            if feed.feed_type:
+                source_name = f"{feed.source}_{feed.feed_type}"
+
+            if feed.status == "error" or (feed.consecutive_errors and feed.consecutive_errors > 0):
+                error_type = self._parse_error_type_from_last_error(feed.last_error)
+                status = self._error_type_to_status(error_type)
+
+                diagnostics.append(
+                    SourceHealthDiagnostic(
+                        source_name=source_name,
+                        source_type="rss",
+                        status=status,
+                        error_type=error_type,
+                        error_message=feed.last_error[:200] if feed.last_error else None,
+                        consecutive_errors=feed.consecutive_errors or 0,
+                        last_error_at=feed.last_error_at,
+                        feed_url=feed.feed_url,
+                    )
+                )
+            else:
+                # Healthy feed — still include so the report shows full picture
+                diagnostics.append(
+                    SourceHealthDiagnostic(
+                        source_name=source_name,
+                        source_type="rss",
+                        status="ok",
+                        feed_url=feed.feed_url,
+                    )
+                )
+
+        return diagnostics
 
     async def _get_previous_week_stats(self, report_date: date) -> dict[str, Any] | None:
         """Get statistics from previous week for WoW comparison.
@@ -1263,6 +1397,9 @@ class IngestionReportService:
             </div>
             """
 
+        # Generate source health diagnostics section
+        source_health_html = self._generate_source_health_html(report.source_health)
+
         # DEV-258: Generate data quality section
         data_quality_html = ""
         if report.data_quality:
@@ -1399,6 +1536,8 @@ class IngestionReportService:
 
                 {errors_html}
 
+                {source_health_html}
+
                 {filtered_html}
 
                 {data_quality_html}
@@ -1415,6 +1554,89 @@ class IngestionReportService:
         """
 
         return html
+
+    def _generate_source_health_html(self, diagnostics: list[SourceHealthDiagnostic]) -> str:
+        """Generate HTML section for source health diagnostics.
+
+        Shows which sources are experiencing timeouts, blocks, redirects,
+        or connection errors to help operators quickly diagnose issues.
+
+        Args:
+            diagnostics: List of SourceHealthDiagnostic objects
+
+        Returns:
+            HTML string for the source health section
+        """
+        if not diagnostics:
+            return ""
+
+        # Only show the section if there are unhealthy sources
+        unhealthy = [d for d in diagnostics if d.status != "ok"]
+        if not unhealthy:
+            return ""
+
+        # Group by error type for summary
+        error_counts: dict[str, int] = {}
+        for d in unhealthy:
+            label = d.error_type or d.status
+            error_counts[label] = error_counts.get(label, 0) + 1
+
+        summary_parts = [f"{count} {etype}" for etype, count in error_counts.items()]
+        summary_text = ", ".join(summary_parts)
+
+        rows = ""
+        for d in unhealthy:
+            # Truncate URL for display
+            url_display = d.feed_url or ""
+            if len(url_display) > 60:
+                url_display = url_display[:57] + "..."
+
+            error_display = d.error_message or ""
+            # Strip the [ERROR_TYPE] prefix for cleaner display
+            if error_display.startswith("[") and "]" in error_display:
+                error_display = error_display[error_display.index("]") + 2 :]
+            if len(error_display) > 120:
+                error_display = error_display[:117] + "..."
+
+            last_error_time = ""
+            if d.last_error_at:
+                last_error_time = d.last_error_at.strftime("%Y-%m-%d %H:%M")
+
+            rows += f"""
+            <tr>
+                <td>{d.status_icon}</td>
+                <td>{d.source_name}</td>
+                <td style="color: {d.status_color}; font-weight: 500;">{d.error_type or d.status.upper()}</td>
+                <td>{d.consecutive_errors}</td>
+                <td style="font-size: 12px;">{error_display}</td>
+                <td style="font-size: 12px; color: #999;">{last_error_time}</td>
+            </tr>
+            """
+
+        return f"""
+            <div class="section">
+                <h2>Source Health ({len(unhealthy)} issues)</h2>
+                <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                    Sources with fetch/scrape issues: {summary_text}.
+                    Investigate timeouts (slow server), blocks (403/429), redirects (URL changed), or connection errors (DNS/SSL).
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;"></th>
+                            <th>Source</th>
+                            <th>Issue</th>
+                            <th>Consec.</th>
+                            <th>Error Detail</th>
+                            <th>Last Error</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows}
+                    </tbody>
+                </table>
+            </div>
+            """
 
     def _generate_data_quality_html(self, dq) -> str:
         """DEV-258: Generate HTML section for data quality metrics.

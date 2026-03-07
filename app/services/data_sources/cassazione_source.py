@@ -95,7 +95,7 @@ class CassazioneDataSource(BaseDataSource):
         """Connect to Cassazione data source."""
         try:
             if not self.session:
-                timeout = aiohttp.ClientTimeout(total=45)
+                timeout = aiohttp.ClientTimeout(total=360)
                 headers = {
                     "User-Agent": "PratikoAI Legal Research Bot/1.0 (legal.research@pratikoai.com)",
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

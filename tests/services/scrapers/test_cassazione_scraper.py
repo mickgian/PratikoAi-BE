@@ -41,7 +41,7 @@ class TestCassazioneScraperInitialization:
 
         assert scraper.rate_limit_delay == 2.0
         assert scraper.max_retries == 3
-        assert scraper.timeout_seconds == 30
+        assert scraper.timeout_seconds == 360
         assert scraper.max_concurrent_requests == 5
         assert scraper.respect_robots_txt is True
         assert scraper._robots_rules == {}

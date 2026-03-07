@@ -100,7 +100,7 @@ class CassazioneScraper:
         db_session: AsyncSession | None = None,
         rate_limit_delay: float = 2.0,
         max_retries: int = 3,
-        timeout_seconds: int = 30,
+        timeout_seconds: int = 360,
         max_concurrent_requests: int = 5,
         respect_robots_txt: bool = True,
     ):

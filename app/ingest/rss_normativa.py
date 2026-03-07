@@ -196,6 +196,30 @@ def _determine_feed_source(feed_url: str) -> tuple[str, str]:
         return "generic", "other"
 
 
+def _classify_fetch_error(e: Exception) -> tuple[str, str]:
+    """Classify an HTTP fetch error into a category and message.
+
+    Returns:
+        Tuple of (error_type, error_message) where error_type is one of:
+        TIMEOUT, REDIRECT_LOOP, BLOCKED, REDIRECT, HTTP_ERROR, CONNECTION_ERROR, UNKNOWN
+    """
+    if isinstance(e, httpx.TimeoutException):
+        return "TIMEOUT", f"Request timed out: {e}"
+    if isinstance(e, httpx.TooManyRedirects):
+        return "REDIRECT_LOOP", f"Too many redirects: {e}"
+    if isinstance(e, httpx.HTTPStatusError):
+        status = e.response.status_code
+        if status in (403, 429):
+            return "BLOCKED", f"HTTP {status}: {e}"
+        if status in (301, 302, 307, 308):
+            location = e.response.headers.get("location", "unknown")
+            return "REDIRECT", f"HTTP {status} -> {location}"
+        return "HTTP_ERROR", f"HTTP {status}: {e}"
+    if isinstance(e, (ssl.SSLError, httpx.ConnectError)):
+        return "CONNECTION_ERROR", f"Connection failed: {e}"
+    return "UNKNOWN", str(e)
+
+
 async def fetch_rss_feed(feed_url: str = FEED_URL) -> list[dict[str, Any]]:
     """Fetch and parse RSS feed.
 
@@ -206,10 +230,38 @@ async def fetch_rss_feed(feed_url: str = FEED_URL) -> list[dict[str, Any]]:
         List of feed items with title, link, published, summary, attachment_url.
         For items without a link, attachment_url is used as fallback.
     """
+    items, error_type, _ = await fetch_rss_feed_with_diagnostics(feed_url)
+    if error_type:
+        return []
+    return items
+
+
+async def fetch_rss_feed_with_diagnostics(
+    feed_url: str = FEED_URL,
+) -> tuple[list[dict[str, Any]], str | None, str | None]:
+    """Fetch and parse RSS feed, returning diagnostic info on failure.
+
+    Args:
+        feed_url: RSS feed URL
+
+    Returns:
+        Tuple of (items, error_type, error_message).
+        On success: (items, None, None)
+        On failure: ([], error_type, error_message)
+    """
     try:
         # Get appropriate SSL context (relaxed for some government sites)
         ssl_context = _get_ssl_context(feed_url)
-        async with httpx.AsyncClient(timeout=30.0, verify=ssl_context) as client:
+        async with httpx.AsyncClient(
+            timeout=60.0,
+            verify=ssl_context,
+            follow_redirects=True,
+            headers={
+                "User-Agent": "PratikoAI Legal Research Bot/1.0 (+https://pratiko.ai)",
+                "Accept": "application/rss+xml,application/xml,text/xml;q=0.9",
+                "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
+            },
+        ) as client:
             response = await client.get(feed_url)
             response.raise_for_status()
 
@@ -243,11 +295,12 @@ async def fetch_rss_feed(feed_url: str = FEED_URL) -> list[dict[str, Any]]:
                 }
             )
 
-        return items
+        return items, None, None
 
     except Exception as e:
-        print(f"Error fetching RSS feed: {e}")
-        return []
+        error_type, error_message = _classify_fetch_error(e)
+        print(f"Error fetching RSS feed: {error_type} - {error_message}")
+        return [], error_type, error_message
 
 
 # Note: Functions moved to app/core/document_ingestion.py for reuse
@@ -283,10 +336,14 @@ async def run_rss_ingestion(
     source_identifier = f"{source_name}_{feed_type or 'generic'}"
 
     print(f"📥 Fetching RSS feed: {url}")
-    feed_items = await fetch_rss_feed(url)
+    feed_items, fetch_error_type, fetch_error_message = await fetch_rss_feed_with_diagnostics(url)
 
     if not feed_items:
-        return {"status": "failed", "error": "No items found in feed"}
+        return {
+            "status": "failed",
+            "error": fetch_error_message or "No items found in feed",
+            "fetch_error_type": fetch_error_type,
+        }
 
     print(f"Found {len(feed_items)} items in feed")
 

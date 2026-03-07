@@ -52,6 +52,11 @@ export const ourFields = [
   { value: 'cap', label: 'CAP', required: false },
   { value: 'comune', label: 'Comune', required: false },
   { value: 'provincia', label: 'Provincia', required: false },
+  {
+    value: 'dataInizioAttivita',
+    label: 'Data Inizio Attività',
+    required: false,
+  },
   { value: 'numeroDipendenti', label: 'Numero Dipendenti', required: false },
   { value: 'ccnlApplicato', label: 'CCNL Applicato', required: false },
 ];

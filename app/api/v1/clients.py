@@ -211,6 +211,7 @@ async def import_clients(
         total=report.total,
         success_count=report.success_count,
         error_count=report.error_count,
+        profiles_created=report.profiles_created,
         errors=[{"row_number": e.row_number, "field": e.field, "message": e.message} for e in report.errors],
         warnings=warnings,
     )

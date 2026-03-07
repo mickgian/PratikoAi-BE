@@ -37,17 +37,22 @@ const BACKEND_TO_FRONTEND: Record<string, string> = {
   provincia: 'provincia',
   indirizzo: 'indirizzo',
   cap: 'cap',
+  regime_fiscale: 'regimeFiscale',
+  codice_ateco_principale: 'codiceAteco',
+  n_dipendenti: 'numeroDipendenti',
+  ccnl_applicato: 'ccnlApplicato',
+  data_inizio_attivita: 'dataInizioAttivita',
 };
 
 const AUTO_SKIP_CONFIDENCE = 0.7;
 
 function applyAutoMappings(
   suggested: Record<string, SuggestedMapping>,
-  detectedColumns: string[],
+  detectedColumns: string[]
 ): ColumnMapping[] {
   return ourFields.map(field => {
     const backendField = Object.entries(BACKEND_TO_FRONTEND).find(
-      ([, fe]) => fe === field.value,
+      ([, fe]) => fe === field.value
     )?.[0];
     const suggestion = backendField ? suggested[backendField] : undefined;
     const hasMatch =
@@ -152,7 +157,7 @@ export function ClientImportView() {
         const suggested = result.suggested_mappings ?? {};
         const newMappings = applyAutoMappings(
           suggested,
-          result.detected_columns,
+          result.detected_columns
         );
         setColumnMappings(newMappings);
 
@@ -168,7 +173,7 @@ export function ClientImportView() {
           const mappedCount = newMappings.filter(m => m.yourColumn).length;
           if (mappedCount > 0) {
             toast.info(
-              `${mappedCount} colonne riconosciute automaticamente. Completa le rimanenti.`,
+              `${mappedCount} colonne riconosciute automaticamente. Completa le rimanenti.`
             );
           }
           setCurrentStep(2);
@@ -225,8 +230,12 @@ export function ClientImportView() {
           `${result.success_count} clienti importati, ${result.error_count} errori.`
         );
       } else {
+        const profileMsg =
+          result.profiles_created > 0
+            ? ` (${result.profiles_created} profili aziendali creati)`
+            : '';
         toast.success(
-          `${result.success_count} clienti importati con successo!`
+          `${result.success_count} clienti importati con successo!${profileMsg}`
         );
       }
 

@@ -145,5 +145,6 @@ class ClientImportResponse(BaseModel):
     total: int
     success_count: int
     error_count: int
+    profiles_created: int = 0
     errors: list[ClientImportErrorResponse] = Field(default_factory=list)
     warnings: ClientImportWarningsSummary | None = None

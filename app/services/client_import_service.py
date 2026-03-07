@@ -12,11 +12,14 @@ import csv
 import io
 import re
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from difflib import SequenceMatcher
 from uuid import UUID
 
 from app.core.logging import logger
 from app.models.client import TipoCliente
+from app.models.client_profile import RegimeFiscale
+from app.services.client_profile_service import client_profile_service
 from app.services.client_service import ClientService
 
 try:
@@ -33,7 +36,23 @@ except ImportError:  # pragma: no cover
 REQUIRED_COLUMNS = {"codice_fiscale", "nome", "comune", "provincia"}
 
 # All columns recognised by the importer (required + optional).
-ALL_COLUMNS = REQUIRED_COLUMNS | {"tipo_cliente", "partita_iva", "email", "phone", "indirizzo", "cap"}
+ALL_COLUMNS = REQUIRED_COLUMNS | {
+    "tipo_cliente",
+    "partita_iva",
+    "email",
+    "phone",
+    "indirizzo",
+    "cap",
+    # Profile fields (optional — triggers ClientProfile creation when present)
+    "regime_fiscale",
+    "codice_ateco_principale",
+    "data_inizio_attivita",
+    "n_dipendenti",
+    "ccnl_applicato",
+}
+
+# The three profile fields that must ALL be present to create a ClientProfile.
+_PROFILE_REQUIRED = {"regime_fiscale", "codice_ateco_principale", "data_inizio_attivita"}
 
 # Mapping from user-facing tipo_cliente strings to the enum (case-insensitive).
 _TIPO_CLIENTE_MAP: dict[str, TipoCliente] = {t.value.lower(): t for t in TipoCliente}
@@ -98,6 +117,52 @@ _COLUMN_ALIASES: dict[str, list[str]] = {
     ],
     "indirizzo": ["indirizzo", "via", "address", "sede", "indirizzo_sede"],
     "cap": ["cap", "codice_postale", "codice postale", "zip", "zipcode"],
+    # --- Profile fields ---
+    "regime_fiscale": [
+        "regime_fiscale",
+        "regime fiscale",
+        "regime",
+        "reg. fiscale",
+        "reg fiscale",
+        "tipo regime",
+    ],
+    "codice_ateco_principale": [
+        "codice_ateco_principale",
+        "codice ateco principale",
+        "codice_ateco",
+        "codice ateco",
+        "ateco",
+        "cod. ateco",
+        "cod ateco",
+        "ateco principale",
+    ],
+    "data_inizio_attivita": [
+        "data_inizio_attivita",
+        "data inizio attività",
+        "data inizio attivita",
+        "data_inizio_attività",
+        "inizio attività",
+        "inizio attivita",
+        "data apertura",
+        "data inizio",
+    ],
+    "n_dipendenti": [
+        "n_dipendenti",
+        "n. dipendenti",
+        "n dipendenti",
+        "dipendenti",
+        "num dipendenti",
+        "num. dipendenti",
+        "numero dipendenti",
+        "numero_dipendenti",
+    ],
+    "ccnl_applicato": [
+        "ccnl_applicato",
+        "ccnl applicato",
+        "ccnl",
+        "contratto collettivo",
+        "contratto collettivo nazionale",
+    ],
 }
 
 # Flattened reverse lookup: normalised alias → target field.
@@ -120,6 +185,7 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _CAP_RE = re.compile(r"^\d{5}$")
 _PROVINCIA_RE = re.compile(r"^[A-Z]{2}$")
 _PHONE_RE = re.compile(r"^(\+39[\s]?)?\d[\d\s]{6,14}$")
+_ATECO_RE = re.compile(r"^\d{2}\.\d{2}\.\d{2}$")
 
 # Minimum fraction of non-null sample values that must match a pattern.
 _PATTERN_THRESHOLD = 0.5
@@ -162,6 +228,7 @@ class ImportReport:
     error_count: int = 0
     errors: list[ImportRowError] = field(default_factory=list)
     created_client_ids: list[int] = field(default_factory=list)
+    profiles_created: int = 0
 
 
 def _resolve_tipo_cliente(raw: str | None) -> TipoCliente:
@@ -342,6 +409,7 @@ class ClientImportService:
         # Order matters: check more specific patterns first (P.IVA before phone).
         _PATTERN_FIELD_ORDER = [
             "codice_fiscale",
+            "codice_ateco_principale",
             "partita_iva",
             "email",
             "cap",
@@ -399,6 +467,7 @@ class ClientImportService:
             # Only match the 16-char persona fisica CF by data pattern.
             # 11-digit società CF is identical to P.IVA; use alias matching for that.
             "codice_fiscale": [_CF_PERSONA_RE],
+            "codice_ateco_principale": [_ATECO_RE],
             "partita_iva": [_PIVA_RE],
             "email": [_EMAIL_RE],
             "cap": [_CAP_RE],
@@ -613,6 +682,8 @@ class ClientImportService:
                 report.success_count += 1
                 if client and hasattr(client, "id") and client.id is not None:
                     report.created_client_ids.append(client.id)
+                    # Attempt to create ClientProfile if profile fields are present
+                    await self._try_create_profile(db, client.id, record, report, idx)
             except ValueError as exc:
                 report.error_count += 1
                 report.errors.append(
@@ -631,6 +702,83 @@ class ClientImportService:
             errors=report.error_count,
         )
         return report
+
+    # ------------------------------------------------------------------
+    # Profile creation helper
+    # ------------------------------------------------------------------
+
+    async def _try_create_profile(
+        self,
+        db: object,
+        client_id: int,
+        record: dict,
+        report: ImportReport,
+        row_number: int,
+    ) -> None:
+        """Create a ClientProfile if all required profile fields are present."""
+        # Check that all three required profile fields have non-blank values
+        profile_values = {k: self._clean_optional(record.get(k)) for k in _PROFILE_REQUIRED}
+        if not all(profile_values.values()):
+            return
+
+        # Parse date
+        parsed_date = self._parse_date(profile_values["data_inizio_attivita"])
+        if parsed_date is None:
+            logger.warning(
+                "profile_date_parse_failed",
+                row=row_number,
+                value=profile_values["data_inizio_attivita"],
+            )
+            return
+
+        # Resolve regime_fiscale to enum
+        regime_raw = str(profile_values["regime_fiscale"]).strip().lower()
+        try:
+            regime = RegimeFiscale(regime_raw)
+        except ValueError:
+            logger.warning(
+                "profile_regime_invalid",
+                row=row_number,
+                value=regime_raw,
+            )
+            return
+
+        # Optional fields
+        n_dip_raw = self._clean_optional(record.get("n_dipendenti"))
+        n_dipendenti = int(n_dip_raw) if n_dip_raw and n_dip_raw.isdigit() else 0
+        ccnl = self._clean_optional(record.get("ccnl_applicato"))
+
+        try:
+            await client_profile_service.create(
+                db,  # type: ignore[arg-type]
+                client_id=client_id,
+                codice_ateco_principale=str(profile_values["codice_ateco_principale"]).strip(),
+                regime_fiscale=regime,
+                data_inizio_attivita=parsed_date,
+                n_dipendenti=n_dipendenti,
+                ccnl_applicato=ccnl,
+            )
+            report.profiles_created += 1
+        except ValueError as exc:
+            logger.warning(
+                "profile_creation_failed",
+                row=row_number,
+                client_id=client_id,
+                error=str(exc),
+            )
+
+    @staticmethod
+    def _parse_date(value: str | None) -> date | None:
+        """Parse a date string in common formats. Returns None on failure."""
+        if not value:
+            return None
+        value = str(value).strip()
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y"):
+            try:
+                return datetime.strptime(value, fmt).date()
+            except ValueError:
+                continue
+        return None
 
     # ------------------------------------------------------------------
     # Internal helpers

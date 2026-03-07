@@ -213,6 +213,7 @@ export interface ClientImportResult {
   total: number;
   success_count: number;
   error_count: number;
+  profiles_created: number;
   errors: ClientImportError[];
   warnings: ClientImportWarningsSummary | null;
 }

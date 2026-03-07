@@ -305,7 +305,7 @@ async def repair_embeddings(db: AsyncSession, dry_run: bool) -> None:
                 emb_str = embedding_to_pgvector(emb)
                 if emb_str:
                     await db.execute(
-                        text("UPDATE knowledge_items SET embedding = :emb::vector WHERE id = :id"),
+                        text("UPDATE knowledge_items SET embedding = CAST(:emb AS vector) WHERE id = :id"),
                         {"emb": emb_str, "id": item_id},
                     )
                     embedded_items += 1
@@ -334,7 +334,7 @@ async def repair_embeddings(db: AsyncSession, dry_run: bool) -> None:
                 emb_str = embedding_to_pgvector(emb)
                 if emb_str:
                     await db.execute(
-                        text("UPDATE knowledge_chunks SET embedding = :emb::vector WHERE id = :id"),
+                        text("UPDATE knowledge_chunks SET embedding = CAST(:emb AS vector) WHERE id = :id"),
                         {"emb": emb_str, "id": chunk_id},
                     )
                     embedded_chunks += 1

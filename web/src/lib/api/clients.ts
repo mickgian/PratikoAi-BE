@@ -5,6 +5,7 @@
  */
 
 import { apiClient } from '@/lib/api';
+import type { ProfileOverrides } from '@/app/database-clienti/types';
 import {
   buildStudioUrl,
   getAuthHeaders,
@@ -172,8 +173,15 @@ export interface ImportPreviewRow {
   errors: string[];
 }
 
+export interface SuggestedMapping {
+  file_column: string;
+  confidence: number; // 0.0–1.0
+  match_method: 'exact_alias' | 'fuzzy' | 'data_pattern';
+}
+
 export interface ImportPreviewResponse {
   detected_columns: string[];
+  suggested_mappings: Record<string, SuggestedMapping>;
   total_rows: number;
   valid_rows: number;
   invalid_rows: number;
@@ -206,6 +214,7 @@ export interface ClientImportResult {
   total: number;
   success_count: number;
   error_count: number;
+  profiles_created: number;
   errors: ClientImportError[];
   warnings: ClientImportWarningsSummary | null;
 }
@@ -249,7 +258,8 @@ export async function previewImport(
  */
 export async function importClients(
   file: File,
-  columnMapping?: Record<string, string>
+  columnMapping?: Record<string, string>,
+  profileOverrides?: ProfileOverrides
 ): Promise<ClientImportResult> {
   const url = buildStudioUrl('/api/v1/clients/import');
 
@@ -265,6 +275,9 @@ export async function importClients(
   formData.append('file', file);
   if (columnMapping) {
     formData.append('column_mapping', JSON.stringify(columnMapping));
+  }
+  if (profileOverrides) {
+    formData.append('profile_overrides', JSON.stringify(profileOverrides));
   }
 
   const response = await fetch(url, {

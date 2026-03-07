@@ -59,6 +59,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=None,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )
@@ -87,6 +88,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=None,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )
@@ -108,6 +110,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=None,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )
@@ -133,6 +136,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=mapping_json,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )
@@ -186,6 +190,7 @@ class TestImportClientsEndpoint:
                 studio_id=studio_id,
                 file=upload,
                 column_mapping=None,
+                profile_overrides=None,
                 x_user_id=None,
                 db=mock_db,
             )
@@ -201,8 +206,9 @@ class TestPreviewEndpoint:
 
     @pytest.mark.asyncio
     async def test_preview_csv_returns_columns_and_rows(self, studio_id) -> None:
-        """Preview parses CSV and returns detected columns + validated rows."""
+        """Preview parses CSV and returns detected columns, suggested mappings, and validated rows."""
         from app.api.v1.clients import preview_import
+        from app.services.client_import_service import SuggestedColumnMapping
 
         headers = ["codice_fiscale", "nome", "comune", "provincia"]
         records = [
@@ -221,14 +227,25 @@ class TestPreviewEndpoint:
                 errors=[],
             ),
         ]
+        suggested = {
+            "codice_fiscale": SuggestedColumnMapping(
+                file_column="codice_fiscale", confidence=1.0, match_method="exact_alias"
+            ),
+            "nome": SuggestedColumnMapping(file_column="nome", confidence=1.0, match_method="exact_alias"),
+        }
         upload = _make_upload_file("clienti.csv", b"fake-csv")
 
         with patch("app.api.v1.clients.client_import_service") as mock_svc:
             mock_svc.parse_csv = MagicMock(return_value=(headers, records))
             mock_svc.validate_records = MagicMock(return_value=preview_rows)
+            mock_svc.auto_detect_column_mapping = MagicMock(return_value=suggested)
             result = await preview_import(studio_id=studio_id, file=upload)
 
         assert result.detected_columns == headers
+        assert result.suggested_mappings is not None
+        assert "codice_fiscale" in result.suggested_mappings
+        assert result.suggested_mappings["codice_fiscale"].confidence == 1.0
+        assert result.suggested_mappings["codice_fiscale"].match_method == "exact_alias"
         assert result.total_rows == 1
         assert result.valid_rows == 1
         assert result.invalid_rows == 0
@@ -277,6 +294,7 @@ class TestPreviewEndpoint:
         with patch("app.api.v1.clients.client_import_service") as mock_svc:
             mock_svc.parse_excel = MagicMock(return_value=(headers, records))
             mock_svc.validate_records = MagicMock(return_value=preview_rows)
+            mock_svc.auto_detect_column_mapping = MagicMock(return_value={})
             result = await preview_import(studio_id=studio_id, file=upload)
 
         assert result.total_rows == 2

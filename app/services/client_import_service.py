@@ -10,11 +10,16 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from dataclasses import dataclass, field
+from datetime import date, datetime
+from difflib import SequenceMatcher
 from uuid import UUID
 
 from app.core.logging import logger
 from app.models.client import TipoCliente
+from app.models.client_profile import RegimeFiscale
+from app.services.client_profile_service import client_profile_service
 from app.services.client_service import ClientService
 
 try:
@@ -31,10 +36,159 @@ except ImportError:  # pragma: no cover
 REQUIRED_COLUMNS = {"codice_fiscale", "nome", "comune", "provincia"}
 
 # All columns recognised by the importer (required + optional).
-ALL_COLUMNS = REQUIRED_COLUMNS | {"tipo_cliente", "partita_iva", "email", "phone", "indirizzo", "cap"}
+ALL_COLUMNS = REQUIRED_COLUMNS | {
+    "tipo_cliente",
+    "partita_iva",
+    "email",
+    "phone",
+    "indirizzo",
+    "cap",
+    # Profile fields (optional — triggers ClientProfile creation when present)
+    "regime_fiscale",
+    "codice_ateco_principale",
+    "data_inizio_attivita",
+    "n_dipendenti",
+    "ccnl_applicato",
+}
+
+# The three profile fields that must ALL be present to create a ClientProfile.
+_PROFILE_REQUIRED = {"regime_fiscale", "codice_ateco_principale", "data_inizio_attivita"}
 
 # Mapping from user-facing tipo_cliente strings to the enum (case-insensitive).
 _TIPO_CLIENTE_MAP: dict[str, TipoCliente] = {t.value.lower(): t for t in TipoCliente}
+
+# ---------------------------------------------------------------------------
+# Auto-detection: Tier 1 — known aliases per target field
+# ---------------------------------------------------------------------------
+_COLUMN_ALIASES: dict[str, list[str]] = {
+    "nome": [
+        "nome",
+        "denominazione",
+        "ragione_sociale",
+        "ragione sociale",
+        "rag_sociale",
+        "rag sociale",
+        "denominazione/ragione sociale",
+        "nome_completo",
+        "nome completo",
+        "nome cliente",
+    ],
+    "codice_fiscale": [
+        "codice_fiscale",
+        "codice fiscale",
+        "cf",
+        "cod_fiscale",
+        "cod fiscale",
+        "cod. fiscale",
+        "c.f.",
+        "c.f",
+    ],
+    "partita_iva": [
+        "partita_iva",
+        "partita iva",
+        "p_iva",
+        "p.iva",
+        "piva",
+        "p. iva",
+        "p iva",
+        "partitaiva",
+    ],
+    "tipo_cliente": [
+        "tipo_cliente",
+        "tipo cliente",
+        "tipo_soggetto",
+        "tipo soggetto",
+        "tipologia",
+        "tipo",
+    ],
+    "comune": ["comune", "citta", "città", "city"],
+    "provincia": ["provincia", "prov", "prov."],
+    "email": ["email", "e-mail", "mail", "pec", "indirizzo_email", "indirizzo email"],
+    "phone": [
+        "phone",
+        "telefono",
+        "tel",
+        "tel.",
+        "cellulare",
+        "cell",
+        "cell.",
+        "numero_telefono",
+        "numero telefono",
+    ],
+    "indirizzo": ["indirizzo", "via", "address", "sede", "indirizzo_sede"],
+    "cap": ["cap", "codice_postale", "codice postale", "zip", "zipcode"],
+    # --- Profile fields ---
+    "regime_fiscale": [
+        "regime_fiscale",
+        "regime fiscale",
+        "regime",
+        "reg. fiscale",
+        "reg fiscale",
+        "tipo regime",
+    ],
+    "codice_ateco_principale": [
+        "codice_ateco_principale",
+        "codice ateco principale",
+        "codice_ateco",
+        "codice ateco",
+        "ateco",
+        "cod. ateco",
+        "cod ateco",
+        "ateco principale",
+    ],
+    "data_inizio_attivita": [
+        "data_inizio_attivita",
+        "data inizio attività",
+        "data inizio attivita",
+        "data_inizio_attività",
+        "inizio attività",
+        "inizio attivita",
+        "data apertura",
+        "data inizio",
+    ],
+    "n_dipendenti": [
+        "n_dipendenti",
+        "n. dipendenti",
+        "n dipendenti",
+        "dipendenti",
+        "num dipendenti",
+        "num. dipendenti",
+        "numero dipendenti",
+        "numero_dipendenti",
+    ],
+    "ccnl_applicato": [
+        "ccnl_applicato",
+        "ccnl applicato",
+        "ccnl",
+        "contratto collettivo",
+        "contratto collettivo nazionale",
+    ],
+}
+
+# Flattened reverse lookup: normalised alias → target field.
+_ALIAS_LOOKUP: dict[str, str] = {}
+for _field, _aliases in _COLUMN_ALIASES.items():
+    for _alias in _aliases:
+        _ALIAS_LOOKUP[_alias.lower().strip()] = _field
+
+# All alias strings for fuzzy matching (grouped by target field).
+_FUZZY_CANDIDATES: dict[str, list[str]] = {
+    _field: [a.lower().strip() for a in _aliases] for _field, _aliases in _COLUMN_ALIASES.items()
+}
+
+# ---------------------------------------------------------------------------
+# Auto-detection: Tier 3 — data-pattern regexes
+# ---------------------------------------------------------------------------
+_CF_PERSONA_RE = re.compile(r"^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$", re.IGNORECASE)
+_PIVA_RE = re.compile(r"^\d{11}$")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_CAP_RE = re.compile(r"^\d{5}$")
+_PROVINCIA_RE = re.compile(r"^[A-Z]{2}$")
+_PHONE_RE = re.compile(r"^(\+39[\s]?)?\d[\d\s]{6,14}$")
+_ATECO_RE = re.compile(r"^\d{2}\.\d{2}\.\d{2}$")
+
+# Minimum fraction of non-null sample values that must match a pattern.
+_PATTERN_THRESHOLD = 0.5
 
 
 @dataclass
@@ -57,6 +211,15 @@ class PreviewRow:
 
 
 @dataclass
+class SuggestedColumnMapping:
+    """Auto-detected mapping of a file column to a target field."""
+
+    file_column: str
+    confidence: float  # 0.0–1.0
+    match_method: str  # "exact_alias" | "fuzzy" | "data_pattern"
+
+
+@dataclass
 class ImportReport:
     """Summary produced after a batch import."""
 
@@ -65,6 +228,7 @@ class ImportReport:
     error_count: int = 0
     errors: list[ImportRowError] = field(default_factory=list)
     created_client_ids: list[int] = field(default_factory=list)
+    profiles_created: int = 0
 
 
 def _resolve_tipo_cliente(raw: str | None) -> TipoCliente:
@@ -183,6 +347,141 @@ class ClientImportService:
         return headers, records
 
     # ------------------------------------------------------------------
+    # Auto-detection of column mappings
+    # ------------------------------------------------------------------
+
+    def auto_detect_column_mapping(
+        self,
+        headers: list[str],
+        sample_rows: list[dict],
+    ) -> dict[str, SuggestedColumnMapping]:
+        """Auto-detect column mapping using a 3-tier strategy.
+
+        Returns a dict of target_field → SuggestedColumnMapping.
+        Each file column is assigned to at most one target field.
+        """
+        if not headers:
+            return {}
+
+        result: dict[str, SuggestedColumnMapping] = {}
+        used_columns: set[str] = set()  # track assigned file columns
+        headers_lower = [h.lower().strip() for h in headers]
+
+        # --- Tier 1: exact alias matching ---
+        for h_lower, h_orig in zip(headers_lower, headers, strict=True):
+            target = _ALIAS_LOOKUP.get(h_lower)
+            if target and target not in result and h_lower not in used_columns:
+                result[target] = SuggestedColumnMapping(
+                    file_column=h_orig,
+                    confidence=1.0,
+                    match_method="exact_alias",
+                )
+                used_columns.add(h_lower)
+
+        # --- Tier 2: fuzzy matching for remaining headers ---
+        unmatched_headers = [
+            (h_lower, h_orig)
+            for h_lower, h_orig in zip(headers_lower, headers, strict=True)
+            if h_lower not in used_columns
+        ]
+        unmatched_fields = [f for f in ALL_COLUMNS if f not in result]
+
+        for h_lower, h_orig in unmatched_headers:
+            best_field: str | None = None
+            best_score = 0.0
+            for target_field in unmatched_fields:
+                if target_field in result:
+                    continue
+                for alias in _FUZZY_CANDIDATES.get(target_field, []):
+                    score = SequenceMatcher(None, h_lower, alias).ratio()
+                    if score > best_score:
+                        best_score = score
+                        best_field = target_field
+            if best_field and best_score >= 0.6 and best_field not in result:
+                result[best_field] = SuggestedColumnMapping(
+                    file_column=h_orig,
+                    confidence=round(best_score, 2),
+                    match_method="fuzzy",
+                )
+                used_columns.add(h_lower)
+
+        # --- Tier 3: data-pattern analysis for remaining fields ---
+        # Order matters: check more specific patterns first (P.IVA before phone).
+        _PATTERN_FIELD_ORDER = [
+            "codice_fiscale",
+            "codice_ateco_principale",
+            "partita_iva",
+            "email",
+            "cap",
+            "provincia",
+            "phone",
+        ]
+        if sample_rows:
+            remaining_fields = [f for f in _PATTERN_FIELD_ORDER if f not in result]
+            remaining_headers = [
+                (h_lower, h_orig)
+                for h_lower, h_orig in zip(headers_lower, headers, strict=True)
+                if h_lower not in used_columns
+            ]
+            for target_field in remaining_fields:
+                best_col: tuple[str, str] | None = None
+                best_match_rate = 0.0
+                for h_lower, h_orig in remaining_headers:
+                    if h_lower in used_columns:
+                        continue
+                    match_rate = self._check_data_pattern(
+                        target_field,
+                        h_lower,
+                        sample_rows,
+                    )
+                    if match_rate > best_match_rate:
+                        best_match_rate = match_rate
+                        best_col = (h_lower, h_orig)
+
+                if best_col and best_match_rate >= _PATTERN_THRESHOLD:
+                    result[target_field] = SuggestedColumnMapping(
+                        file_column=best_col[1],
+                        confidence=round(min(best_match_rate * 0.9, 0.85), 2),
+                        match_method="data_pattern",
+                    )
+                    used_columns.add(best_col[0])
+
+        return result
+
+    @staticmethod
+    def _check_data_pattern(
+        target_field: str,
+        header_lower: str,
+        sample_rows: list[dict],
+    ) -> float:
+        """Check what fraction of sample values match the expected pattern for target_field."""
+        values = [
+            str(row.get(header_lower, "")).strip()
+            for row in sample_rows
+            if row.get(header_lower) and str(row[header_lower]).strip()
+        ]
+        if not values:
+            return 0.0
+
+        pattern_map: dict[str, list[re.Pattern]] = {  # type: ignore[type-arg]
+            # Only match the 16-char persona fisica CF by data pattern.
+            # 11-digit società CF is identical to P.IVA; use alias matching for that.
+            "codice_fiscale": [_CF_PERSONA_RE],
+            "codice_ateco_principale": [_ATECO_RE],
+            "partita_iva": [_PIVA_RE],
+            "email": [_EMAIL_RE],
+            "cap": [_CAP_RE],
+            "provincia": [_PROVINCIA_RE],
+            "phone": [_PHONE_RE],
+        }
+        patterns = pattern_map.get(target_field)
+        if not patterns:
+            return 0.0
+
+        matches = sum(1 for v in values if any(p.match(v) for p in patterns))
+        return matches / len(values)
+
+    # ------------------------------------------------------------------
     # Validation (preview without DB writes)
     # ------------------------------------------------------------------
 
@@ -237,6 +536,7 @@ class ClientImportService:
         studio_id: UUID,
         file_content: bytes,
         column_mapping: dict[str, str] | None = None,
+        profile_overrides: dict[str, dict[str, str]] | None = None,
     ) -> ImportReport:
         """Parse an Excel workbook and import rows."""
         _headers, records = self.parse_excel(file_content)
@@ -255,6 +555,7 @@ class ClientImportService:
             studio_id=studio_id,
             records=records,
             column_mapping=column_mapping,
+            profile_overrides=profile_overrides,
         )
 
     async def import_from_csv(
@@ -264,6 +565,7 @@ class ClientImportService:
         studio_id: UUID,
         file_content: bytes,
         column_mapping: dict[str, str] | None = None,
+        profile_overrides: dict[str, dict[str, str]] | None = None,
     ) -> ImportReport:
         """Parse a CSV file and import rows."""
         _headers, records = self.parse_csv(file_content)
@@ -282,6 +584,7 @@ class ClientImportService:
             studio_id=studio_id,
             records=records,
             column_mapping=column_mapping,
+            profile_overrides=profile_overrides,
         )
 
     async def import_from_pdf(
@@ -291,6 +594,7 @@ class ClientImportService:
         studio_id: UUID,
         file_content: bytes,
         column_mapping: dict[str, str] | None = None,
+        profile_overrides: dict[str, dict[str, str]] | None = None,
     ) -> ImportReport:
         """Parse a PDF table and import rows."""
         _headers, records = self.parse_pdf(file_content)
@@ -309,6 +613,7 @@ class ClientImportService:
             studio_id=studio_id,
             records=records,
             column_mapping=column_mapping,
+            profile_overrides=profile_overrides,
         )
 
     async def import_from_records(
@@ -318,6 +623,7 @@ class ClientImportService:
         studio_id: UUID,
         records: list[dict],
         column_mapping: dict[str, str] | None = None,
+        profile_overrides: dict[str, dict[str, str]] | None = None,
     ) -> ImportReport:
         """Import clients from a list of dicts.
 
@@ -328,9 +634,16 @@ class ClientImportService:
 
         If *column_mapping* is provided (source→target), record keys are
         remapped before processing.
+
+        If *profile_overrides* is provided (keyed by codice_fiscale),
+        profile fields are merged into matching records for per-client
+        profile creation.
         """
         if column_mapping:
             records = self._apply_column_mapping(records, column_mapping)
+
+        if profile_overrides:
+            records = self._apply_profile_overrides(records, profile_overrides)
 
         report = ImportReport(total=len(records))
         seen_cf: set[str] = set()
@@ -383,6 +696,8 @@ class ClientImportService:
                 report.success_count += 1
                 if client and hasattr(client, "id") and client.id is not None:
                     report.created_client_ids.append(client.id)
+                    # Attempt to create ClientProfile if profile fields are present
+                    await self._try_create_profile(db, client.id, record, report, idx)
             except ValueError as exc:
                 report.error_count += 1
                 report.errors.append(
@@ -403,6 +718,83 @@ class ClientImportService:
         return report
 
     # ------------------------------------------------------------------
+    # Profile creation helper
+    # ------------------------------------------------------------------
+
+    async def _try_create_profile(
+        self,
+        db: object,
+        client_id: int,
+        record: dict,
+        report: ImportReport,
+        row_number: int,
+    ) -> None:
+        """Create a ClientProfile if all required profile fields are present."""
+        # Check that all three required profile fields have non-blank values
+        profile_values = {k: self._clean_optional(record.get(k)) for k in _PROFILE_REQUIRED}
+        if not all(profile_values.values()):
+            return
+
+        # Parse date
+        parsed_date = self._parse_date(profile_values["data_inizio_attivita"])
+        if parsed_date is None:
+            logger.warning(
+                "profile_date_parse_failed",
+                row=row_number,
+                value=profile_values["data_inizio_attivita"],
+            )
+            return
+
+        # Resolve regime_fiscale to enum
+        regime_raw = str(profile_values["regime_fiscale"]).strip().lower()
+        try:
+            regime = RegimeFiscale(regime_raw)
+        except ValueError:
+            logger.warning(
+                "profile_regime_invalid",
+                row=row_number,
+                value=regime_raw,
+            )
+            return
+
+        # Optional fields
+        n_dip_raw = self._clean_optional(record.get("n_dipendenti"))
+        n_dipendenti = int(n_dip_raw) if n_dip_raw and n_dip_raw.isdigit() else 0
+        ccnl = self._clean_optional(record.get("ccnl_applicato"))
+
+        try:
+            await client_profile_service.create(
+                db,  # type: ignore[arg-type]
+                client_id=client_id,
+                codice_ateco_principale=str(profile_values["codice_ateco_principale"]).strip(),
+                regime_fiscale=regime,
+                data_inizio_attivita=parsed_date,
+                n_dipendenti=n_dipendenti,
+                ccnl_applicato=ccnl,
+            )
+            report.profiles_created += 1
+        except ValueError as exc:
+            logger.warning(
+                "profile_creation_failed",
+                row=row_number,
+                client_id=client_id,
+                error=str(exc),
+            )
+
+    @staticmethod
+    def _parse_date(value: str | None) -> date | None:
+        """Parse a date string in common formats. Returns None on failure."""
+        if not value:
+            return None
+        value = str(value).strip()
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y"):
+            try:
+                return datetime.strptime(value, fmt).date()
+            except ValueError:
+                continue
+        return None
+
+    # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
@@ -413,6 +805,26 @@ class ClientImportService:
     ) -> list[dict]:
         """Remap record keys using source→target mapping."""
         return [{column_mapping.get(k, k): v for k, v in record.items()} for record in records]
+
+    @staticmethod
+    def _apply_profile_overrides(
+        records: list[dict],
+        profile_overrides: dict[str, dict[str, str]],
+    ) -> list[dict]:
+        """Merge per-client profile overrides into records, keyed by codice_fiscale."""
+        result = []
+        for record in records:
+            cf = str(record.get("codice_fiscale", "")).strip()
+            override = profile_overrides.get(cf) if cf else None
+            if override:
+                merged = dict(record)
+                for key, value in override.items():
+                    if value and str(value).strip():
+                        merged[key] = value
+                result.append(merged)
+            else:
+                result.append(record)
+        return result
 
     @staticmethod
     def _missing_required_fields(record: dict) -> set[str]:

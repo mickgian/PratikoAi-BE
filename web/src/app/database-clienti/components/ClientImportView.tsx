@@ -1,7 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Loader2,
+  SkipForward,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -11,28 +17,112 @@ import {
   importClients,
   previewImport,
   type ImportPreviewResponse,
+  type SuggestedMapping,
 } from '@/lib/api/clients';
-import type { ColumnMapping } from '../types';
+import type {
+  ColumnMapping,
+  ProfileOverride,
+  ProfileOverrides,
+} from '../types';
 import { ourFields } from '../data/constants';
 import { ClientImportUploadStep } from './ClientImportUploadStep';
 import { ClientImportMappingStep } from './ClientImportMappingStep';
+import { ClientImportProfileStep } from './ClientImportProfileStep';
 import { ClientImportPreviewStep } from './ClientImportPreviewStep';
 
-type Step = 1 | 2 | 3;
+/** Backend profile field names that indicate profile data is in the file. */
+const PROFILE_BACKEND_FIELDS = [
+  'regime_fiscale',
+  'codice_ateco_principale',
+  'data_inizio_attivita',
+];
 
-const STEP_LABELS: Record<Step, string> = {
-  1: 'Carica File',
-  2: 'Mappa Colonne',
-  3: 'Anteprima e Conferma',
+/** Map backend target field names to frontend ourField values. */
+const BACKEND_TO_FRONTEND: Record<string, string> = {
+  nome: 'denominazione',
+  codice_fiscale: 'codiceFiscale',
+  partita_iva: 'partitaIva',
+  tipo_cliente: 'tipoSoggetto',
+  comune: 'comune',
+  provincia: 'provincia',
+  indirizzo: 'indirizzo',
+  cap: 'cap',
+  regime_fiscale: 'regimeFiscale',
+  codice_ateco_principale: 'codiceAteco',
+  n_dipendenti: 'numeroDipendenti',
+  ccnl_applicato: 'ccnlApplicato',
+  data_inizio_attivita: 'dataInizioAttivita',
 };
+
+const AUTO_SKIP_CONFIDENCE = 0.7;
+
+const EMPTY_PROFILE_OVERRIDE: ProfileOverride = {
+  regime_fiscale: '',
+  codice_ateco_principale: '',
+  data_inizio_attivita: '',
+  n_dipendenti: '',
+  ccnl_applicato: '',
+};
+
+function applyAutoMappings(
+  suggested: Record<string, SuggestedMapping>,
+  detectedColumns: string[]
+): ColumnMapping[] {
+  return ourFields.map(field => {
+    const backendField = Object.entries(BACKEND_TO_FRONTEND).find(
+      ([, fe]) => fe === field.value
+    )?.[0];
+    const suggestion = backendField ? suggested[backendField] : undefined;
+    const hasMatch =
+      suggestion && detectedColumns.includes(suggestion.file_column);
+    return {
+      ourField: field.value,
+      yourColumn: hasMatch ? suggestion.file_column : '',
+      required: field.required,
+      confidence: hasMatch ? suggestion.confidence : undefined,
+      matchMethod: hasMatch ? suggestion.match_method : undefined,
+    };
+  });
+}
+
+/** Only check required fields the backend can auto-detect. */
+const MAPPABLE_FIELDS = new Set(Object.values(BACKEND_TO_FRONTEND));
+
+function canAutoSkip(mappings: ColumnMapping[]): boolean {
+  return mappings
+    .filter(m => m.required && MAPPABLE_FIELDS.has(m.ourField))
+    .every(m => m.yourColumn && (m.confidence ?? 0) >= AUTO_SKIP_CONFIDENCE);
+}
+
+/** Check if all 3 required profile fields are mapped from file columns. */
+function hasProfileFieldsMapped(
+  suggested: Record<string, SuggestedMapping>
+): boolean {
+  return PROFILE_BACKEND_FIELDS.every(f => suggested[f]?.file_column);
+}
+
+/** Check if any profile overrides have data worth sending. */
+function hasProfileOverrides(overrides: ProfileOverrides): boolean {
+  return Object.values(overrides).some(
+    o =>
+      o.regime_fiscale !== '' ||
+      o.codice_ateco_principale !== '' ||
+      o.data_inizio_attivita !== ''
+  );
+}
 
 export function ClientImportView() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [currentStep, setCurrentStep] = useState(1);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [preview, setPreview] = useState<ImportPreviewResponse | null>(null);
+  const [autoMapped, setAutoMapped] = useState(false);
+  const [showProfileStep, setShowProfileStep] = useState(false);
+  const [profileOverrides, setProfileOverrides] = useState<ProfileOverrides>(
+    {}
+  );
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>(
     ourFields.map(field => ({
       ourField: field.value,
@@ -41,8 +131,27 @@ export function ClientImportView() {
     }))
   );
 
+  const totalSteps = showProfileStep ? 4 : 3;
+  const previewStep = showProfileStep ? 4 : 3;
+  const profileStep = showProfileStep ? 3 : -1;
+
+  const stepLabels = useMemo(() => {
+    if (showProfileStep) {
+      return {
+        1: 'Carica File',
+        2: 'Mappa Colonne',
+        3: 'Profilo Aziendale',
+        4: 'Anteprima e Conferma',
+      } as Record<number, string>;
+    }
+    return {
+      1: 'Carica File',
+      2: 'Mappa Colonne',
+      3: 'Anteprima e Conferma',
+    } as Record<number, string>;
+  }, [showProfileStep]);
+
   const validRows = preview?.valid_rows ?? 0;
-  const invalidRows = preview?.invalid_rows ?? 0;
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -78,6 +187,9 @@ export function ClientImportView() {
     ) {
       setUploadedFile(file);
       setPreview(null);
+      setAutoMapped(false);
+      setShowProfileStep(false);
+      setProfileOverrides({});
       toast.success(`File "${file.name}" caricato con successo`);
     } else {
       toast.error(
@@ -96,12 +208,39 @@ export function ClientImportView() {
         toast.error('Carica un file prima di procedere');
         return;
       }
-      // Call preview API when moving from step 1 to step 2
       setIsLoadingPreview(true);
       try {
         const result = await previewImport(uploadedFile);
         setPreview(result);
-        setCurrentStep(2);
+
+        const suggested = result.suggested_mappings ?? {};
+        const newMappings = applyAutoMappings(
+          suggested,
+          result.detected_columns
+        );
+        setColumnMappings(newMappings);
+
+        // Determine if profile step is needed
+        const profileInFile = hasProfileFieldsMapped(suggested);
+        setShowProfileStep(!profileInFile);
+
+        if (canAutoSkip(newMappings)) {
+          setAutoMapped(true);
+          toast.success('Colonne riconosciute automaticamente', {
+            description:
+              'Puoi modificare la mappatura dalla schermata di anteprima.',
+          });
+          // Skip mapping — step 3 is either profile or preview depending on showProfileStep
+          setCurrentStep(3);
+        } else {
+          const mappedCount = newMappings.filter(m => m.yourColumn).length;
+          if (mappedCount > 0) {
+            toast.info(
+              `${mappedCount} colonne riconosciute automaticamente. Completa le rimanenti.`
+            );
+          }
+          setCurrentStep(2);
+        }
       } catch (err) {
         toast.error(
           err instanceof Error
@@ -113,6 +252,7 @@ export function ClientImportView() {
       }
       return;
     }
+
     if (currentStep === 2) {
       const missing = columnMappings.filter(m => m.required && !m.yourColumn);
       if (missing.length > 0) {
@@ -120,11 +260,52 @@ export function ClientImportView() {
         return;
       }
     }
-    if (currentStep < 3) setCurrentStep((currentStep + 1) as Step);
+
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
   };
 
   const handleBack = () => {
-    if (currentStep > 1) setCurrentStep((currentStep - 1) as Step);
+    if (currentStep > 1) {
+      setAutoMapped(false);
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSkipProfile = () => {
+    setProfileOverrides({});
+    setCurrentStep(previewStep);
+  };
+
+  const updateProfileOverride = (
+    codiceFiscale: string,
+    field: keyof ProfileOverride,
+    value: string
+  ) => {
+    setProfileOverrides(prev => ({
+      ...prev,
+      [codiceFiscale]: {
+        ...(prev[codiceFiscale] ?? EMPTY_PROFILE_OVERRIDE),
+        [field]: value,
+      },
+    }));
+  };
+
+  /** Build reversed column mapping: file_column -> backend_field for the profile step. */
+  const buildColumnMapping = (): Record<string, string> => {
+    const result: Record<string, string> = {};
+    for (const m of columnMappings) {
+      if (m.yourColumn) {
+        const backendField = Object.entries(BACKEND_TO_FRONTEND).find(
+          ([, fe]) => fe === m.ourField
+        )?.[0];
+        if (backendField) {
+          result[m.yourColumn] = backendField;
+        }
+      }
+    }
+    return result;
   };
 
   const [isImporting, setIsImporting] = useState(false);
@@ -133,7 +314,6 @@ export function ClientImportView() {
     if (!uploadedFile) return;
     setIsImporting(true);
     try {
-      // Build column mapping from user selections
       const mapping: Record<string, string> = {};
       for (const m of columnMappings) {
         if (m.yourColumn) {
@@ -141,9 +321,15 @@ export function ClientImportView() {
         }
       }
 
+      // Only send profile overrides if any client has data filled
+      const overrides = hasProfileOverrides(profileOverrides)
+        ? profileOverrides
+        : undefined;
+
       const result = await importClients(
         uploadedFile,
-        Object.keys(mapping).length > 0 ? mapping : undefined
+        Object.keys(mapping).length > 0 ? mapping : undefined,
+        overrides
       );
 
       if (result.error_count > 0) {
@@ -151,12 +337,15 @@ export function ClientImportView() {
           `${result.success_count} clienti importati, ${result.error_count} errori.`
         );
       } else {
+        const profileMsg =
+          result.profiles_created > 0
+            ? ` (${result.profiles_created} profili aziendali creati)`
+            : '';
         toast.success(
-          `${result.success_count} clienti importati con successo!`
+          `${result.success_count} clienti importati con successo!${profileMsg}`
         );
       }
 
-      // Show post-import warnings about incomplete profiles
       if (result.warnings && result.warnings.clients_without_profile > 0) {
         toast.info(
           `${result.warnings.clients_without_profile} clienti necessitano del profilo aziendale per il matching normativo`,
@@ -176,7 +365,11 @@ export function ClientImportView() {
 
   const updateMapping = (ourField: string, yourColumn: string) => {
     setColumnMappings(prev =>
-      prev.map(m => (m.ourField === ourField ? { ...m, yourColumn } : m))
+      prev.map(m =>
+        m.ourField === ourField
+          ? { ...m, yourColumn, confidence: undefined, matchMethod: undefined }
+          : m
+      )
     );
   };
 
@@ -216,13 +409,13 @@ export function ClientImportView() {
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-[#1E293B]">
-              Step {currentStep} di 3
+              Step {currentStep} di {totalSteps}
             </span>
             <span className="text-sm text-[#1E293B]">
-              {STEP_LABELS[currentStep]}
+              {stepLabels[currentStep]}
             </span>
           </div>
-          <Progress value={(currentStep / 3) * 100} className="h-2" />
+          <Progress value={(currentStep / totalSteps) * 100} className="h-2" />
         </motion.div>
 
         <motion.div
@@ -242,6 +435,9 @@ export function ClientImportView() {
               onRemoveFile={() => {
                 setUploadedFile(null);
                 setPreview(null);
+                setAutoMapped(false);
+                setShowProfileStep(false);
+                setProfileOverrides({});
               }}
             />
           )}
@@ -252,12 +448,40 @@ export function ClientImportView() {
               onUpdateMapping={updateMapping}
             />
           )}
-          {currentStep === 3 && preview && (
-            <ClientImportPreviewStep
+          {currentStep === profileStep && preview && (
+            <ClientImportProfileStep
               rows={preview.rows}
-              validRows={validRows}
-              invalidRows={invalidRows}
+              profileOverrides={profileOverrides}
+              onUpdate={updateProfileOverride}
+              columnMapping={buildColumnMapping()}
             />
+          )}
+          {currentStep === previewStep && preview && (
+            <>
+              {autoMapped && (
+                <div className="mx-8 mt-6 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                  <span className="text-sm text-emerald-800">
+                    Mappatura colonne confermata automaticamente
+                  </span>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => {
+                      setAutoMapped(false);
+                      setCurrentStep(2);
+                    }}
+                    className="text-emerald-700 underline text-sm h-auto p-0"
+                  >
+                    Modifica mappatura
+                  </Button>
+                </div>
+              )}
+              <ClientImportPreviewStep
+                rows={preview.rows}
+                validRows={validRows}
+                invalidRows={preview?.invalid_rows ?? 0}
+              />
+            </>
           )}
 
           <div className="px-8 pb-8 flex justify-between">
@@ -269,36 +493,50 @@ export function ClientImportView() {
             >
               Indietro
             </Button>
-            {currentStep < 3 ? (
-              <Button
-                onClick={handleNext}
-                disabled={isLoadingPreview}
-                className="bg-[#2A5D67] hover:bg-[#1E293B] text-white"
-              >
-                {isLoadingPreview ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analisi in corso...
-                  </>
-                ) : (
-                  <>
-                    Avanti
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button
-                onClick={handleImport}
-                disabled={validRows === 0 || isImporting}
-                className="bg-[#2A5D67] hover:bg-[#1E293B] text-white"
-              >
-                <Check className="w-4 h-4 mr-2" />
-                {isImporting
-                  ? 'Importazione in corso...'
-                  : `Importa ${validRows} ${validRows === 1 ? 'Cliente' : 'Clienti'}`}
-              </Button>
-            )}
+
+            <div className="flex gap-3">
+              {currentStep === profileStep && (
+                <Button
+                  onClick={handleSkipProfile}
+                  variant="outline"
+                  className="border-[#C4BDB4] text-[#1E293B]"
+                >
+                  <SkipForward className="w-4 h-4 mr-2" />
+                  Salta
+                </Button>
+              )}
+
+              {currentStep < previewStep ? (
+                <Button
+                  onClick={handleNext}
+                  disabled={isLoadingPreview}
+                  className="bg-[#2A5D67] hover:bg-[#1E293B] text-white"
+                >
+                  {isLoadingPreview ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Analisi in corso...
+                    </>
+                  ) : (
+                    <>
+                      Avanti
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleImport}
+                  disabled={validRows === 0 || isImporting}
+                  className="bg-[#2A5D67] hover:bg-[#1E293B] text-white"
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  {isImporting
+                    ? 'Importazione in corso...'
+                    : `Importa ${validRows} ${validRows === 1 ? 'Cliente' : 'Clienti'}`}
+                </Button>
+              )}
+            </div>
           </div>
         </motion.div>
       </div>

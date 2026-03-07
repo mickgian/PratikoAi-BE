@@ -99,7 +99,7 @@ class TestBackfillMissingEmbeddingsTask:
         mock_session.commit.assert_called()
 
     async def test_backfill_uses_vector_cast_in_sql(self):
-        """Task uses ::vector cast when updating pgvector columns."""
+        """Task uses CAST(:emb AS vector) when updating pgvector columns."""
         item_rows = [(1, "content for item 1")]
         mock_session, mock_session_maker, mock_engine = self._make_session_mocks(item_rows, [])
         fake_embeddings = [[0.1] * 1536]
@@ -116,13 +116,13 @@ class TestBackfillMissingEmbeddingsTask:
         ):
             await backfill_missing_embeddings_task()
 
-        # Verify UPDATE calls use ::vector cast
+        # Verify UPDATE calls use CAST(:emb AS vector) (asyncpg-safe syntax)
         execute_calls = mock_session.execute.call_args_list
         update_calls = [c for c in execute_calls if c.args and "UPDATE" in str(c.args[0])]
         assert len(update_calls) >= 1, "Expected at least one UPDATE call"
         for update_call in update_calls:
             sql_str = str(update_call.args[0])
-            assert "::vector" in sql_str, f"Missing ::vector cast in SQL: {sql_str}"
+            assert "CAST" in sql_str, f"Missing CAST(:emb AS vector) in SQL: {sql_str}"
 
     async def test_backfill_uses_pgvector_format(self):
         """Task uses embedding_to_pgvector format (no spaces after commas)."""

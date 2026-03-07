@@ -1044,7 +1044,9 @@ async def backfill_missing_embeddings_task() -> None:
                                 emb_str = embedding_to_pgvector(emb)
                                 if emb_str:
                                     await session.execute(
-                                        text("UPDATE knowledge_items SET embedding = :emb::vector WHERE id = :id"),
+                                        text(
+                                            "UPDATE knowledge_items SET embedding = CAST(:emb AS vector) WHERE id = :id"
+                                        ),
                                         {"emb": emb_str, "id": item_id},
                                     )
                                     batch_fixed += 1
@@ -1089,7 +1091,9 @@ async def backfill_missing_embeddings_task() -> None:
                                 emb_str = embedding_to_pgvector(emb)
                                 if emb_str:
                                     await session.execute(
-                                        text("UPDATE knowledge_chunks SET embedding = :emb::vector WHERE id = :id"),
+                                        text(
+                                            "UPDATE knowledge_chunks SET embedding = CAST(:emb AS vector) WHERE id = :id"
+                                        ),
                                         {"emb": emb_str, "id": chunk_id},
                                     )
                                     batch_fixed += 1

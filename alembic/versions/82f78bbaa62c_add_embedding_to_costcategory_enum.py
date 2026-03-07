@@ -1,7 +1,7 @@
 """add_embedding_to_costcategory_enum
 
 Revision ID: 82f78bbaa62c
-Revises: persist_comparison_20260228
+Revises: auth_improvements_20260301
 Create Date: 2026-03-07 10:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from alembic import op  # type: ignore[attr-defined]
 
 # revision identifiers, used by Alembic.
 revision: str = "82f78bbaa62c"  # pragma: allowlist secret
-down_revision: str | Sequence[str] | None = "persist_comparison_20260228"  # pragma: allowlist secret
+down_revision: str | Sequence[str] | None = "auth_improvements_20260301"  # pragma: allowlist secret
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

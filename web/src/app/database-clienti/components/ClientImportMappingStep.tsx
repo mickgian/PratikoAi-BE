@@ -20,6 +20,8 @@ import {
 import type { ColumnMapping } from '../types';
 import { ourFields } from '../data/constants';
 
+const NONE_VALUE = '__none__';
+
 interface ClientImportMappingStepProps {
   columnMappings: ColumnMapping[];
   detectedColumns: string[];
@@ -35,7 +37,8 @@ export function ClientImportMappingStep({
     <div className="p-8">
       <h2 className="text-xl text-[#2A5D67] mb-6">Mappa le Colonne</h2>
       <p className="text-sm text-[#1E293B] opacity-70 mb-6">
-        Abbina i campi del nostro sistema alle colonne del tuo file. Le colonne riconosciute sono pre-compilate.
+        Abbina i campi del nostro sistema alle colonne del tuo file. Le colonne
+        riconosciute sono pre-compilate.
       </p>
       <Table>
         <TableHeader>
@@ -60,8 +63,13 @@ export function ClientImportMappingStep({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Select
-                      value={mapping?.yourColumn || ''}
-                      onValueChange={value => onUpdateMapping(field.value, value)}
+                      value={mapping?.yourColumn || NONE_VALUE}
+                      onValueChange={value =>
+                        onUpdateMapping(
+                          field.value,
+                          value === NONE_VALUE ? '' : value
+                        )
+                      }
                     >
                       <SelectTrigger
                         className={`bg-[#F8F5F1] ${
@@ -74,21 +82,24 @@ export function ClientImportMappingStep({
                       >
                         <SelectValue placeholder="Seleziona colonna" />
                       </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Nessuna</SelectItem>
-                      {detectedColumns.map(col => (
-                        <SelectItem key={col} value={col}>
-                          {col}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                      <SelectContent>
+                        <SelectItem value={NONE_VALUE}>Nessuna</SelectItem>
+                        {detectedColumns.map(col => (
+                          <SelectItem key={col} value={col}>
+                            {col}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
-                    {mapping?.confidence !== undefined && mapping.confidence >= 0.7 && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                    )}
-                    {mapping?.confidence !== undefined && mapping.confidence > 0 && mapping.confidence < 0.7 && (
-                      <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                    )}
+                    {mapping?.confidence !== undefined &&
+                      mapping.confidence >= 0.7 && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                      )}
+                    {mapping?.confidence !== undefined &&
+                      mapping.confidence > 0 &&
+                      mapping.confidence < 0.7 && (
+                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                      )}
                   </div>
                 </TableCell>
                 <TableCell>

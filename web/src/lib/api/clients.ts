@@ -5,6 +5,7 @@
  */
 
 import { apiClient } from '@/lib/api';
+import type { ProfileOverrides } from '@/app/database-clienti/types';
 import {
   buildStudioUrl,
   getAuthHeaders,
@@ -258,7 +259,7 @@ export async function previewImport(
 export async function importClients(
   file: File,
   columnMapping?: Record<string, string>,
-  profileOverrides?: Record<string, Record<string, string>>
+  profileOverrides?: ProfileOverrides
 ): Promise<ClientImportResult> {
   const url = buildStudioUrl('/api/v1/clients/import');
 
